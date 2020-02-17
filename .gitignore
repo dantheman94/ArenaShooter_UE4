@@ -1,0 +1,28 @@
+# UE4 Project directories to ignore
+ArenaShooter 4.23/Binaries/
+ArenaShooter 4.23/DerivedDataCache/
+ArenaShooter 4.23/Intermediate/
+ArenaShooter 4.23/Saved/
+ArenaShooter 4.23/Build/
+ 
+# Visual Studio solutions
+*.sln
+*.sdf
+*.opensdf
+*.suo
+
+# Assets to ignore
+ArenaShooter 4.23/.vs/
+ArenaShooter 4.23/Builds/
+ArenaShooter 4.23/Config/
+ArenaShooter 4.23/Content/Animations/
+ArenaShooter 4.23/Content/Effects/
+ArenaShooter 4.23/Content/Materials/
+ArenaShooter 4.23/Content/Textures/
+ArenaShooter 4.23/Content/Meshes/
+
+ArenaShooter/ArenaShooter.png
+*.rar
+*.uproject
+*.db
+*.ini
