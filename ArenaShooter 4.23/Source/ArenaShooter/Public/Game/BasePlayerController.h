@@ -34,7 +34,7 @@ public:
 
 protected:
 
-	// Startup **************************************************************
+	// Startup ********************************************************************************************************************************
 
 	// *** FUNCTIONS
 
@@ -47,7 +47,7 @@ protected:
 
 	// *** VARIABLES
 
-	// Combat | Aiming ******************************************************
+	// Combat | Aiming ************************************************************************************************************************
 
 	/*
 	*
@@ -55,7 +55,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Combat | Aiming")
 		float _fDefaultFov = 90.0f;
 
-	// Input | Sensitivity **************************************************
+	// Input | Sensitivity ********************************************************************************************************************
 
 	float _fRawVerticalMovementInput = 0.0f;
 	float _fRawHorzontalMovementInput = 0.0f;
@@ -98,14 +98,14 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Input | Sensitivity")
 		float _fAimLookInputScale = 0.6f;
 
-	// Input | Double Click *************************************************
+	// Input | Double Click *******************************************************************************************************************
 
 	UPROPERTY(BlueprintReadWrite, Category = "Input | Double Click")
 		float _fDoubleClickTime = 0.2f;
 
 	// *** FUNCTIONS
 
-	// Input ****************************************************************
+	// Input **********************************************************************************************************************************
 
 	/**
 	* @summary:	Called to bind functionality to input.
@@ -115,6 +115,8 @@ protected:
 	* @return:	virtual void
 	*/
 	virtual void SetupInputComponent() override;
+
+	///////////////////////////////////////////////
 
 	/**
 	* @summary:	Calculates raw input against the deadzone by a scaled radial factor.
@@ -126,6 +128,8 @@ protected:
 	*/
 	FVector2D CalcScaledRadialDeadZonedInput(float HorizonalInput, float VerticalInput);
 
+	///////////////////////////////////////////////
+
 	/**
 	* @summary:	Sets the axis mapping information into oldBinding from newBinding.
 	*
@@ -135,6 +139,8 @@ protected:
 	* @return:	static void
 	*/
 	static void UpdateAxisMapping(FInputAxisKeyMapping& OldBinding, FInputAxisKeyMapping& NewBinding);
+
+	///////////////////////////////////////////////
 
 	/**
 	* @summary:	Sets the action mapping information into oldBinding from newBinding.
@@ -146,41 +152,55 @@ protected:
 	*/
 	static void UpdateActionMapping(FInputActionKeyMapping& OldBinding, FInputActionKeyMapping& NewBinding);
 
-	// Combat | Aiming ******************************************************
+	// Combat | Aiming ************************************************************************************************************************
 
 	void AimWeaponEnter();
 
+	///////////////////////////////////////////////
+
 	void AimWeaponExit();
 
-	// Combat | Tabbing *****************************************************
+	// Combat | Tabbing ***********************************************************************************************************************
 
 	void ToggleWeapon();
 
-	// Combat | Weapon ******************************************************
+	// Combat | Weapon ************************************************************************************************************************
 
 	void FirePrimaryWeaponEnter();
 
+	///////////////////////////////////////////////
+
 	void FirePrimaryWeaponExit();
+
+	///////////////////////////////////////////////
 
 	void FireSecondaryWeaponEnter();
 
+	///////////////////////////////////////////////
+
 	void FireSecondaryWeaponExit();
+
+	///////////////////////////////////////////////
 
 	void ReloadPrimaryWeapon();
 
+	///////////////////////////////////////////////
+
 	void ReloadSecondaryWeapon();
 
-	// Combat | Grenade *****************************************************
+	// Combat | Grenade ***********************************************************************************************************************
 
 	void ChargeGrenade();
 
+	///////////////////////////////////////////////
+
 	void ThrowGrenade();
 
-	// Combat | Melee *******************************************************
+	// Combat | Melee *************************************************************************************************************************
 	
 	void Melee();
 
-	// Movement | Base ******************************************************
+	// Movement | Base ************************************************************************************************************************
 
 	/**
 	* @summary:	Moves the character's position that is connected to the controller on the vertical axis (forward/backward).
@@ -191,6 +211,8 @@ protected:
 	*/
 	void MoveForward(float Value);
 
+	///////////////////////////////////////////////
+
 	/**
 	* @summary:	Moves the character's position that is connected to the controller on the horizontal axis (left/right).
 	*
@@ -199,6 +221,8 @@ protected:
 	* @return:	void
 	*/
 	void MoveRight(float Value);
+
+	///////////////////////////////////////////////
 
 	/**
 	* @summary:	Moves the character's aiming direction that is connected to the controller on the vertical axis (up/down).
@@ -209,6 +233,8 @@ protected:
 	*/
 	void LookUp(float Value);
 
+	///////////////////////////////////////////////
+
 	/**
 	* @summary:	Moves the character's aiming direction that is connected to the controller on the horizontal axis (left/right).
 	*
@@ -218,39 +244,47 @@ protected:
 	*/
 	void LookRight(float Value);
 
-	// Movement | Ability ***************************************************
+	// Movement | Ability *********************************************************************************************************************
 
 	void Ability();
 
-	// Movement | Clamber ***************************************************
+	// Movement | Clamber *********************************************************************************************************************
 
 	void Clamber();
 
-	// Movement | Crouch ****************************************************
+	// Movement | Crouch **********************************************************************************************************************
 
 	void CrouchHoldEnter();
 
+	///////////////////////////////////////////////
+
 	void CrouchHoldExit();
+
+	///////////////////////////////////////////////
 
 	void CrouchToggle();
 
-	// Movement | Hover *****************************************************
+	// Movement | Hover ***********************************************************************************************************************
 
 	void HoverEnter();
 
+	///////////////////////////////////////////////
+
 	void HoverExit();
 
-	// Movement | Jump ******************************************************
+	// Movement | Jump ************************************************************************************************************************
 
 	void Jump();
 
-	// Movement | Slide *****************************************************
+	// Movement | Slide ***********************************************************************************************************************
 
 	void Slide();
 
-	// Movement | Sprint ****************************************************
+	// Movement | Sprint **********************************************************************************************************************
 
 	void SprintEnter();
+
+	///////////////////////////////////////////////
 
 	void SprintExit();
 
@@ -258,21 +292,21 @@ public:
 
 	// *** FUNCTIONS
 
-	// Controller ***********************************************************
+	// Controller *****************************************************************************************************************************
 
 	UFUNCTION(BlueprintCallable, Category = "Controller")
 		void GamepadRumble(float Intensity, float Duration, bool AffectsLeftLarge, bool AffectsLeftSmall, bool AffectsRightLarge, bool AffectsRightSmall);
 
-	// Combat | Aiming ******************************************************
+	// Combat | Aiming ************************************************************************************************************************
 
 	UFUNCTION(BlueprintPure, Category = "Combat | Aiming")
 		float GetDefaultFov() { return _fDefaultFov; }
 
-	// Combat | Firing ******************************************************
+	// Combat | Firing ************************************************************************************************************************
 
 
 
-	// Input | Rebinding ****************************************************
+	// Input | Rebinding **********************************************************************************************************************
 
 	/**
 	* @summary:	Tries to find the matching axis binding & replaces the input key with the new binding.
@@ -285,6 +319,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Input | Rebinding")
 		bool RebindAxisKey(FInputAxisKeyMapping OldBinding, FInputAxisKeyMapping NewBinding);
 
+	///////////////////////////////////////////////
+
 	/**
 	* @summary:	Tries to find the matching action binding & replaces the input key with the new binding.
 	*
@@ -296,8 +332,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Input | Rebinding")
 		bool RebindActionKey(FInputActionKeyMapping OldBinding, FInputActionKeyMapping NewBinding);
 
+	///////////////////////////////////////////////
+
 	UFUNCTION(exec)
 		virtual void RemoveRoundFromChamber();
+
+	///////////////////////////////////////////////
 
 	virtual bool ProcessConsoleExec(const TCHAR* Cmd, FOutputDevice& Ar, UObject* Executor) override;
 
