@@ -25,6 +25,12 @@ void ABaseHUD::DrawHUD()
 	TickDraw_SecondaryWeaponStats();
 	TickDraw_ReserveWeaponStats();
 	TickDraw_GrenadeInventory();
+
+	// Draw visor
+	TickDraw_VisorOverlay();
+
+	// Draw interaction prompt
+	TickDraw_InteractablePickupPrompt();
 }
 
 // Crosshair ******************************************************************************************************************************
@@ -69,6 +75,9 @@ void ABaseHUD::TickDraw_PrimaryWeaponCrosshair()
 
 ///////////////////////////////////////////////
 
+/*
+*
+*/
 void ABaseHUD::TickDraw_SecondaryWeaponCrosshair()
 {
 
@@ -300,4 +309,81 @@ void ABaseHUD::TickDraw_GrenadeInventory()
 			_HUD_GrenadeInventory_Instance = widget;
 		}
 	}
+}
+
+// Visor **********************************************************************************************************************************
+
+void ABaseHUD::TickDraw_VisorOverlay()
+{
+	// Widget instance exists and is referenced (sanity check)
+	if (_HUD_VisorOverlay_Instance != NULL)
+	{
+		if (_HUD_VisorOverlay_Instance->IsInViewport() && _bDisplayVisorOverlay) { return; } else
+		{
+			// Add to viewport
+			if (_bDisplayVisorOverlay)
+			{ _HUD_VisorOverlay_Instance->AddToViewport(); }
+
+			// Remove from viewport
+			else
+			{ _HUD_VisorOverlay_Instance->RemoveFromViewport(); }
+		}
+	}
+
+	// No widget instance assigned >> Create a new one and assign it
+	else
+	{
+		// Sanity check
+		if (_HUD_VisorOverlay == NULL) { return; }
+
+		// Create and assign new UMG widget
+		UUserWidget* widget = CreateWidget<UUserWidget>(this->GetOwningPlayerController(), _HUD_VisorOverlay);
+		if (widget != NULL)
+		{
+			widget->AddToViewport();
+			_HUD_VisorOverlay_Instance = widget;
+		}
+	}
+}
+
+///////////////////////////////////////////////
+
+void ABaseHUD::TickDraw_InteractablePickupPrompt()
+{
+	// Widget instance exists and is referenced (sanity check)
+	if (_HUD_InteractionPromptInstance != NULL)
+	{
+		if (_HUD_InteractionPromptInstance->IsInViewport() && _bDisplayHUD) { return; } else
+		{
+			// Add to viewport
+			if (_bDisplayHUD)
+			{ _HUD_InteractionPromptInstance->AddToViewport(); }
+
+			// Remove from viewport
+			else
+			{ _HUD_InteractionPromptInstance->RemoveFromViewport(); }
+		}
+	}
+
+	// No widget instance assigned >> Create a new one and assign it
+	else
+	{
+		// Sanity check
+		if (_HUD_InteractionPrompt == NULL) { return; }
+
+		// Create and assign new UMG widget
+		UUserWidget* widget = CreateWidget<UUserWidget>(this->GetOwningPlayerController(), _HUD_InteractionPrompt);
+		if (widget != NULL)
+		{
+			widget->AddToViewport();
+			_HUD_InteractionPromptInstance = widget;
+		}
+	}
+}
+
+///////////////////////////////////////////////
+
+void ABaseHUD::SetWidgetInteractable_Implementation(AInteractable* NewInteractable)
+{
+
 }

@@ -6,6 +6,10 @@
 #include "GameFramework/Actor.h"
 #include "Interactable.generated.h"
 
+class USphereComponent;
+class UStaticMeshComponent;
+class USkeletalMeshComponent;
+
 UCLASS()
 class ARENASHOOTER_API AInteractable : public AActor
 {
@@ -26,12 +30,22 @@ public:
 	*/
 	AInteractable();
 
+	///////////////////////////////////////////////
+
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const;
+
 	// ****************************************************************************************************************************************
 	// ************************************ VARIABLES *****************************************************************************************
 	// ****************************************************************************************************************************************
 
-	///UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
-	///USphereComponent* _InteractionTrigger = NULL;
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
+		USphereComponent* _InteractionTrigger;
+
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
+		UStaticMeshComponent* _FocusMesh_Static;
+
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
+		USkeletalMeshComponent* _FocusMesh_Skeletal;
 
 protected:
 
@@ -55,7 +69,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 		FName _PickupName = TEXT("< MISSING NAME >");
 
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Replicated)
 		bool _bInteractable = true;
 
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
@@ -77,5 +91,42 @@ public:
 	* @return:	virtual void
 	*/
 	virtual void Tick(float DeltaTime) override;
+
+	// Interaction ****************************************************************************************************************************
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void OnOverlapBegin(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void OnOverlapEnd(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void SetIsInteractable(bool IsInteractable);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_OnInteract(ABaseCharacter* BaseCharacter, bool Destroy = true);
+
+	///////////////////////////////////////////////
+
+	UFUNCTION(BlueprintPure)
+		FName GetInteractablePickupName() { return _PickupName; }
 
 };

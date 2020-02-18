@@ -372,7 +372,7 @@ void ABaseCharacter::UpdateReloadingPrimary()
 	if (_PrimaryWeapon->GetFireModes().Num() == 0) { return; }
 	if (_PrimaryWeapon->GetCurrentFireMode() == NULL) { return; }
 
-	// Reload hasnt been cancelled yet
+	// Reload hasnt been canceled yet
 	if (!_bPrimaryReloadCancelled)
 	{
 		// Ensure that _bIsReloadingPrimaryWeapon == true
@@ -710,7 +710,7 @@ void ABaseCharacter::InputToggleWeapon()
 		uint8 handAnim = (uint8)E_HandAnimation::eHA_Unequip;
 		UAnimMontage* lowerMontage = _PrimaryWeapon->GetArmAnimation((E_HandAnimation)handAnim);
 		if (lowerMontage == NULL) { return; }
-		OwningClient_PlayPrimaryWeaponFPAnimation(_fGlobalTogglePlayRate, false, true, handAnim, 0.0f, false, 0, 0.0f);
+		OwningClient_PlayPrimaryWeaponFPAnimation(_fGlobalTogglePlayRate, true, true, handAnim, 0.0f, false, 0, 0.0f);
 		float lowerDelay = lowerMontage->GetPlayLength() + 0.5f;
 
 		// Start delay timer for the actual toggle
@@ -910,7 +910,6 @@ void ABaseCharacter::Multicast_UpdateThirdPersonPrimaryWeaponMesh_Implementation
 	// Either update the mesh with the mesh referenced from the weapon, otherwise clear the mesh on the character
 	if (_PrimaryWeapon)
 	{
-
 		// Set mesh
 		_ThirdPerson_PrimaryWeapon_SkeletalMesh->SetSkeletalMesh(_PrimaryWeapon->GetThirdPersonMesh());
 
@@ -1314,6 +1313,9 @@ void ABaseCharacter::Server_Reliable_SetSecondaryWeapon_Implementation(AWeapon* 
 
 ///////////////////////////////////////////////
 
+/*
+*
+*/
 void ABaseCharacter::InputFireSecondaryWeapon()
 {
 
@@ -1348,6 +1350,49 @@ bool ABaseCharacter::Server_Reliable_SetReserveWeapon_Validate(AWeapon* Weapon)
 void ABaseCharacter::Server_Reliable_SetReserveWeapon_Implementation(AWeapon* Weapon)
 {
 	_ReserveWeapon = Weapon;
+
+	// Set weapon owner
+	_ReserveWeapon->SetOwner(this);
+	_ReserveWeapon->Server_Reliable_SetNewOwner(this);
+	_ReserveWeapon->Server_Reliable_SetOwnersPrimaryWeapon(false);
+	_ReserveWeapon->Server_Reliable_SetOwnersSecondaryWeapon(false);
+
+	if (Role == ROLE_Authority) { OnRep_ReserveWeapon(); }
+}
+
+/*
+*
+*/
+void ABaseCharacter::OnRep_ReserveWeapon()
+{
+
+}
+
+// Interaction ****************************************************************************************************************************
+
+/*
+*
+*/
+AInteractable* ABaseCharacter::CalculateFocusInteractable()
+{
+	AInteractable* currentFocus = NULL;
+	if (_Interactables.Num() > 0)
+	{
+		// Cycle through all interactables and determine which is the closest
+		float closestDistance = TNumericLimits<float>::Max();
+		for (int i = 0; i < _Interactables.Num(); i++)
+		{
+			float dist = FVector::DistSquared(this->GetActorLocation(), _Interactables[i]->GetActorLocation());
+			if (dist < closestDistance)
+			{
+				closestDistance = dist;
+				currentFocus = _Interactables[i];
+			}
+		}
+	}
+
+	_FocusInteractable = currentFocus;
+	return _FocusInteractable;
 }
 
 // Movement | Base ************************************************************************************************************************

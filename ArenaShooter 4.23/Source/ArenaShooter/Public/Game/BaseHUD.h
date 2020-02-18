@@ -9,6 +9,7 @@
 // *** CLASSES
 
 class UUserWidget;
+class AInteractable;
 
 UCLASS()
 class ARENASHOOTER_API ABaseHUD : public AHUD
@@ -64,6 +65,12 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Display")
 		bool _bDisplayGrenadeInventory = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Display")
+		bool _bDisplayVisorOverlay = true;
 
 	/*
 	*
@@ -153,6 +160,19 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Widgets | ArenaCharacter HUD")
 		UUserWidget* _HUD_GrenadeInventory_Instance = NULL;
 
+	// Visor
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | ArenaCharacter HUD")
+		TSubclassOf<class UUserWidget> _HUD_VisorOverlay;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Widgets | ArenaCharacter HUD")
+		UUserWidget* _HUD_VisorOverlay_Instance = NULL;
+
 	// Crosshairs
 	/*
 	*
@@ -165,6 +185,26 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Widgets | ArenaCharacter HUD")
 		UUserWidget* _HUD_SecondaryWeapon_Crosshair = NULL;
+
+	// Interaction ****************************************************************************************************************************
+
+	/*
+	*
+	*/
+	UPROPERTY()
+		AInteractable* _FocusInteractable = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | ArenaCharacter HUD")
+		TSubclassOf<class UUserWidget> _HUD_InteractionPrompt;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Widgets | ArenaCharacter HUD")
+		UUserWidget* _HUD_InteractionPromptInstance = NULL;
 
 public:
 
@@ -199,7 +239,7 @@ public:
 	*
 	*/
 	UFUNCTION(BlueprintGetter, Category = "Widgets | ArenaCharacter HUD")
-		UUserWidget* GetPrimaryWeaponCrosshair() { return _HUD_PrimaryWeapon_Crosshair; }
+		UUserWidget* GetPrimaryWeaponCrosshair() const { return _HUD_PrimaryWeapon_Crosshair; }
 
 	///////////////////////////////////////////////
 
@@ -215,7 +255,7 @@ public:
 	*
 	*/
 	UFUNCTION(BlueprintGetter, Category = "Widgets | ArenaCharacter HUD")
-		UUserWidget* GetSecondaryWeaponCrosshair() { return _HUD_SecondaryWeapon_Crosshair; }
+		UUserWidget* GetSecondaryWeaponCrosshair() const { return _HUD_SecondaryWeapon_Crosshair; }
 
 	///////////////////////////////////////////////
 
@@ -272,5 +312,36 @@ public:
 	*/
 	UFUNCTION()
 		void TickDraw_GrenadeInventory();
+
+	///////////////////////////////////////////////
+
+	// Visor **********************************************************************************************************************************
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void TickDraw_VisorOverlay();
+
+	// Interaction ****************************************************************************************************************************
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void TickDraw_InteractablePickupPrompt();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void SetNewFocusInteractable(AInteractable* NewInteractable) { _FocusInteractable = NewInteractable; }
+
+	///////////////////////////////////////////////
+
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Interaction")
+		void SetWidgetInteractable(AInteractable* NewInteractable);
 
 };
