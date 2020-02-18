@@ -17,6 +17,7 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Interactable.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Runtime/Engine/Classes/Animation/AnimInstance.h"
@@ -834,6 +835,9 @@ void ABaseCharacter::AimWeaponEnter()
 	
 	_eAimDirection = E_AimDirection::ePT_ZoomIn;
 	_bIsAimLerping = true;
+
+	// Transform origin lerping
+	if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled()) { _fAdsAnimationEvent.Broadcast(true); }
 }
 
 ///////////////////////////////////////////////
@@ -867,6 +871,9 @@ void ABaseCharacter::AimWeaponExit()
 
 		_eAimDirection = E_AimDirection::ePT_ZoomOut;
 		_bIsAimLerping = true;
+
+		// Transform origin lerping
+		if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled()) { _fAdsAnimationEvent.Broadcast(false); }
 	}
 }
 
@@ -1375,6 +1382,7 @@ void ABaseCharacter::OnRep_ReserveWeapon()
 */
 AInteractable* ABaseCharacter::CalculateFocusInteractable()
 {
+	///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Orange, TEXT("CALCULATING") + FString::FromInt(_Interactables.Num()));
 	AInteractable* currentFocus = NULL;
 	if (_Interactables.Num() > 0)
 	{
@@ -1387,12 +1395,163 @@ AInteractable* ABaseCharacter::CalculateFocusInteractable()
 			{
 				closestDistance = dist;
 				currentFocus = _Interactables[i];
+				///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Orange, TEXT("NAME: ") + currentFocus->GetInteractablePickupName().ToString());
 			}
 		}
 	}
 
 	_FocusInteractable = currentFocus;
 	return _FocusInteractable;
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseCharacter::AddToInteractablesArray(AInteractable* Interactable)
+{
+	_Interactables.Add(Interactable);
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseCharacter::RemoveFromInteractablesArray(AInteractable* Interactable)
+{
+	if (_Interactables.Contains(Interactable)) { _Interactables.Remove(Interactable); }
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseCharacter::InteractPrimary()
+{
+	// Sanity check
+	if (_FocusInteractable == NULL) { return; }
+
+	// Start interaction timer
+	FTimerDelegate interactionDelegate;
+	interactionDelegate.BindUFunction(this, FName("Interact"), false);
+	GetWorld()->GetTimerManager().SetTimer(_fInteractionHandle, interactionDelegate, 1.0f, false, _fInteractionThresholdTime);
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseCharacter::InteractSecondary()
+{
+
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseCharacter::CancelInteraction()
+{
+	// Cancel interaction timer
+	GetWorld()->GetTimerManager().ClearTimer(_fInteractionHandle);
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseCharacter::Interact(bool IsSecondary)
+{
+	// Sanity checks
+	if (_FocusInteractable == NULL) { return; }
+	if (_FocusInteractable->GetOnUsedActor() == NULL) { return; }
+
+	// Interacting with a weapon?
+	TSubclassOf<AWeapon> weaponClass = StaticCast<TSubclassOf<AWeapon>>(_FocusInteractable->GetOnUsedActor());
+	if (weaponClass)
+	{
+		// Set new weapon
+		int magSize = 100;
+		int reserveSize = 100;
+		int batterySize = 100;
+		Server_Reliable_SpawnWeapon(IsSecondary, weaponClass, magSize, reserveSize, batterySize);
+
+		// Drop old weapon
+		///if (_PrimaryWeapon != NULL) { Server_Reliable_DropWeapon(_PrimaryWeapon); }
+	}
+
+	// Interacting with a NON-Weapon object
+	else
+	{
+
+	}
+
+	// On interact event plays on the interactable object (basically just destroy/re-pool)
+	_FocusInteractable->Server_Reliable_OnInteract(this);
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+bool ABaseCharacter::Server_Reliable_DropWeapon_Validate(AWeapon* WeaponInstance)
+{ return true; }
+
+void ABaseCharacter::Server_Reliable_DropWeapon_Implementation(AWeapon* WeaponInstance)
+{
+	// Get class
+	TSubclassOf<AActor> actorClass = WeaponInstance->GetOnDroppedActor();
+	if (actorClass == NULL) { return; }
+
+	// Spawn info
+	FVector forwardVector = this->GetActorForwardVector();
+	FVector location = this->GetActorLocation();
+	FTransform trans = FTransform::Identity;
+	trans.SetLocation(forwardVector + FVector(location.X, location.Y, location.Z + BaseEyeHeight));
+	trans.SetRotation(FQuat(this->GetActorRotation()));
+	FActorSpawnParameters spawnInfo;
+	spawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	// Spawn dropped actor
+	AActor* droppedActor = GetWorld()->SpawnActor<AActor>(actorClass, trans, spawnInfo);
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+bool ABaseCharacter::Server_Reliable_SpawnWeapon_Validate(bool IsSecondary, TSubclassOf<AWeapon> WeaponClass, int MagazineSize, int ReserveSize, int BatterySize)
+{ return true; }
+
+void ABaseCharacter::Server_Reliable_SpawnWeapon_Implementation(bool IsSecondary, TSubclassOf<AWeapon> WeaponClass, int MagazineSize, int ReserveSize, int BatterySize)
+{
+	// Spawn info
+	FVector location(0.0f, 0.0f, 0.0f);
+	FRotator rotation(0.0f, 0.0f, 0.0f);
+	FActorSpawnParameters spawnInfo;
+	spawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	// Spawn weapon
+	AWeapon* weapon = GetWorld()->SpawnActor<AWeapon>(WeaponClass, location, rotation, spawnInfo);
+
+	if (!IsSecondary)
+	{ 
+		Server_Reliable_DropWeapon(_PrimaryWeapon);
+		Server_Reliable_SetPrimaryWeapon(weapon, true);
+	}
+	else 
+	{
+		Server_Reliable_DropWeapon(_SecondaryWeapon);
+		Server_Reliable_SetSecondaryWeapon(weapon);
+	}
 }
 
 // Movement | Base ************************************************************************************************************************

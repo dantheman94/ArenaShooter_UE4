@@ -69,7 +69,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
 		FName _PickupName = TEXT("< MISSING NAME >");
 
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Replicated)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Replicated)
 		bool _bInteractable = true;
 
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
@@ -126,7 +126,18 @@ public:
 
 	///////////////////////////////////////////////
 
+	/*
+	*
+	*/
 	UFUNCTION(BlueprintPure)
 		FName GetInteractablePickupName() { return _PickupName; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		TSubclassOf<AActor> GetOnUsedActor() { return _OnUsedActorClass; }
 
 };

@@ -1321,8 +1321,19 @@ public:
 
 	///////////////////////////////////////////////
 
+	/*
+	*
+	*/
 	UFUNCTION(BlueprintPure, Category = "Aiming")
 		bool IsAimDownSightEnabled() { return _bAimDownSightEnabled; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		FTransform GetOriginADS() { return _tAdsOriginHands; }
 
 	// Animation ******************************************************************************************************************************
 

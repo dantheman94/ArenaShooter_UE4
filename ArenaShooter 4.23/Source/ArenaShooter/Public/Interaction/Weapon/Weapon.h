@@ -79,7 +79,7 @@ public:
 
 protected:
 
-	// Startup **************************************************************
+	// Startup ********************************************************************************************************************************
 
 	// *** FUNCTIONS
 
@@ -92,7 +92,7 @@ protected:
 
 	// *** VARIABLES
 
-	// Current Frame ********************************************************
+	// Current Frame **************************************************************************************************************************
 
 	/*
 	*
@@ -142,7 +142,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current", Replicated)
 		AActor* _PawnOwner = NULL;
 
-	// Animation ************************************************************
+	// Animation ******************************************************************************************************************************
 
 	/*
 	*
@@ -180,7 +180,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Animation")
 		TSubclassOf<UAnimInstance> _AnimationBPThirdPersonCharacter = NULL;
 
-	// Attachments | Scope **************************************************
+	// Attachments | Scope ********************************************************************************************************************
 
 	/*
 	*
@@ -200,7 +200,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Attachments | Scope")
 		FName _ScopeAttachmentSocket = TEXT("SightAttachmentPoint");
 
-	// Attachments | Flashlight *********************************************
+	// Attachments | Flashlight ***************************************************************************************************************
 
 	/*
 	*
@@ -220,7 +220,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Attachments | Flashlight")
 		FName _FlashlightAttachmentSocket = TEXT("FlashlightAttachmentPoint");
 
-	// Duel Wielding ********************************************************
+	// Duel Wielding **************************************************************************************************************************
 
 	/*
 	*
@@ -242,7 +242,7 @@ protected:
 		meta = (EditCondition = "_bCanBeDuelWielded"))
 		FTransform _tDuelOriginSecondary;
 
-	// Interaction **********************************************************
+	// Interaction ****************************************************************************************************************************
 
 	/*
 	*
@@ -250,7 +250,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Interaction")
 		TSubclassOf<AActor> _OnDroppedActor = NULL;
 
-	// Properties ***********************************************************
+	// Properties *****************************************************************************************************************************
 
 	/*
 	*
@@ -271,7 +271,7 @@ public:
 
 	// *** FUNCTIONS
 
-	// Current Frame ********************************************************
+	// Current Frame **************************************************************************************************************************
 
 	/**
 	* @summary:	Called every frame.
@@ -282,14 +282,20 @@ public:
 	*/
 	virtual void Tick(float DeltaTime) override;
 
+	///////////////////////////////////////////////
+
 	/*
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetPawnOwnerIsAiming(bool Aiming);
 
+	///////////////////////////////////////////////
+
 	UFUNCTION(BlueprintPure)
 		bool GetIsAiming() { return _bIsPawnOwnerAiming; }
+
+	///////////////////////////////////////////////
 
 	/*
 	*
@@ -297,11 +303,15 @@ public:
 	UFUNCTION(BlueprintPure)
 		int GetFireModeIterator() { return _iFiringModeIterator; }
 
+	///////////////////////////////////////////////
+
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintPure)
 		TArray<UFireMode*> GetFireModes() { return _uFiringModes; }
+
+	///////////////////////////////////////////////
 
 	/*
 	*
@@ -309,11 +319,15 @@ public:
 	UFUNCTION(BlueprintPure)
 		UFireMode* GetCurrentFireMode() { return _uFiringModes[_iFiringModeIterator]; }
 
+	///////////////////////////////////////////////
+
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintPure)
 		bool IsThereValidFireModeCount() { return _uFiringModes.Num() >= 1 && _uFiringModes.Num() >= _iFiringModeIterator; }
+
+	///////////////////////////////////////////////
 
 	/*
 	*
@@ -321,11 +335,15 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetOwnersPrimaryWeapon(bool IsPrimaryWeapon);
 
+	///////////////////////////////////////////////
+
 	/*
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetOwnersSecondaryWeapon(bool IsSecondaryWeapon);
+
+	///////////////////////////////////////////////
 
 	/*
 	*
@@ -333,14 +351,23 @@ public:
 	UFUNCTION(BlueprintPure)
 		bool IsOwnersPrimaryWeapon() { return _bIsPawnOwnersPrimaryWeapon; }
 
+	///////////////////////////////////////////////
+
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintPure)
 		bool IsOwnersSecondaryWeapon() { return _bIsPawnOwnersSecondaryWeapon; }
 
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
 	UFUNCTION(BlueprintPure)
 		bool CanBeDuelWielded() { return _bCanBeDuelWielded; }
+
+	///////////////////////////////////////////////
 
 	/*
 	*
@@ -348,11 +375,15 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetNewOwner(AActor* NewOwner);
 
+	///////////////////////////////////////////////
+
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintPure)
 		AActor* GetPawnOwner() { return _PawnOwner; }
+
+	///////////////////////////////////////////////
 
 	/*
 	*
@@ -360,7 +391,7 @@ public:
 	UFUNCTION()
 		TArray<UAmmo*> GetAmmoPool() { return _pAmmoPools; }
 
-	// Animation ************************************************************
+	// Animation ******************************************************************************************************************************
 
 	/*
 	*
@@ -368,11 +399,15 @@ public:
 	UFUNCTION()
 		FTransform GetTransformOriginHands() { return _tOriginHands; }
 
+	///////////////////////////////////////////////
+
 	/*
 	*
 	*/
 	UFUNCTION()
 		FTransform GetTransformOriginGun() { return _tOriginGun; }
+
+	///////////////////////////////////////////////
 
 	/*
 	*
@@ -380,11 +415,15 @@ public:
 	UFUNCTION()
 		FTransform GetTransformOriginDuelPrimary() { return _tDuelOriginPrimary; }
 
+	///////////////////////////////////////////////
+
 	/*
 	*
 	*/
 	UFUNCTION()
 		FTransform GetTransformOriginDuelSecondary() { return _tDuelOriginSecondary; }
+
+	///////////////////////////////////////////////
 
 	/*
 	*
@@ -392,17 +431,23 @@ public:
 	UFUNCTION()
 		TSubclassOf<UAnimInstance> GetAnimInstanceFirstPersonHands() { return _AnimationBPFirstPersonHands; }
 
+	///////////////////////////////////////////////
+
 	/*
 	*
 	*/
 	UFUNCTION()
 		TSubclassOf<UAnimInstance> GetAnimInstanceFirstPersonGun() { return _AnimationBPFirstPersonGun; }
 
+	///////////////////////////////////////////////
+
 	/*
 	*
 	*/
 	UFUNCTION()
 		TSubclassOf<UAnimInstance> GetAnimInstanceThirdPersonCharacter() { return _AnimationBPThirdPersonCharacter; }
+
+	///////////////////////////////////////////////
 
 	/**
 	* @summary:	Returns reference to an animation montage used on the weapon owner's first person mesh.
@@ -414,6 +459,8 @@ public:
 	UFUNCTION()
 		UAnimMontage* GetArmAnimation(E_HandAnimation AnimationEnum);
 
+	///////////////////////////////////////////////
+
 	/**
 	* @summary:	Returns reference to an animation montage used on the weapon's mesh.
 	*
@@ -424,7 +471,7 @@ public:
 	UFUNCTION()
 		UAnimMontage* GetGunAnimation(E_GunAnimation AnimationEnum);
 
-	// Properties ***********************************************************
+	// Properties *****************************************************************************************************************************
 
 	/*
 	*
@@ -432,10 +479,28 @@ public:
 	UFUNCTION()
 		USkeletalMesh* GetFirstPersonMesh() { return _FirstPersonMesh; }
 
+	///////////////////////////////////////////////
+
 	/*
 	*
 	*/
 	UFUNCTION()
 		USkeletalMesh* GetThirdPersonMesh() { return _ThirdPersonMesh; }
 
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		TSubclassOf<AActor> GetOnDroppedActor() { return _OnDroppedActor; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		FTransform GetOriginHands() { return _tOriginHands; }
+	
 };

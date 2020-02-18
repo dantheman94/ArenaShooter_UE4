@@ -5,6 +5,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Containers/UnrealString.h"
 #include "UnrealNetwork.h"
 
 #include "BaseCharacter.h"
@@ -29,15 +30,13 @@ AInteractable::AInteractable()
 
 	// Create components
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
-
 	_InteractionTrigger = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionTrigger"));
 	_InteractionTrigger->SetupAttachment(RootComponent);
-
 	_FocusMesh_Static = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FocusMesh_Static"));
 	_FocusMesh_Static->SetupAttachment(_InteractionTrigger);
-
 	_FocusMesh_Skeletal = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FocusMesh_Skeletal"));
 	_FocusMesh_Skeletal->SetupAttachment(_InteractionTrigger);
+
 }
 
 ///////////////////////////////////////////////
@@ -59,7 +58,10 @@ void AInteractable::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLi
 void AInteractable::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	// Add overlap events
+	_InteractionTrigger->OnComponentBeginOverlap.AddDynamic(this, &AInteractable::OnOverlapBegin);
+	_InteractionTrigger->OnComponentEndOverlap.AddDynamic(this, &AInteractable::OnOverlapEnd);
 }
 
 // Current Frame **************************************************************************************************************************
@@ -84,20 +86,23 @@ void AInteractable::Tick(float DeltaTime)
 */
 void AInteractable::OnOverlapBegin(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	// Dont proceed unless we are allowed to be interacted with
-	if (!_bInteractable) { return; }
+	// Don't proceed unless we are allowed to be interacted with
+	if (_bInteractable == false) { return; }
 
-	// Matching collision type? 
-	if (OtherComp->GetCollisionObjectType() == ECC_Pawn)
+	///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Orange, TEXT("overlap!") + OtherComp->GetName());
+
+	// Matching collision type?
+	ECollisionChannel characterMovementChannel = ECollisionChannel::ECC_GameTraceChannel12;
+	if (OtherComp->GetCollisionObjectType() == ECC_Pawn || OtherComp->GetCollisionObjectType() == characterMovementChannel)
 	{
 		// Cast to correct character type
 		ABaseCharacter* baseCharacter = Cast<ABaseCharacter>(OtherActor);
 		if (baseCharacter == NULL) { return; }
 	
 		// Add to interactables array
-		baseCharacter->GetInteractablesArray().Add(this);
+		baseCharacter->AddToInteractablesArray(this);
 		AInteractable* interactable = baseCharacter->CalculateFocusInteractable();
-
+		
 		// Display interactable info to player's screen/HUD
 		APlayerController* playerController = Cast<APlayerController>(baseCharacter->GetController());
 		if (playerController == NULL) { return; }
@@ -120,9 +125,16 @@ void AInteractable::OnOverlapEnd(class UPrimitiveComponent* OverlappedComp, clas
 	if (baseCharacter == NULL) { return; }
 
 	// Remove from interactables array
-	if (baseCharacter->GetInteractablesArray().Contains(this))
-	{ baseCharacter->GetInteractablesArray().Remove(this); }
-	baseCharacter->CalculateFocusInteractable();
+	baseCharacter->RemoveFromInteractablesArray(this);
+	AInteractable* interactable = baseCharacter->CalculateFocusInteractable();
+
+	// Display interactable info to player's screen/HUD
+	APlayerController* playerController = Cast<APlayerController>(baseCharacter->GetController());
+	if (playerController == NULL) { return; }
+	ABaseHUD* hud = Cast<ABaseHUD>(playerController->GetHUD());
+	if (hud == NULL) { return; }
+	hud->SetNewFocusInteractable(interactable);
+	hud->SetWidgetInteractable(interactable);
 }
 
 ///////////////////////////////////////////////

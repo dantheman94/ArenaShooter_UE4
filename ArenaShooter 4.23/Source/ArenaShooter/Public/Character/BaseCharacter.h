@@ -20,6 +20,10 @@ enum class E_AimDirection : uint8
 	ePT_ZoomOut UMETA(DisplayName = "ZoomOut")
 };
 
+// *** EVENT DISPATCHERS / DELEGATES
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FADSAnimDelegate, bool, AimingEnter);
+
 // *** CLASSES
 
 class UCameraShake;
@@ -345,6 +349,9 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Aiming")
 		E_AimDirection _eAimDirection = E_AimDirection::ePT_ZoomIn;
 
+	UPROPERTY(BlueprintAssignable, Category = "Inventory | Weapon | Aiming")
+		FADSAnimDelegate _fAdsAnimationEvent;
+
 	// Inventory | Weapon | Primary *****************************************
 
 	/*
@@ -446,11 +453,35 @@ protected:
 
 	// Interaction ****************************************************************************************************************************
 
+	/*
+	*
+	*/
 	UPROPERTY()
 		TArray<AInteractable*> _Interactables;
 
+	/*
+	*
+	*/
 	UPROPERTY()
 		AInteractable* _FocusInteractable = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Interaction")
+		float _fInteractionThresholdTime = 2.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY()
+		FTimerHandle _fInteractionHandle;
+
+	/*
+	*
+	*/
+	UPROPERTY()
+		FTimerHandle _fSetWeaponHandle;
 
 	// Movement | Crouching *************************************************
 
@@ -1147,11 +1178,17 @@ public:
 
 	///////////////////////////////////////////////
 
+	/*
+	*
+	*/
 	UFUNCTION(BlueprintGetter)
 		bool IsPrimaryReloadCanceled() { return _bPrimaryReloadCancelled; }
 
 	///////////////////////////////////////////////
 
+	/*
+	*
+	*/
 	UFUNCTION(BlueprintGetter)
 		bool IsSecondaryReloadCanceled() { return _bSecondaryReloadCancelled; }
 
@@ -1233,11 +1270,79 @@ public:
 	UFUNCTION(Category = "Interaction")
 		TArray<AInteractable*> GetInteractablesArray() { return _Interactables; }
 
+	///////////////////////////////////////////////
+
 	/*
 	*
 	*/
 	UFUNCTION(Category = "Interaction")
 		AInteractable* CalculateFocusInteractable();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Category = "Interaction")
+		void AddToInteractablesArray(AInteractable* Interactable);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Category = "Interaction")
+		void RemoveFromInteractablesArray(AInteractable* Interactable);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Category = "Interaction")
+		void InteractPrimary();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Category = "Interaction")
+		void InteractSecondary();
+
+	///////////////////////////////////////////////
+
+	UFUNCTION()
+		void CancelInteraction();
+
+	///////////////////////////////////////////////
+
+	UFUNCTION()
+		void Interact(bool IsSecondary);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation, Category = "Interaction")
+		void Server_Reliable_DropWeapon(AWeapon* WeaponInstance);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation, Category = "Interaction")
+		void Server_Reliable_SpawnWeapon(bool IsSecondary, TSubclassOf<AWeapon> WeaponClass, int MagazineSize, int ReserveSize, int BatterySize);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		FTimerHandle GetInteractionHandle() const { return _fInteractionHandle; }
 
 	// Movement | Base ******************************************************
 

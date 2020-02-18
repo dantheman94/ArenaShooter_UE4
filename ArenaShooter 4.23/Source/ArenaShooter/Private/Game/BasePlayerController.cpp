@@ -78,6 +78,12 @@ void ABasePlayerController::SetupInputComponent()
 	InputComponent->BindAction("Grenade", IE_Released, this, &ABasePlayerController::ThrowGrenade);
 	InputComponent->BindAction("Melee", IE_Pressed, this, &ABasePlayerController::Melee);
 	InputComponent->BindAction("ToggleWeapon", IE_Pressed, this, &ABasePlayerController::ToggleWeapon);
+
+	// Bind interaction
+	InputComponent->BindAction("Interact", IE_Pressed, this, &ABasePlayerController::InteractPrimary);
+	InputComponent->BindAction("Interact", IE_Released, this, &ABasePlayerController::CancelInteraction);
+	InputComponent->BindAction("DuelWield", IE_Pressed, this, &ABasePlayerController::InteractSecondary);
+	InputComponent->BindAction("DuelWield", IE_Released, this, &ABasePlayerController::CancelInteraction);
 }
 
 ///////////////////////////////////////////////
@@ -227,6 +233,30 @@ void ABasePlayerController::ThrowGrenade()
 void ABasePlayerController::Melee()
 {
 
+}
+
+// Interaction ****************************************************************************************************************************
+
+void ABasePlayerController::InteractPrimary()
+{
+	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
+	if (pawn) { pawn->InteractPrimary(); }
+}
+
+///////////////////////////////////////////////
+
+void ABasePlayerController::InteractSecondary()
+{
+	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
+	if (pawn) { pawn->InteractSecondary(); }
+}
+
+///////////////////////////////////////////////
+
+void ABasePlayerController::CancelInteraction()
+{
+	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
+	if (pawn) { pawn->CancelInteraction(); }
 }
 
 // Movement | Base ************************************************************************************************************************
