@@ -124,7 +124,6 @@ void UFireMode::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompon
 		ABaseCharacter* character = Cast<ABaseCharacter>(owner);
 		if (character != NULL)
 		{
-			///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Orange, TEXT("valid owner"));
 			// Primary weapon
 			USkeletalMeshComponent* weaponskeletal = character->GetFirstPersonPrimaryWeaponMesh();
 			if (weaponskeletal != NULL)
@@ -145,7 +144,6 @@ void UFireMode::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompon
 		ABaseCharacter* character = Cast<ABaseCharacter>(owner);
 		if (character != NULL)
 		{
-			///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Orange, TEXT("valid owner"));
 			// Primary weapon
 			USkeletalMeshComponent* weaponskeletal = character->GetThirdPersonPrimaryWeaponMesh();
 			if (weaponskeletal != NULL)
@@ -614,8 +612,8 @@ void UFireMode::Fire(FHitResult HitResult, FTransform ProjectileTransform, USkel
 					}
 					else
 					{
-						FString Message = TEXT("ROUND ISNT IN CHAMBER");
-						GEngine->AddOnScreenDebugMessage(20, 5.0f, FColor::Red, Message);
+						///FString Message = TEXT("ROUND ISNT IN CHAMBER");
+						///GEngine->AddOnScreenDebugMessage(20, 5.0f, FColor::Red, Message);
 
 						// Chamber new round
 						AActor* pawnOwner = _WeaponParentAttached->GetPawnOwner();
