@@ -69,7 +69,7 @@ void ABaseHUD::TickDraw_PrimaryWeaponCrosshair()
 		if (fireMode == NULL) { return; }
 
 		// Create crosshair of the current primary weapon's firemode
-		fireMode->CreateAndAssignCrosshair();
+		fireMode->Client_Reliable_CreateAndAssignCrosshair();
 	}
 }
 
