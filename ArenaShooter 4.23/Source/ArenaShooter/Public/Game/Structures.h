@@ -27,15 +27,6 @@ public:
 		UAnimMontage* _Anim_Inspect = NULL;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		UAnimMontage* _Anim_ReloadEjectMag = NULL;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		UAnimMontage* _Anim_ReloadNewMag = NULL;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		UAnimMontage* _Anim_ReloadChamberRound = NULL;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		UAnimMontage* _Anim_ReloadFullNotEmpty = NULL;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -84,15 +75,6 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		UAnimMontage* _Anim_Inspect = NULL;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		UAnimMontage* _Anim_ReloadEjectMag = NULL;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		UAnimMontage* _Anim_ReloadNewMag = NULL;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		UAnimMontage* _Anim_ReloadChamberRound = NULL;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		UAnimMontage* _Anim_ReloadFullNotEmpty = NULL;
