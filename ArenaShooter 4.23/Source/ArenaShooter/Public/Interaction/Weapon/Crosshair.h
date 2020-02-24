@@ -6,6 +6,10 @@
 #include "Blueprint/UserWidget.h"
 #include "Crosshair.generated.h"
 
+// *** EVENT DISPATCHERS / DELEGATES
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FShowHitMarker);
+
 // *** CLASSES
 
 class AWeapon;
@@ -32,6 +36,9 @@ protected:
 	UPROPERTY()
 		AWeapon* _Weapon = NULL;
 
+	UPROPERTY(BlueprintAssignable)
+		FShowHitMarker _HitMarkerDelegate;
+
 public:
 
 	// ****************************************************************************************************************************************
@@ -53,5 +60,13 @@ public:
 	*/
 	UFUNCTION(BlueprintPure)
 		AWeapon* GetWeaponReference() { return _Weapon; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		FShowHitMarker GetHitMarkerDelegate() { return _HitMarkerDelegate; }
 
 };
