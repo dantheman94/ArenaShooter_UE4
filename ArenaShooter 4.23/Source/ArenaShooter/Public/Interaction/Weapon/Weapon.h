@@ -140,7 +140,7 @@ protected:
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current", Replicated)
-		AActor* _PawnOwner = NULL;
+		APawn* _PawnOwner = NULL;
 
 	// Animation ******************************************************************************************************************************
 
@@ -373,7 +373,7 @@ public:
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
-		void Server_Reliable_SetNewOwner(AActor* NewOwner);
+		void Server_Reliable_SetNewOwner(APawn* NewOwner);
 
 	///////////////////////////////////////////////
 
@@ -381,7 +381,7 @@ public:
 	*
 	*/
 	UFUNCTION(BlueprintPure)
-		AActor* GetPawnOwner() { return _PawnOwner; }
+		APawn* GetPawnOwner() { return _PawnOwner; }
 
 	///////////////////////////////////////////////
 

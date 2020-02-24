@@ -3,6 +3,7 @@
 #include "Weapon.h"
 
 #include "Ammo.h"
+#include "BaseCharacter.h"
 #include "FireMode.h"
 #include "UnrealNetwork.h"
 
@@ -69,10 +70,10 @@ void AWeapon::Tick(float DeltaTime)
 
 ///////////////////////////////////////////////
 
-bool AWeapon::Server_Reliable_SetNewOwner_Validate(AActor* NewOwner)
+bool AWeapon::Server_Reliable_SetNewOwner_Validate(APawn* NewOwner)
 { return true; }
 
-void AWeapon::Server_Reliable_SetNewOwner_Implementation(AActor* NewOwner)
+void AWeapon::Server_Reliable_SetNewOwner_Implementation(APawn* NewOwner)
 {
 	_PawnOwner = NewOwner;
 }
@@ -88,6 +89,12 @@ void AWeapon::Server_Reliable_SetOwnersPrimaryWeapon_Implementation(bool IsPrima
 
 	// If this is the owners primary weapon, then it cant be their secondary weapon too
 	if (IsPrimaryWeapon) { _bIsPawnOwnersSecondaryWeapon = false; }
+
+	// Create UMG crosshair widgets
+	///for (int i = 0; i < _uFiringModes.Num(); ++i)
+	///{
+	///	_uFiringModes[i]->Client_Reliable_CreateAndAssignCrosshair(NULL);
+	///}
 }
 
 ///////////////////////////////////////////////
@@ -101,6 +108,12 @@ void AWeapon::Server_Reliable_SetOwnersSecondaryWeapon_Implementation(bool IsSec
 
 	// If this is the owners secondary weapon, then it cant be their primary weapon too
 	if (IsSecondaryWeapon) { _bIsPawnOwnersPrimaryWeapon = false; }
+
+	// Create UMG crosshair widgets
+	///for (int i = 0; i < _uFiringModes.Num(); ++i)
+	///{
+	///	_uFiringModes[i]->Client_Reliable_CreateAndAssignCrosshair(NULL);
+	///}
 }
 
 ///////////////////////////////////////////////
