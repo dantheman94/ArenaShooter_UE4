@@ -25,6 +25,7 @@ void UAmmo::BeginPlay()
 	// Starting ammo
 	Server_Reliable_SetMagazineCount(_iStartingMagazineAmmo);
 	Server_Reliable_SetReserveCount(_iStartingReserveAmmo);
+	Server_Reliable_SetBatteryAmmo(_iStartingBatteryCapacity);
 }
 
 
@@ -47,6 +48,16 @@ void UAmmo::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentT
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	// ...
+}
+
+///////////////////////////////////////////////
+
+bool UAmmo::Server_Reliable_SetBatteryAmmo_Validate(int StartingBatteryAmmo)
+{ return true; }
+
+void UAmmo::Server_Reliable_SetBatteryAmmo_Implementation(int StartingBatteryAmmo)
+{
+	_iBatteryAmmo = StartingBatteryAmmo;
 }
 
 ///////////////////////////////////////////////
@@ -78,11 +89,31 @@ bool UAmmo::Server_Reliable_DeductAmmo_Validate(int DeductionAmount)
 
 void UAmmo::Server_Reliable_DeductAmmo_Implementation(int DeductionAmount)
 {
-	// Deduct from magazine 
-	_iMagazineAmmoCount -= DeductionAmount;
+	switch (_eAmmoType)
+	{
+	case E_AmmoType::eAT_Magazine:
+	{
+		// Deduct from magazine 
+		_iMagazineAmmoCount -= DeductionAmount;
 
-	// Clamp to zero
-	if (_iMagazineAmmoCount < 0) { _iMagazineAmmoCount = 0; }
+		// Clamp to zero
+		if (_iMagazineAmmoCount < 0) { _iMagazineAmmoCount = 0; }
+
+		break;
+	}
+
+	case E_AmmoType::eAT_Battery:
+	{
+		// Deduct from battery 
+		_iBatteryAmmo -= DeductionAmount;
+
+		// clamp to zero
+		if (_iBatteryAmmo < 0) { _iBatteryAmmo = 0; }
+
+		break;
+	}
+	default: break;
+	}
 }
 
 ///////////////////////////////////////////////
