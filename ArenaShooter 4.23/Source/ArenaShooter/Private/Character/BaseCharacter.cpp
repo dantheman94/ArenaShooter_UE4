@@ -563,7 +563,42 @@ void ABaseCharacter::OwningClient_PlayFirstPersonAnimation_Implementation(float 
 
 void ABaseCharacter::OnAnyDamage(AActor* Actor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
 {
+	if (Role == ROLE_Authority)
+	{
+		// Is taking damage
+		_bTakingDamageResetTimerPosition = 0.0f;
+		_bIsTakingDamage = true;
 
+		if (GetCurrentShield() > 0.0f)
+		{
+			_fShield -= Damage;
+		}
+		else
+		{
+			_fFleshHealth -= Damage;
+			
+			// Clamp to zero
+			if (_fFleshHealth < 0.0f) { _fFleshHealth = 0.0f; }
+		}
+
+		// Check if dead
+		if (!IsAlive())
+		{
+
+		}
+	}
+	
+	// Ensure that the method only runs server-side
+	else
+	{ Server_Reliable_OnAnyDamage(Actor, Damage, DamageType, InstigatedBy, DamageCauser); }
+}
+
+bool ABaseCharacter::Server_Reliable_OnAnyDamage_Validate(AActor* Actor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
+{ return true; }
+
+void ABaseCharacter::Server_Reliable_OnAnyDamage_Implementation(AActor* Actor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
+{
+	OnAnyDamage(Actor, Damage, DamageType, InstigatedBy, DamageCauser);
 }
 
 ///////////////////////////////////////////////
