@@ -72,8 +72,10 @@ enum class E_ReloadStage : uint8
 
 // *** CLASSES
 
-class UUserWidget;
 class UAmmo;
+class UCrosshair;
+class UUserWidget;
+class AProjectile;
 
 UCLASS(ClassGroup = (Custom), BlueprintType, Blueprintable, meta = (BlueprintSpawnableComponent))
 class ARENASHOOTER_API UFireMode : public UActorComponent
@@ -860,7 +862,7 @@ protected:
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Projectile")
-		TSubclassOf<AActor> _uProjectileClass = NULL;
+		TSubclassOf<AProjectile> _uProjectileClass = NULL;
 
 	/*
 	*
@@ -1198,7 +1200,7 @@ protected:
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "UMG")
-		TSubclassOf<class UUserWidget> _CrosshairUMG;
+		TSubclassOf<class UCrosshair> _CrosshairUMG;
 
 public:
 
@@ -1216,14 +1218,6 @@ public:
 	* @return:	virtual void
 	*/
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintCallable)
-		void CreateAndAssignCrosshair();
 
 	///////////////////////////////////////////////
 
@@ -1423,6 +1417,78 @@ public:
 	UFUNCTION()
 		void ApplyPointDamage(AActor* DamagedActor, float DamageToCause, USkeletalMeshComponent* SkCharWepMeshFirstP, FHitResult HitResult);
 
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		float GetDamageFleshHead() { return _fDamageHead; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		float GetDamageFleshTorso() { return _fDamageTorso; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		float GetDamageFleshArms() { return _fDamageArms; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		float GetDamageFleshLegs() { return _fDamageLegs; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		float GetDamageFleshBase() { return _fDamageBase; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		float GetDamageShieldHead() { return _fDamageShieldHead; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		float GetDamageShieldBase() { return _fDamageShield; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		bool LosesDamageOverRange() { return _bLosesDamageOverDistance; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		UCurveFloat* GetDamageCurve() { return _cDamageDistanceCurve; }
+
 	// Firing *********************************************************************************************************************************
 
 	/*
@@ -1474,12 +1540,12 @@ public:
 	// Muzzle Effect **************************************************************************************************************************
 
 	UFUNCTION(NetMulticast, Unreliable, WithValidation)
-		void Multicast_Unreliable_PlayThirdPersonMuzzle(FHitResult HitResult, USkeletalMeshComponent* SkCharWepMeshThirdP);
+		void Multicast_Unreliable_PlayThirdPersonMuzzle(USkeletalMeshComponent* SkCharWepMeshThirdP);
 
 	///////////////////////////////////////////////
 
 	UFUNCTION(Client, Unreliable, WithValidation)
-		void OwningClient_Unreliable_PlayFirstPersonMuzzle(FHitResult HitResult, USkeletalMeshComponent* SkCharWepMeshFirstP);
+		void OwningClient_Unreliable_PlayFirstPersonMuzzle(USkeletalMeshComponent* SkCharWepMeshFirstP);
 
 	// Reload *********************************************************************************************************************************
 
@@ -1674,6 +1740,6 @@ public:
 	*
 	*/
 	UFUNCTION(BlueprintPure, Category = "UMG")
-		TSubclassOf<class UUserWidget> GetCrosshairClass() { return _CrosshairUMG; }
+		TSubclassOf<class UCrosshair> GetCrosshairClass() { return _CrosshairUMG; }
 
 };

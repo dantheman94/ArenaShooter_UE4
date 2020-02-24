@@ -7,14 +7,15 @@
 #include "BaseHUD.h"
 #include "BasePlayerController.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Crosshair.h"
 #include "DrawDebugHelpers.h"
-#include "GameFramework/HUD.h"
 #include "ImpactEffectManager.h"
 #include "kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "kismet/KismetSystemLibrary.h"
 #include "Math/RandomStream.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "Projectile.h"
 #include "UnrealNetwork.h"
 #include "UserWidget.h"
 
@@ -188,128 +189,6 @@ void UFireMode::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompon
 
 ///////////////////////////////////////////////
 
-/*
-*
-*/
-void UFireMode::CreateAndAssignCrosshair()
-{
-	// Create user widget (TEMPORARY)
-	if (_CrosshairUMG && _WeaponParentAttached != NULL)
-	{
-		// Cast to HUD instance with sanity checks
-		AActor* actorOwner = _WeaponParentAttached->GetOwner();
-		if (actorOwner == NULL)
-		{
-			FString _Message = TEXT("WARNING: Cannot create crosshair UMG for current firemode because the Weapon's OWNER is NULL");
-			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, _Message);
-			return;
-		}
-
-		AController* owningController = actorOwner->GetInstigatorController();
-		if (owningController == NULL)
-		{
-			FString _Message = TEXT("WARNING: Cannot create crosshair UMG for current firemode because the Owner's CONTROLLER is NULL");
-			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, _Message);
-			return;
-		}
-
-		APlayerController* playerController = Cast<APlayerController>(owningController);
-		if (playerController == NULL)
-		{
-			FString _Message = TEXT("WARNING: Cannot create crosshair UMG for current firemode because the Owner's PLAYER CONTROLLER is NULL");
-			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, _Message);
-			return;
-		}
-
-		AHUD* hud = playerController->GetHUD();
-		if (hud == NULL)
-		{
-			FString _Message = TEXT("WARNING: Cannot create crosshair UMG for current firemode because the HUD instance is NULL");
-			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, _Message);
-			return;
-		}
-
-		ABaseHUD* hudInstance = Cast<ABaseHUD>(hud);
-		if (hudInstance == NULL)
-		{
-			FString _Message = TEXT("WARNING: Cannot create crosshair UMG for current firemode because the BaseHUD instance is NULL");
-			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, _Message);
-			return;
-		}
-
-		// Check if current HUD crosshair matches the class type of this firemode's crosshair
-		if (_WeaponParentAttached->IsOwnersPrimaryWeapon())
-		{
-			// Crosshair UMG classes DONT match
-			if (hudInstance->GetPrimaryWeaponCrosshair() != NULL)
-			{
-				if (hudInstance->GetPrimaryWeaponCrosshair()->GetClass() != _CrosshairUMG->GetClass())
-				{
-					// Remove mismatched crosshair
-					hudInstance->GetPrimaryWeaponCrosshair()->RemoveFromParent();
-
-					// Create umg instance & add it to the viewport
-					UUserWidget* crosshairInstance = CreateWidget<UUserWidget>(playerController, _CrosshairUMG);
-					if (crosshairInstance)
-					{
-						crosshairInstance->AddToViewport();
-						hudInstance->SetPrimaryCrosshair(crosshairInstance);
-					}
-				}
-			}
-
-			// No primary crosshair is currently present
-			else
-			{
-				// Create umg instance & add it to the viewport
-				UUserWidget* crosshairInstance = CreateWidget<UUserWidget>(playerController, _CrosshairUMG);
-				if (crosshairInstance)
-				{
-					crosshairInstance->AddToViewport();
-					hudInstance->SetPrimaryCrosshair(crosshairInstance);
-				}
-			}
-		}
-		
-		// Secondary weapon crosshair
-		else if (_WeaponParentAttached->IsOwnersSecondaryWeapon())
-		{
-			// Crosshair UMG classes DONT match
-			if (hudInstance->GetSecondaryWeaponCrosshair() != NULL)
-			{
-				if (hudInstance->GetSecondaryWeaponCrosshair()->GetClass() != _CrosshairUMG->GetClass())
-				{
-					// Remove mismatched crosshair
-					hudInstance->GetSecondaryWeaponCrosshair()->RemoveFromParent();
-
-					// Create umg instance & add it to the viewport
-					UUserWidget* crosshairInstance = CreateWidget<UUserWidget>(playerController, _CrosshairUMG);
-					if (crosshairInstance)
-					{
-						crosshairInstance->AddToViewport();
-						hudInstance->SetSecondaryCrosshair(crosshairInstance);
-					}
-				}
-			}
-			
-			// No secondary crosshair is currently present
-			else
-			{
-				// Create umg instance & add it to the viewport
-				UUserWidget* crosshairInstance = CreateWidget<UUserWidget>(playerController, _CrosshairUMG);
-				if (crosshairInstance)
-				{
-					crosshairInstance->AddToViewport();
-					hudInstance->SetSecondaryCrosshair(crosshairInstance);
-				}
-			}
-		}
-		
-	}
-}
-
-///////////////////////////////////////////////
-
 /**
 * @summary:	Sets whether this firemode is currently misfired or not.
 *
@@ -372,6 +251,8 @@ void UFireMode::DetermineAmmoPool()
 	}
 }
 
+///////////////////////////////////////////////
+
 /**
 * @summary:	Returns reference to an animation montage used on the weapon owner's first person mesh.
 *
@@ -387,9 +268,6 @@ UAnimMontage* UFireMode::GetArmAnimation(E_HandAnimation AnimationEnum)
 	case E_HandAnimation::eHA_Equip:					return _AnimationMontageListHands._Anim_Equip;
 	case E_HandAnimation::eHA_Unequip:					return _AnimationMontageListHands._Anim_Unequip;
 	case E_HandAnimation::eHA_Inspect:					return _AnimationMontageListHands._Anim_Inspect;
-	case E_HandAnimation::eHA_ReloadEjectMag:			return _AnimationMontageListHands._Anim_ReloadEjectMag;
-	case E_HandAnimation::eHA_ReloadNewMag:				return _AnimationMontageListHands._Anim_ReloadNewMag;
-	case E_HandAnimation::eHA_ReloadChamberRound:		return _AnimationMontageListHands._Anim_ReloadChamberRound;
 	case E_HandAnimation::eHA_ReloadFullNotEmpty:		return _AnimationMontageListHands._Anim_ReloadFullNotEmpty;
 	case E_HandAnimation::eHA_ReloadFullEmpty:			return _AnimationMontageListHands._Anim_ReloadFullEmpty;
 	case E_HandAnimation::eHA_ReloadDuelRight:			return _AnimationMontageListHands._Anim_ReloadDuelRight;
@@ -421,9 +299,6 @@ UAnimMontage* UFireMode::GetGunAnimation(E_GunAnimation AnimationEnum)
 	{
 	case E_GunAnimation::eGA_FirstPickup:				return _AnimationMontageListWeapon._Anim_FirstPickup;
 	case E_GunAnimation::eGA_Inspect:					return _AnimationMontageListWeapon._Anim_Inspect;
-	case E_GunAnimation::eGA_ReloadEjectMag:			return _AnimationMontageListWeapon._Anim_ReloadEjectMag;
-	case E_GunAnimation::eGA_ReloadNewMag:				return _AnimationMontageListWeapon._Anim_ReloadNewMag;
-	case E_GunAnimation::eGA_ReloadChamberRound:		return _AnimationMontageListWeapon._Anim_ReloadChamberRound;
 	case E_GunAnimation::eGA_ReloadFullNotEmpty:		return _AnimationMontageListWeapon._Anim_ReloadFullNotEmpty;
 	case E_GunAnimation::eGA_ReloadFullEmpty:			return _AnimationMontageListWeapon._Anim_ReloadFullEmpty;
 	case E_GunAnimation::eGA_ReloadDuelRight:			return _AnimationMontageListWeapon._Anim_ReloadDuelRight;
@@ -707,6 +582,26 @@ void UFireMode::Fire(FHitResult HitResult, FTransform ProjectileTransform, USkel
 	fireDelayDelegate.BindUFunction(this, FName("OwningClient_SetFireDelayComplete"), true);
 	GetWorld()->GetTimerManager().SetTimer(_fFireDelayHandle, fireDelayDelegate, 1.0f, false, _fFiringDelay);
 
+	// Update spread
+	IncreaseSpread();
+
+	// Start decreasing spread on the "repeating/automatic" styled firing types
+	if (_FiringType == E_FiringModeType::eFMT_FullAuto || _FiringType == E_FiringModeType::eFMT_Burst && !_bIsUpdatingSpread)
+	{
+		// Start projectile spread delay
+		FTimerDelegate projectileSpreadDelegate;
+		projectileSpreadDelegate.BindUFunction(this, FName("StartDecreasingSpread"));
+		GetWorld()->GetTimerManager().SetTimer(_fProjectileSpreadHandle, projectileSpreadDelegate, 1.0f, false, _fSpreadDecreaseInitialDelay);
+	}
+	   
+	// Play muzzle effects
+	OwningClient_Unreliable_PlayFirstPersonMuzzle(SkCharWepMeshFirstP);
+	if (_WeaponParentAttached->GetLocalRole() != ENetRole::ROLE_AutonomousProxy)
+	{
+		// Third person should be visible by everyone except the owner
+		Multicast_Unreliable_PlayThirdPersonMuzzle(SkCharWepMeshThirdP);
+	}
+
 	// Play firing animations
 	ABaseCharacter* character = Cast<ABaseCharacter>(_WeaponParentAttached->GetPawnOwner());
 	if (character != NULL)
@@ -863,86 +758,89 @@ void UFireMode::Server_Reliable_FireProjectileTrace_Implementation(APawn* Pawn, 
 		if (traceHitOut.IsValidBlockingHit())
 		{
 			// Can the actor be damaged?
-			if (traceHitOut.Actor->bCanBeDamaged)
+			if (traceHitOut.GetActor() != NULL)
 			{
-				float damageToCauseByhitscan = _fDamageBase;
-
-				// Does the HitActor inherit from ABaseCharacter class?
-				ABaseCharacter* character = Cast<ABaseCharacter>(traceHitOut.Actor);
-				if (character != NULL)
+				if (traceHitOut.GetActor()->bCanBeDamaged)
 				{
-					// Character is alive
-					if (character->IsAlive())
+					float damageToCauseByhitscan = _fDamageBase;
+
+					// Does the HitActor inherit from ABaseCharacter class?
+					ABaseCharacter* character = Cast<ABaseCharacter>(traceHitOut.Actor);
+					if (character != NULL)
 					{
-						// If shield is depleted
-						if (character->IsShieldDepleted())
+						// Character is alive
+						if (character->IsAlive())
 						{
-							// Get damage by hit component
-							damageToCauseByhitscan = GetDamageByPawnHitComponent(traceHitOut.GetComponent());
-
-							// Damage falloff?
-							if (_bLosesDamageOverDistance)
+							// If shield is depleted
+							if (character->IsShieldDepleted())
 							{
-								if (_cDamageDistanceCurve != NULL)
-								{
-									// Multiply damage against the curve (I normalize it to a range of [0f - 1f] as a precaution
-									float multiplier = _cDamageDistanceCurve->GetFloatValue(traceHitOut.Distance);
-									UKismetMathLibrary::NormalizeToRange(multiplier, 0.0f, 1.0f);
-									damageToCauseByhitscan *= multiplier;
+								// Get damage by hit component
+								damageToCauseByhitscan = GetDamageByPawnHitComponent(traceHitOut.GetComponent());
 
-									// Damage character
-									ApplyPointDamage(character, damageToCauseByhitscan, SkCharWepMeshFirstP, traceHitOut);
+								// Damage falloff?
+								if (_bLosesDamageOverDistance)
+								{
+									if (_cDamageDistanceCurve != NULL)
+									{
+										// Multiply damage against the curve (I normalize it to a range of [0f - 1f] as a precaution
+										float multiplier = _cDamageDistanceCurve->GetFloatValue(traceHitOut.Distance);
+										UKismetMathLibrary::NormalizeToRange(multiplier, 0.0f, 1.0f);
+										damageToCauseByhitscan *= multiplier;
+
+										// Damage character
+										ApplyPointDamage(character, damageToCauseByhitscan, SkCharWepMeshFirstP, traceHitOut);
+									}
 								}
+
+								// No damage falloff -> ApplyPointDamage()
+								else
+								{ ApplyPointDamage(character, damageToCauseByhitscan, SkCharWepMeshFirstP, traceHitOut); }
 							}
 
-							// No damage falloff -> ApplyPointDamage()
+							// Shield is NOT depleted
 							else
-							{ ApplyPointDamage(character, damageToCauseByhitscan, SkCharWepMeshFirstP, traceHitOut); }
+							{
+								// Get damage by hit component
+								FString compName = UKismetSystemLibrary::GetObjectName(traceHitOut.GetComponent());
+								bool hitHead = compName == TEXT("_HitBox_Head");
+								damageToCauseByhitscan = UKismetMathLibrary::SelectFloat(_fDamageShieldHead, _fDamageShield, hitHead);
+
+								// Damage falloff?
+								if (_bLosesDamageOverDistance)
+								{
+									if (_cDamageDistanceCurve != NULL)
+									{
+										// Multiply damage against the curve (I normalize it to a range of [0f - 1f] as a precaution
+										float multiplier = _cDamageDistanceCurve->GetFloatValue(traceHitOut.Distance);
+										UKismetMathLibrary::NormalizeToRange(multiplier, 0.0f, 1.0f);
+										damageToCauseByhitscan *= multiplier;
+
+										// Damage character
+										ApplyPointDamage(character, damageToCauseByhitscan, SkCharWepMeshFirstP, traceHitOut);
+									}
+								}
+
+								// No damage falloff -> ApplyPointDamage()
+								else
+								{ ApplyPointDamage(character, damageToCauseByhitscan, SkCharWepMeshFirstP, traceHitOut); }
+							}
 						}
 
-						// Shield is NOT depleted
+						// Character is dead
 						else
 						{
-							// Get damage by hit component
-							FString compName = UKismetSystemLibrary::GetObjectName(traceHitOut.GetComponent());
-							bool hitHead = compName == TEXT("_HitBox_Head");
-							damageToCauseByhitscan = UKismetMathLibrary::SelectFloat(_fDamageShieldHead, _fDamageShield, hitHead);
 
-							// Damage falloff?
-							if (_bLosesDamageOverDistance)
-							{
-								if (_cDamageDistanceCurve != NULL)
-								{
-									// Multiply damage against the curve (I normalize it to a range of [0f - 1f] as a precaution
-									float multiplier = _cDamageDistanceCurve->GetFloatValue(traceHitOut.Distance);
-									UKismetMathLibrary::NormalizeToRange(multiplier, 0.0f, 1.0f);
-									damageToCauseByhitscan *= multiplier;
-
-									// Damage character
-									ApplyPointDamage(character, damageToCauseByhitscan, SkCharWepMeshFirstP, traceHitOut);
-								}
-							}
-
-							// No damage falloff -> ApplyPointDamage()
-							else
-							{ ApplyPointDamage(character, damageToCauseByhitscan, SkCharWepMeshFirstP, traceHitOut); }
 						}
 					}
 
-					// Character is dead
+					// HitActor does NOT inherit from ABaseCharacter class
 					else
 					{
 
 					}
 				}
-
-				// HitActor does NOT inherit from ABaseCharacter class
-				else
-				{
-
-				}
 			}
-
+			
 			// Play impact effects
 			if (_ImpactEffectManager != NULL) { _ImpactEffectManager->Server_Reliable_SpawnImpactEffect(traceHitOut, SkCharWepMeshThirdP); }
 		}
@@ -954,26 +852,6 @@ void UFireMode::Server_Reliable_FireProjectileTrace_Implementation(APawn* Pawn, 
 	{
 		// Third person should be visible by everyone except the owner
 		Multicast_Unreliable_PlayThirdPersonContrail(traceHitOut, muzzleLaunchPointTP);
-	}
-
-	// Play muzzle effects
-	OwningClient_Unreliable_PlayFirstPersonMuzzle(traceHitOut, SkCharWepMeshFirstP);
-	if (_WeaponParentAttached->GetLocalRole() != ENetRole::ROLE_AutonomousProxy)
-	{
-		// Third person should be visible by everyone except the owner
-		Multicast_Unreliable_PlayThirdPersonMuzzle(traceHitOut, SkCharWepMeshThirdP);
-	}
-
-	// Update spread
-	IncreaseSpread();
-
-	// Start decreasing spread on the "repeating/automatic" styled firing types
-	if (_FiringType == E_FiringModeType::eFMT_FullAuto || _FiringType == E_FiringModeType::eFMT_Burst && !_bIsUpdatingSpread)
-	{
-		// Start projectile spread delay
-		FTimerDelegate projectileSpreadDelegate;
-		projectileSpreadDelegate.BindUFunction(this, FName("StartDecreasingSpread"));
-		GetWorld()->GetTimerManager().SetTimer(_fProjectileSpreadHandle, projectileSpreadDelegate, 1.0f, false, _fSpreadDecreaseInitialDelay);
 	}
 }
 
@@ -992,7 +870,20 @@ bool UFireMode::Server_Reliable_FireProjectilePhysics_Validate(APawn* Pawn, FHit
 
 void UFireMode::Server_Reliable_FireProjectilePhysics_Implementation(APawn* Pawn, FHitResult hitResult, FTransform ProjectileTransform, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
 {
+	if (_uProjectileClass == NULL) { return; }
 
+	// Spawn projectile class at muzzle launch point
+	FVector muzzleLocation = SkCharWepMeshFirstP->GetSocketLocation("MuzzleLaunchPoint");
+	FVector cameraRotationXVec = ProjectileTransform.GetRotation().Vector();
+	FRotator muzzleRotation = cameraRotationXVec.Rotation();
+	
+	FActorSpawnParameters spawnInfo;
+	spawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AProjectile* projectile = GetWorld()->SpawnActor<AProjectile>(_uProjectileClass, muzzleLocation, muzzleRotation, spawnInfo);
+
+	projectile->SetWeapon(_WeaponParentAttached);
+	projectile->Instigator = _WeaponParentAttached->GetPawnOwner();
+	projectile->Init();
 }
 
 ///////////////////////////////////////////////
@@ -1042,10 +933,10 @@ void UFireMode::Server_Reliable_SetOverheated_Implementation(bool Overheated)
 /*
 *
 */
-bool UFireMode::Multicast_Unreliable_PlayThirdPersonMuzzle_Validate(FHitResult HitResult, USkeletalMeshComponent* SkCharWepMeshThirdP)
+bool UFireMode::Multicast_Unreliable_PlayThirdPersonMuzzle_Validate(USkeletalMeshComponent* SkCharWepMeshThirdP)
 { return true; }
 
-void UFireMode::Multicast_Unreliable_PlayThirdPersonMuzzle_Implementation(FHitResult HitResult, USkeletalMeshComponent* SkCharWepMeshThirdP)
+void UFireMode::Multicast_Unreliable_PlayThirdPersonMuzzle_Implementation(USkeletalMeshComponent* SkCharWepMeshThirdP)
 {
 	// Sanity check
 	if (_pMuzzleEffectParticleSystem != NULL)
@@ -1062,10 +953,10 @@ void UFireMode::Multicast_Unreliable_PlayThirdPersonMuzzle_Implementation(FHitRe
 /*
 *
 */
-bool UFireMode::OwningClient_Unreliable_PlayFirstPersonMuzzle_Validate(FHitResult HitResult, USkeletalMeshComponent* SkCharWepMeshFirstP)
+bool UFireMode::OwningClient_Unreliable_PlayFirstPersonMuzzle_Validate(USkeletalMeshComponent* SkCharWepMeshFirstP)
 { return true; }
 
-void UFireMode::OwningClient_Unreliable_PlayFirstPersonMuzzle_Implementation(FHitResult HitResult, USkeletalMeshComponent* SkCharWepMeshFirstP)
+void UFireMode::OwningClient_Unreliable_PlayFirstPersonMuzzle_Implementation(USkeletalMeshComponent* SkCharWepMeshFirstP)
 {
 	// Sanity check
 	if (_pMuzzleEffectParticleSystem != NULL)

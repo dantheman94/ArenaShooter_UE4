@@ -8,6 +8,7 @@
 
 // *** CLASSES
 
+class UCrosshair;
 class UUserWidget;
 class AInteractable;
 
@@ -178,13 +179,13 @@ protected:
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Widgets | ArenaCharacter HUD")
-		UUserWidget* _HUD_PrimaryWeapon_Crosshair = NULL;
+		UCrosshair* _HUD_PrimaryWeapon_Crosshair = NULL;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Widgets | ArenaCharacter HUD")
-		UUserWidget* _HUD_SecondaryWeapon_Crosshair = NULL;
+		UCrosshair* _HUD_SecondaryWeapon_Crosshair = NULL;
 
 	// Interaction ****************************************************************************************************************************
 
@@ -217,6 +218,9 @@ public:
 	*/
 	virtual void DrawHUD() override;
 
+	UFUNCTION(exec)
+		void Debug_DisplayHUD(bool Draw);
+
 	// Crosshair ******************************************************************************************************************************
 
 	/*
@@ -239,7 +243,7 @@ public:
 	*
 	*/
 	UFUNCTION(BlueprintGetter, Category = "Widgets | ArenaCharacter HUD")
-		UUserWidget* GetPrimaryWeaponCrosshair() const { return _HUD_PrimaryWeapon_Crosshair; }
+		UCrosshair* GetPrimaryWeaponCrosshair() const { return _HUD_PrimaryWeapon_Crosshair; }
 
 	///////////////////////////////////////////////
 
@@ -247,7 +251,7 @@ public:
 	*
 	*/
 	UFUNCTION(BlueprintSetter, Category = "Widgets | ArenaCharacter HUD")
-		void SetPrimaryCrosshair(UUserWidget* Crosshair) { _HUD_PrimaryWeapon_Crosshair = Crosshair; }
+		void SetPrimaryCrosshair(UCrosshair* Crosshair) { _HUD_PrimaryWeapon_Crosshair = Crosshair; }
 
 	///////////////////////////////////////////////
 
@@ -255,7 +259,7 @@ public:
 	*
 	*/
 	UFUNCTION(BlueprintGetter, Category = "Widgets | ArenaCharacter HUD")
-		UUserWidget* GetSecondaryWeaponCrosshair() const { return _HUD_SecondaryWeapon_Crosshair; }
+		UCrosshair* GetSecondaryWeaponCrosshair() const { return _HUD_SecondaryWeapon_Crosshair; }
 
 	///////////////////////////////////////////////
 
@@ -263,7 +267,7 @@ public:
 	*
 	*/
 	UFUNCTION(BlueprintSetter, Category = "Widgets | ArenaCharacter HUD")
-		void SetSecondaryCrosshair(UUserWidget* Crosshair) { _HUD_SecondaryWeapon_Crosshair = Crosshair; }
+		void SetSecondaryCrosshair(UCrosshair* Crosshair) { _HUD_SecondaryWeapon_Crosshair = Crosshair; }
 
 	// Healthbars *****************************************************************************************************************************
 
@@ -343,5 +347,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Interaction")
 		void SetWidgetInteractable(AInteractable* NewInteractable);
+
+	///////////////////////////////////////////////
+
+	virtual bool ProcessConsoleExec(const TCHAR* Cmd, FOutputDevice& Ar, UObject* Executor) override;
 
 };

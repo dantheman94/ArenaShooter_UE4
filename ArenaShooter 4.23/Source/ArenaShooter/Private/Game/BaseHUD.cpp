@@ -3,6 +3,7 @@
 #include "BaseHUD.h"
 
 #include "BaseCharacter.h"
+#include "Crosshair.h"
 #include "FireMode.h"
 #include "UserWidget.h"
 #include "Weapon.h"
@@ -33,6 +34,23 @@ void ABaseHUD::DrawHUD()
 	TickDraw_InteractablePickupPrompt();
 }
 
+void ABaseHUD::Debug_DisplayHUD(bool Draw)
+{
+	// Set master
+	_bDisplayHUD = Draw;
+
+	// Set individual HUD elements
+	_bDisplayHealthBars = _bDisplayHUD;
+	_bDisplayStaminabar = _bDisplayHUD;
+	_bDisplayStatsPrimaryWeapon = _bDisplayHUD;
+	_bDisplayStatsSecondaryWeapon = _bDisplayHUD;
+	_bDisplayStatsReserveWeapon = _bDisplayHUD;
+	_bDisplayGrenadeInventory = _bDisplayHUD;
+	_bDisplayVisorOverlay = _bDisplayHUD;
+	_bDisplayCrosshairPrimaryWeapon = _bDisplayHUD;
+	_bDisplayCrosshairSecondaryWeapon = _bDisplayHUD;
+}
+
 // Crosshair ******************************************************************************************************************************
 
 void ABaseHUD::TickDraw_PrimaryWeaponCrosshair()
@@ -47,9 +65,35 @@ void ABaseHUD::TickDraw_PrimaryWeaponCrosshair()
 			if (_bDisplayCrosshairPrimaryWeapon)
 			{ _HUD_PrimaryWeapon_Crosshair->AddToViewport(); }
 
-			// Remove from viewport
+			// Remove from viewport 
 			else
 			{ _HUD_PrimaryWeapon_Crosshair->RemoveFromViewport(); }
+
+			return;
+		}
+
+		// Double check that the crosshair widget class matches the correct primary weapon >> firemode
+		APlayerController* playerController = GetOwningPlayerController();
+		if (playerController == NULL) { return; }
+		APawn* playerPawn = playerController->GetPawn();
+		if (playerPawn == NULL) { return; }
+		ABaseCharacter* baseCharacter = Cast<ABaseCharacter>(playerPawn);
+		if (baseCharacter == NULL) { return; }
+		AWeapon* primaryWeapon = baseCharacter->GetPointerPrimaryWeapon();
+		if (primaryWeapon == NULL) { return; }
+		UFireMode* fireMode = primaryWeapon->GetCurrentFireMode();
+		if (fireMode == NULL) { return; }
+		if (_HUD_PrimaryWeapon_Crosshair->GetClass() != fireMode->GetCrosshairClass())
+		{
+			// Crosshair UMG classes DONT match
+			// Create and assign new UMG widget
+			UCrosshair* widget = CreateWidget<UCrosshair>(this->GetOwningPlayerController(), fireMode->GetCrosshairClass());
+			if (widget != NULL)
+			{
+				widget->AddToViewport();
+				_HUD_PrimaryWeapon_Crosshair = widget;
+				_HUD_PrimaryWeapon_Crosshair->SetWeaponReference(primaryWeapon);
+			}
 		}
 	}
 
@@ -69,7 +113,13 @@ void ABaseHUD::TickDraw_PrimaryWeaponCrosshair()
 		if (fireMode == NULL) { return; }
 
 		// Create crosshair of the current primary weapon's firemode
-		fireMode->Client_Reliable_CreateAndAssignCrosshair();
+		UCrosshair* widget = CreateWidget<UCrosshair>(this->GetOwningPlayerController(), fireMode->GetCrosshairClass());
+		if (widget != NULL)
+		{
+			widget->AddToViewport();
+			_HUD_PrimaryWeapon_Crosshair = widget;
+			_HUD_PrimaryWeapon_Crosshair->SetWeaponReference(primaryWeapon);
+		}
 	}
 }
 
@@ -80,7 +130,72 @@ void ABaseHUD::TickDraw_PrimaryWeaponCrosshair()
 */
 void ABaseHUD::TickDraw_SecondaryWeaponCrosshair()
 {
+	// Widget instance exists and is referenced (sanity check)
+	if (_HUD_SecondaryWeapon_Crosshair != NULL)
+	{
+		if (_HUD_SecondaryWeapon_Crosshair->IsInViewport() && _bDisplayCrosshairSecondaryWeapon) { return; }
+		else
+		{
+			// Add to viewport
+			if (_bDisplayCrosshairSecondaryWeapon)
+			{ _HUD_SecondaryWeapon_Crosshair->AddToViewport(); }
 
+			// Remove from viewport 
+			else
+			{ _HUD_SecondaryWeapon_Crosshair->RemoveFromViewport(); }
+
+			return;
+		}
+
+		// Double check that the crosshair widget class matches the correct secondary weapon >> firemode
+		APlayerController* playerController = GetOwningPlayerController();
+		if (playerController == NULL) { return; }
+		APawn* playerPawn = playerController->GetPawn();
+		if (playerPawn == NULL) { return; }
+		ABaseCharacter* baseCharacter = Cast<ABaseCharacter>(playerPawn);
+		if (baseCharacter == NULL) { return; }
+		AWeapon* secondaryWeapon = baseCharacter->GetPointerSecondaryWeapon();
+		if (secondaryWeapon == NULL) { return; }
+		UFireMode* fireMode = secondaryWeapon->GetCurrentFireMode();
+		if (fireMode == NULL) { return; }
+		if (_HUD_SecondaryWeapon_Crosshair->GetClass() != fireMode->GetCrosshairClass())
+		{
+			// Crosshair UMG classes DONT match
+			// Create and assign new UMG widget
+			UCrosshair* widget = CreateWidget<UCrosshair>(this->GetOwningPlayerController(), fireMode->GetCrosshairClass());
+			if (widget != NULL)
+			{
+				widget->AddToViewport();
+				_HUD_SecondaryWeapon_Crosshair = widget;
+				_HUD_SecondaryWeapon_Crosshair->SetWeaponReference(secondaryWeapon);
+			}
+		}
+	}
+
+	// No widget instance assigned >> Create a new one and assign it 
+	else
+	{
+		// Sanity check(s)
+		APlayerController* playerController = GetOwningPlayerController();
+		if (playerController == NULL) { return; }
+		APawn* playerPawn = playerController->GetPawn();
+		if (playerPawn == NULL) { return; }
+		ABaseCharacter* baseCharacter = Cast<ABaseCharacter>(playerPawn);
+		if (baseCharacter == NULL) { return; }
+		AWeapon* secondaryWeapon = baseCharacter->GetPointerSecondaryWeapon();
+		if (secondaryWeapon == NULL) { return; }
+		UFireMode* fireMode = secondaryWeapon->GetCurrentFireMode();
+		if (fireMode == NULL) { return; }
+
+		// Create crosshair of the current primary weapon's firemode
+		UCrosshair* widget = CreateWidget<UCrosshair>(this->GetOwningPlayerController(), fireMode->GetCrosshairClass());
+		if (widget != NULL)
+		{
+			widget->AddToViewport();
+			_HUD_SecondaryWeapon_Crosshair = widget;
+			_HUD_SecondaryWeapon_Crosshair->SetWeaponReference(secondaryWeapon);
+		}
+	}
 }
 
 // Healthbars *****************************************************************************************************************************
@@ -383,7 +498,16 @@ void ABaseHUD::TickDraw_InteractablePickupPrompt()
 
 ///////////////////////////////////////////////
 
-void ABaseHUD::SetWidgetInteractable_Implementation(AInteractable* NewInteractable)
-{
+void ABaseHUD::SetWidgetInteractable_Implementation(AInteractable* NewInteractable) {}
 
+///////////////////////////////////////////////
+
+bool ABaseHUD::ProcessConsoleExec(const TCHAR* Cmd, FOutputDevice& Ar, UObject* Executor)
+{
+	bool handled = Super::ProcessConsoleExec(Cmd, Ar, Executor);
+	if (!handled)
+	{
+		handled &= this->ProcessConsoleExec(Cmd, Ar, Executor);
+	}
+	return handled;
 }
