@@ -905,6 +905,9 @@ public:
 	UFUNCTION()
 		virtual void OnAnyDamage(AActor* Actor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);
 
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_OnAnyDamage(AActor* Actor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);
+
 	///////////////////////////////////////////////
 
 	/*
@@ -927,7 +930,7 @@ public:
 	*
 	*/
 	UFUNCTION(BlueprintPure)
-		bool IsAlive() { return _bIsAlive;  }
+		bool IsAlive() { return /*_bIsAlive = */_fFleshHealth > 0.0f;  }
 
 	// Health | Burn **************************************************************************************************************************
 	
