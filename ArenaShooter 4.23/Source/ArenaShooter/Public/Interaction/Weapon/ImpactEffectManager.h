@@ -121,12 +121,12 @@ public:
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
-		void Server_Reliable_SpawnImpactEffect(FHitResult HitResult, USkeletalMeshComponent* SkCharWepMeshThirdP);
+		void Server_Reliable_SpawnImpactEffect(FHitResult HitResult);
 
 	/*
 	*
 	*/
 	UFUNCTION(NetMulticast, Unreliable, WithValidation)
-		void Server_Unreliable_SpawnImpactEffectGroup(int ArrayPosition, FHitResult HitResult, USkeletalMeshComponent* SkCharWepMeshThirdP);
+		void Server_Unreliable_SpawnImpactEffectGroup(int ArrayPosition, FHitResult HitResult);
 
 };

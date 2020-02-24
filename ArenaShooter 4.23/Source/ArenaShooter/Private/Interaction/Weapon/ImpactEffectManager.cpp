@@ -63,10 +63,10 @@ void AImpactEffectManager::Tick(float DeltaTime)
 /*
 *
 */
-bool AImpactEffectManager::Server_Reliable_SpawnImpactEffect_Validate(FHitResult HitResult, USkeletalMeshComponent* SkCharWepMeshThirdP)
+bool AImpactEffectManager::Server_Reliable_SpawnImpactEffect_Validate(FHitResult HitResult)
 { return true; }
 
-void AImpactEffectManager::Server_Reliable_SpawnImpactEffect_Implementation(FHitResult HitResult, USkeletalMeshComponent* SkCharWepMeshThirdP)
+void AImpactEffectManager::Server_Reliable_SpawnImpactEffect_Implementation(FHitResult HitResult)
 {	
 	// Get physics material
 	TWeakObjectPtr<UPhysicalMaterial> physicsMat = HitResult.PhysMaterial;
@@ -81,7 +81,7 @@ void AImpactEffectManager::Server_Reliable_SpawnImpactEffect_Implementation(FHit
 		if (_ImpactEffectGroups[i].GetPhysicsMaterial()->SurfaceType == surfaceType)
 		{
 			// Play the effect on all clients
-			Server_Unreliable_SpawnImpactEffectGroup(i, HitResult, SkCharWepMeshThirdP);
+			Server_Unreliable_SpawnImpactEffectGroup(i, HitResult);
 			break;
 		}
 	}
@@ -94,10 +94,10 @@ void AImpactEffectManager::Server_Reliable_SpawnImpactEffect_Implementation(FHit
 /*
 *
 */
-bool AImpactEffectManager::Server_Unreliable_SpawnImpactEffectGroup_Validate(int ArrayPosition, FHitResult HitResult, USkeletalMeshComponent* SkCharWepMeshThirdP)
+bool AImpactEffectManager::Server_Unreliable_SpawnImpactEffectGroup_Validate(int ArrayPosition, FHitResult HitResult)
 { return true; }
 
-void AImpactEffectManager::Server_Unreliable_SpawnImpactEffectGroup_Implementation(int ArrayPosition, FHitResult HitResult, USkeletalMeshComponent* SkCharWepMeshThirdP)
+void AImpactEffectManager::Server_Unreliable_SpawnImpactEffectGroup_Implementation(int ArrayPosition, FHitResult HitResult)
 {
 	// Get reference in effect groups
 	UParticleSystem* particleSystemToPlay = _ImpactEffectGroups[ArrayPosition].GetImpactParticleSystem();
