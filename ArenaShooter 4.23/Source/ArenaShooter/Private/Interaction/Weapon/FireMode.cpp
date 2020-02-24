@@ -448,7 +448,7 @@ void UFireMode::Fire(FHitResult HitResult, FTransform ProjectileTransform, USkel
 	if (_WeaponParentAttached == NULL) { return; }
 	if (_pAmmoPool == NULL) { DetermineAmmoPool(); return; }
 	if (!FireDelayComplete()) { return; }
-
+	
 	bool shouldReturn = false;
 	if (_bIsOverheated)
 	{
@@ -535,19 +535,31 @@ void UFireMode::Fire(FHitResult HitResult, FTransform ProjectileTransform, USkel
 			if (_pAmmoPool->GetBatteryAmmo() > 0)
 			{
 				// Battery ammo is still greater than the potential misfiring threshold
-				if (_pAmmoPool->GetBatteryCapacity() > _pAmmoPool->GetBatteryMisfireThreshold())
+				if (_pAmmoPool->GetBatteryAmmo() > _pAmmoPool->GetBatteryMisfireThreshold())
 				{
-
+					// Fire projectile
+					Server_Reliable_SetMisfired(false); // Just to be safe
+					FireProjectile(HitResult, ProjectileTransform, SkCharWepMeshFirstP, SkCharWepMeshThirdP);
 				}
 
 				// Can potentially misfire the weapon
 				else
 				{
 					// Misfire (uses weighted chance so less ammo means greater chance of misfiring)
-					if (!UKismetMathLibrary::RandomBoolWithWeight(_pAmmoPool->GetBatteryAmmo() / _pAmmoPool->GetBatteryMisfireThreshold()))
+					bool misfire = !UKismetMathLibrary::RandomBoolWithWeight(_pAmmoPool->GetBatteryAmmo() / _pAmmoPool->GetBatteryMisfireThreshold());
+					float weight = 1.0f - (_pAmmoPool->GetBatteryAmmo() / _pAmmoPool->GetBatteryMisfireThreshold());
+					GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Orange, TEXT("Misfire Weight: ") + FString::SanitizeFloat(weight));
+					if (misfire)
 					{
 						// Misfire
-						Server_Reliable_SetMisfired(true);
+						///Server_Reliable_SetMisfired(true);
+
+						// Start fire delay for re-chambering round (this method is also used to "un-misfire" the weapon
+						///FTimerDelegate fireDelayDelegate;
+						///fireDelayDelegate.BindUFunction(this, FName("OwningClient_SetFireDelayComplete"), true);
+						///GetWorld()->GetTimerManager().SetTimer(_fFireDelayHandle, fireDelayDelegate, 1.0f, false, _fFiringDelay);
+
+						///shouldReturn = true;
 					}
 
 					// Didn't misfire
@@ -558,7 +570,9 @@ void UFireMode::Fire(FHitResult HitResult, FTransform ProjectileTransform, USkel
 						FireProjectile(HitResult, ProjectileTransform, SkCharWepMeshFirstP, SkCharWepMeshThirdP);
 					}
 				}
-			}
+			} else
+			{ shouldReturn = true; }
+
 			break;
 		}
 
@@ -823,7 +837,11 @@ void UFireMode::Server_Reliable_FireProjectileTrace_Implementation(APawn* Pawn, 
 								// No damage falloff -> ApplyPointDamage()
 								else
 								{ ApplyPointDamage(character, damageToCauseByhitscan, SkCharWepMeshFirstP, traceHitOut); }
+
 							}
+
+							// Show hitmarker
+							if (_CrosshairInstance != NULL) { _CrosshairInstance->GetHitMarkerDelegate().Broadcast(); }							
 						}
 
 						// Character is dead
@@ -842,7 +860,7 @@ void UFireMode::Server_Reliable_FireProjectileTrace_Implementation(APawn* Pawn, 
 			}
 			
 			// Play impact effects
-			if (_ImpactEffectManager != NULL) { _ImpactEffectManager->Server_Reliable_SpawnImpactEffect(traceHitOut, SkCharWepMeshThirdP); }
+			if (_ImpactEffectManager != NULL) { _ImpactEffectManager->Server_Reliable_SpawnImpactEffect(traceHitOut); }
 		}
 	}
 	
@@ -883,7 +901,7 @@ void UFireMode::Server_Reliable_FireProjectilePhysics_Implementation(APawn* Pawn
 
 	projectile->SetWeapon(_WeaponParentAttached);
 	projectile->Instigator = _WeaponParentAttached->GetPawnOwner();
-	projectile->Init();
+	projectile->Init(hitResult.GetActor());
 }
 
 ///////////////////////////////////////////////
@@ -894,6 +912,7 @@ bool UFireMode::OwningClient_SetFireDelayComplete_Validate(bool Complete)
 void UFireMode::OwningClient_SetFireDelayComplete_Implementation(bool Complete)
 {
 	_bFireDelayComplete = Complete;
+	if (Complete) { Server_Reliable_SetMisfired(false); }
 }
 
 // Heat ***********************************************************************************************************************************
@@ -1030,8 +1049,6 @@ bool UFireMode::Server_Reliable_ChamberRound_Validate()
 
 void UFireMode::Server_Reliable_ChamberRound_Implementation()
 {
-	Server_Reliable_SetReloadComplete(true);
-
 	// Update bullet in chamber
 	if (_pAmmoPool == NULL) { DetermineAmmoPool(); return; }
 	_pAmmoPool->Server_Reliable_DetermineIfBulletShouldBeInChamber();
