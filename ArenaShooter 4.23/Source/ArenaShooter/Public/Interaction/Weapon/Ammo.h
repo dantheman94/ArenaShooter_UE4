@@ -8,6 +8,7 @@
 
 // *** DEFINITIONS
 
+#define _MAX_BATTERY_AMMO	100
 #define _MAX_MAGAZINE_AMMO	100
 #define _MAX_RESERVE_AMMO	100
 #define _MAX_DAMAGE			100
@@ -74,6 +75,12 @@ protected:
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current", Replicated)
+		int _iBatteryClips = 0;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current", Replicated)
 		int _iMagazineAmmoCount = 0;
 
 	/*
@@ -130,14 +137,21 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Ammo",
 		meta = (EditCondition = "!_bUseDataTable"))
-		int _iMaximumBatteryCapacity = 100;
+		int _iBatteryMisfireThreshold = 10;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Ammo",
 		meta = (EditCondition = "!_bUseDataTable"))
-		int _iBatteryMisfireThreshold = 10;
+		int _iMaximumBatteryCapacity = _MAX_BATTERY_AMMO;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Ammo",
+		meta = (EditCondition = "!_bUseDataTable"))
+		int _iMaxBatteryClips = 1;
 
 	/*
 	*
@@ -159,6 +173,13 @@ protected:
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Ammo",
 		meta = (EditCondition = "!_bUseDataTable"))
 		int _iStartingBatteryCapacity = 100;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Ammo",
+		meta = (EditCondition = "!_bUseDataTable"))
+		int _iStartingBatteryClips = 1;
 
 	/*
 	*
@@ -220,6 +241,14 @@ public:
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetReserveCount(int StartingReserveCount);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_SetBatteryAmmo(int StartingBatteryAmmo);
 
 	///////////////////////////////////////////////
 
