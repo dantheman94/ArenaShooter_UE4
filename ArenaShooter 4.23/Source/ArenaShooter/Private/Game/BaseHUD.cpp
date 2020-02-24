@@ -58,7 +58,7 @@ void ABaseHUD::TickDraw_PrimaryWeaponCrosshair()
 	// Widget instance exists and is referenced (sanity check)
 	if (_HUD_PrimaryWeapon_Crosshair != NULL)
 	{
-		if (_HUD_PrimaryWeapon_Crosshair->IsInViewport() && _bDisplayCrosshairPrimaryWeapon) { return; }
+		if (_HUD_PrimaryWeapon_Crosshair->IsInViewport() && _bDisplayCrosshairPrimaryWeapon) { /*return;*/ }
 		else
 		{
 			// Add to viewport
@@ -73,26 +73,26 @@ void ABaseHUD::TickDraw_PrimaryWeaponCrosshair()
 		}
 
 		// Double check that the crosshair widget class matches the correct primary weapon >> firemode
-		APlayerController* playerController = GetOwningPlayerController();
-		if (playerController == NULL) { return; }
-		APawn* playerPawn = playerController->GetPawn();
-		if (playerPawn == NULL) { return; }
-		ABaseCharacter* baseCharacter = Cast<ABaseCharacter>(playerPawn);
-		if (baseCharacter == NULL) { return; }
-		AWeapon* primaryWeapon = baseCharacter->GetPointerPrimaryWeapon();
-		if (primaryWeapon == NULL) { return; }
-		UFireMode* fireMode = primaryWeapon->GetCurrentFireMode();
-		if (fireMode == NULL) { return; }
-		if (_HUD_PrimaryWeapon_Crosshair->GetClass() != fireMode->GetCrosshairClass())
+		if (_BaseCharacter == NULL) { _BaseCharacter = Cast<ABaseCharacter>(GetOwningPawn()); }
+		if (_BaseCharacter == NULL) { return; }
+		_PrimaryWeapon = _BaseCharacter->GetPointerPrimaryWeapon();
+		if (_PrimaryWeapon == NULL && _HUD_PrimaryWeapon_Crosshair != NULL) { _HUD_PrimaryWeapon_Crosshair->RemoveFromViewport(); return; }
+		if (_PrimaryWeapon == NULL) { return; }
+		_PrimaryWeaponFireMode = _PrimaryWeapon->GetCurrentFireMode();
+		if (_PrimaryWeaponFireMode == NULL && _HUD_PrimaryWeapon_Crosshair != NULL) { _HUD_PrimaryWeapon_Crosshair->RemoveFromViewport(); return; }
+		if (_PrimaryWeaponFireMode == NULL) { return; }
+		if (_HUD_PrimaryWeapon_Crosshair->GetClass() != _PrimaryWeaponFireMode->GetCrosshairClass())
 		{
 			// Crosshair UMG classes DONT match
+			_HUD_PrimaryWeapon_Crosshair->SetWeaponReference(NULL);
+
 			// Create and assign new UMG widget
-			UCrosshair* widget = CreateWidget<UCrosshair>(this->GetOwningPlayerController(), fireMode->GetCrosshairClass());
+			UCrosshair* widget = CreateWidget<UCrosshair>(this->GetOwningPlayerController(), _PrimaryWeaponFireMode->GetCrosshairClass());
 			if (widget != NULL)
 			{
 				widget->AddToViewport();
 				_HUD_PrimaryWeapon_Crosshair = widget;
-				_HUD_PrimaryWeapon_Crosshair->SetWeaponReference(primaryWeapon);
+				_HUD_PrimaryWeapon_Crosshair->SetWeaponReference(_PrimaryWeapon);
 			}
 		}
 	}
@@ -101,24 +101,22 @@ void ABaseHUD::TickDraw_PrimaryWeaponCrosshair()
 	else
 	{
 		// Sanity check(s)
-		APlayerController* playerController = GetOwningPlayerController();
-		if (playerController == NULL) { return; }
-		APawn* playerPawn = playerController->GetPawn();
-		if (playerPawn == NULL) { return; }
-		ABaseCharacter* baseCharacter = Cast<ABaseCharacter>(playerPawn);
-		if (baseCharacter == NULL) { return; }
-		AWeapon* primaryWeapon = baseCharacter->GetPointerPrimaryWeapon();
-		if (primaryWeapon == NULL) { return; }
-		UFireMode* fireMode = primaryWeapon->GetCurrentFireMode();
-		if (fireMode == NULL) { return; }
+		if (_BaseCharacter == NULL) { _BaseCharacter = Cast<ABaseCharacter>(GetOwningPawn()); }
+		if (_BaseCharacter == NULL) { return; }
+		_PrimaryWeapon = _BaseCharacter->GetPointerPrimaryWeapon();
+		if (_PrimaryWeapon == NULL && _HUD_PrimaryWeapon_Crosshair != NULL) { _HUD_PrimaryWeapon_Crosshair->RemoveFromViewport(); return; }
+		if (_PrimaryWeapon == NULL) { return; }
+		_PrimaryWeaponFireMode = _PrimaryWeapon->GetCurrentFireMode();
+		if (_PrimaryWeaponFireMode == NULL && _HUD_PrimaryWeapon_Crosshair != NULL) { _HUD_PrimaryWeapon_Crosshair->RemoveFromViewport(); return; }
+		if (_PrimaryWeaponFireMode == NULL) { return; }
 
 		// Create crosshair of the current primary weapon's firemode
-		UCrosshair* widget = CreateWidget<UCrosshair>(this->GetOwningPlayerController(), fireMode->GetCrosshairClass());
+		UCrosshair* widget = CreateWidget<UCrosshair>(this->GetOwningPlayerController(), _PrimaryWeaponFireMode->GetCrosshairClass());
 		if (widget != NULL)
 		{
 			widget->AddToViewport();
 			_HUD_PrimaryWeapon_Crosshair = widget;
-			_HUD_PrimaryWeapon_Crosshair->SetWeaponReference(primaryWeapon);
+			_HUD_PrimaryWeapon_Crosshair->SetWeaponReference(_PrimaryWeapon);
 		}
 	}
 }
@@ -133,7 +131,7 @@ void ABaseHUD::TickDraw_SecondaryWeaponCrosshair()
 	// Widget instance exists and is referenced (sanity check)
 	if (_HUD_SecondaryWeapon_Crosshair != NULL)
 	{
-		if (_HUD_SecondaryWeapon_Crosshair->IsInViewport() && _bDisplayCrosshairSecondaryWeapon) { return; }
+		if (_HUD_SecondaryWeapon_Crosshair->IsInViewport() && _bDisplayCrosshairSecondaryWeapon) { /*return;*/ }
 		else
 		{
 			// Add to viewport
@@ -148,26 +146,26 @@ void ABaseHUD::TickDraw_SecondaryWeaponCrosshair()
 		}
 
 		// Double check that the crosshair widget class matches the correct secondary weapon >> firemode
-		APlayerController* playerController = GetOwningPlayerController();
-		if (playerController == NULL) { return; }
-		APawn* playerPawn = playerController->GetPawn();
-		if (playerPawn == NULL) { return; }
-		ABaseCharacter* baseCharacter = Cast<ABaseCharacter>(playerPawn);
-		if (baseCharacter == NULL) { return; }
-		AWeapon* secondaryWeapon = baseCharacter->GetPointerSecondaryWeapon();
-		if (secondaryWeapon == NULL) { return; }
-		UFireMode* fireMode = secondaryWeapon->GetCurrentFireMode();
-		if (fireMode == NULL) { return; }
-		if (_HUD_SecondaryWeapon_Crosshair->GetClass() != fireMode->GetCrosshairClass())
+		if (_BaseCharacter == NULL) { _BaseCharacter = Cast<ABaseCharacter>(GetOwningPawn()); }
+		if (_BaseCharacter == NULL) { return; }
+		_SecondaryWeapon = _BaseCharacter->GetPointerSecondaryWeapon();
+		if (_SecondaryWeapon == NULL && _HUD_SecondaryWeapon_Crosshair != NULL) { _HUD_SecondaryWeapon_Crosshair->RemoveFromViewport(); return; }
+		if (_SecondaryWeapon == NULL) { return; }
+		_SecondaryWeaponFireMode = _SecondaryWeapon->GetCurrentFireMode();
+		if (_SecondaryWeaponFireMode == NULL && _HUD_SecondaryWeapon_Crosshair != NULL) { _HUD_SecondaryWeapon_Crosshair->RemoveFromViewport(); return; }
+		if (_SecondaryWeaponFireMode == NULL) { return; }
+		if (_HUD_SecondaryWeapon_Crosshair->GetClass() != _SecondaryWeaponFireMode->GetCrosshairClass())
 		{
 			// Crosshair UMG classes DONT match
+			_HUD_SecondaryWeapon_Crosshair->SetWeaponReference(NULL);
+
 			// Create and assign new UMG widget
-			UCrosshair* widget = CreateWidget<UCrosshair>(this->GetOwningPlayerController(), fireMode->GetCrosshairClass());
+			UCrosshair* widget = CreateWidget<UCrosshair>(this->GetOwningPlayerController(), _SecondaryWeaponFireMode->GetCrosshairClass());
 			if (widget != NULL)
 			{
 				widget->AddToViewport();
 				_HUD_SecondaryWeapon_Crosshair = widget;
-				_HUD_SecondaryWeapon_Crosshair->SetWeaponReference(secondaryWeapon);
+				_HUD_SecondaryWeapon_Crosshair->SetWeaponReference(_SecondaryWeapon);
 			}
 		}
 	}
@@ -176,24 +174,22 @@ void ABaseHUD::TickDraw_SecondaryWeaponCrosshair()
 	else
 	{
 		// Sanity check(s)
-		APlayerController* playerController = GetOwningPlayerController();
-		if (playerController == NULL) { return; }
-		APawn* playerPawn = playerController->GetPawn();
-		if (playerPawn == NULL) { return; }
-		ABaseCharacter* baseCharacter = Cast<ABaseCharacter>(playerPawn);
-		if (baseCharacter == NULL) { return; }
-		AWeapon* secondaryWeapon = baseCharacter->GetPointerSecondaryWeapon();
-		if (secondaryWeapon == NULL) { return; }
-		UFireMode* fireMode = secondaryWeapon->GetCurrentFireMode();
-		if (fireMode == NULL) { return; }
+		if (_BaseCharacter == NULL) { _BaseCharacter = Cast<ABaseCharacter>(GetOwningPawn()); }
+		if (_BaseCharacter == NULL) { return; }
+		_SecondaryWeapon = _BaseCharacter->GetPointerSecondaryWeapon();
+		if (_SecondaryWeapon == NULL && _HUD_SecondaryWeapon_Crosshair != NULL) { _HUD_SecondaryWeapon_Crosshair->RemoveFromViewport(); return; }
+		if (_SecondaryWeapon == NULL) { return; }
+		_SecondaryWeaponFireMode = _SecondaryWeapon->GetCurrentFireMode();
+		if (_SecondaryWeaponFireMode == NULL && _HUD_SecondaryWeapon_Crosshair != NULL) { _HUD_SecondaryWeapon_Crosshair->RemoveFromViewport(); return; }
+		if (_SecondaryWeaponFireMode == NULL) { return; }
 
 		// Create crosshair of the current primary weapon's firemode
-		UCrosshair* widget = CreateWidget<UCrosshair>(this->GetOwningPlayerController(), fireMode->GetCrosshairClass());
+		UCrosshair* widget = CreateWidget<UCrosshair>(this->GetOwningPlayerController(), _SecondaryWeaponFireMode->GetCrosshairClass());
 		if (widget != NULL)
 		{
 			widget->AddToViewport();
 			_HUD_SecondaryWeapon_Crosshair = widget;
-			_HUD_SecondaryWeapon_Crosshair->SetWeaponReference(secondaryWeapon);
+			_HUD_SecondaryWeapon_Crosshair->SetWeaponReference(_SecondaryWeapon);
 		}
 	}
 }
