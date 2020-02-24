@@ -290,7 +290,7 @@ void ABasePlayerController::MoveForward(float Value)
 			if (pawn != NULL)
 			{
 				// Used for animation
-				if (pawn->GetForwardInputScale() != Value) { pawn->Server_SetForwardInputScale(Value); }
+				if (pawn->GetForwardInputScale() != Value) { pawn->SetForwardInputScale(Value); }
 			}
 		}
 	}
@@ -327,7 +327,7 @@ void ABasePlayerController::MoveRight(float Value)
 			if (pawn != NULL)
 			{
 				// Used for animation
-				if (pawn->GetForwardInputScale() != Value) { pawn->Server_SetForwardInputScale(Value); }
+				if (pawn->GetForwardInputScale() != Value) { pawn->SetForwardInputScale(Value); }
 			}
 		}
 	}
@@ -372,6 +372,7 @@ void ABasePlayerController::LookUp(float Value)
 			}
 
 			// Add look input to pitch
+			///pawn->Multicast_LookUp(zonedInput.Y * sensitivity);
 			pawn->AddControllerPitchInput(zonedInput.Y * sensitivity * GetWorld()->GetDeltaSeconds());
 		}
 	}
@@ -417,6 +418,7 @@ void ABasePlayerController::LookRight(float Value)
 			}
 
 			// Add look input to yaw
+			///pawn->Multicast_LookRight(zonedInput.X * sensitivity);
 			pawn->AddControllerYawInput(zonedInput.X * sensitivity * GetWorld()->GetDeltaSeconds());
 		}
 	}
