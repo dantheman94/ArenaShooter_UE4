@@ -8,9 +8,12 @@
 
 // *** CLASSES
 
-class UCrosshair;
-class UUserWidget;
+class ABaseCharacter;
 class AInteractable;
+class AWeapon;
+class UCrosshair;
+class UFireMode;
+class UUserWidget;
 
 UCLASS()
 class ARENASHOOTER_API ABaseHUD : public AHUD
@@ -207,6 +210,23 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Widgets | ArenaCharacter HUD")
 		UUserWidget* _HUD_InteractionPromptInstance = NULL;
 
+	// References ****************************************************************************************************************************
+
+	UPROPERTY()
+		ABaseCharacter* _BaseCharacter = NULL;
+
+	UPROPERTY()
+		AWeapon* _PrimaryWeapon = NULL;
+
+	UPROPERTY()
+		UFireMode* _PrimaryWeaponFireMode = NULL;
+
+	UPROPERTY()
+		AWeapon* _SecondaryWeapon = NULL;
+
+	UPROPERTY()
+		UFireMode* _SecondaryWeaponFireMode = NULL;
+
 public:
 
 	// ****************************************************************************************************************************************
@@ -316,8 +336,6 @@ public:
 	*/
 	UFUNCTION()
 		void TickDraw_GrenadeInventory();
-
-	///////////////////////////////////////////////
 
 	// Visor **********************************************************************************************************************************
 
