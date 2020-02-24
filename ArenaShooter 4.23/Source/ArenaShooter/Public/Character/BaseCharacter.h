@@ -42,14 +42,22 @@ class ABaseCharacter : public ACharacter
 
 public:
 
-	// Startup **************************************************************
+	// ****************************************************************************************************************************************
+	// ************************************ FUNCTIONS *****************************************************************************************
+	// ****************************************************************************************************************************************
+
+	// Startup ********************************************************************************************************************************
 
 	// Sets default values for this character's properties
 	ABaseCharacter();
 
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const;
 
-	// Character | FirstPerson **********************************************
+	// ****************************************************************************************************************************************
+	// ************************************ VARIABLES *****************************************************************************************
+	// ****************************************************************************************************************************************
+
+	// Character | FirstPerson ****************************************************************************************************************
 
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 		UCameraComponent* _FirstPerson_Camera = NULL;
@@ -66,7 +74,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 		USkeletalMeshComponent* _FirstPerson_SecondaryWeapon_SkeletalMesh = NULL;
 
-	// Character | ThirdPerson **********************************************
+	// Character | ThirdPerson ****************************************************************************************************************
 
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 		USkeletalMeshComponent* _ThirdPerson_PrimaryWeapon_SkeletalMesh = NULL;
@@ -118,9 +126,11 @@ public:
 
 protected:
 
-	// Startup **************************************************************
+	// Startup ********************************************************************************************************************************
 
-	// *** FUNCTIONS
+	// ****************************************************************************************************************************************
+	// ************************************ FUNCTIONS *****************************************************************************************
+	// ****************************************************************************************************************************************
 
 	/**
 	* @summary:	Called when the game starts or when spawned.
@@ -129,19 +139,21 @@ protected:
 	*/
 	virtual void BeginPlay() override;
 
-	// *** VARIABLES
+	// ****************************************************************************************************************************************
+	// ************************************ VARIABLES *****************************************************************************************
+	// ****************************************************************************************************************************************
 
-	// Startup **************************************************************
+	// Startup ********************************************************************************************************************************
 
 	float _fDefaultAirControl = 0.0f;
 
-	// Current Frame ********************************************************
+	// Current Frame **************************************************************************************************************************
 
 	bool _bIsPerformingGroundChecks = false;
 	float _fFallingVelocity = 0.0f;
 	float _fCameraRotationLagSpeed = 0.0f;
 
-	// Animation ************************************************************
+	// Animation ******************************************************************************************************************************
 
 	/*
 	*
@@ -173,7 +185,7 @@ protected:
 	UPROPERTY()
 		FTimerHandle _fSecondaryFPAnimationHandle;
 
-	// Controller | Input ***************************************************
+	// Controller | Input *********************************************************************************************************************
 
 	/*
 	*	A scalar value (0 - 1 FLOAT) that represents the amount of input being driven into the forward/backward input (REPLICATED).
@@ -191,7 +203,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Controller | Input", Replicated)
 		float _fRightInputScale = 0.0f;
 
-	// Health | *************************************************************
+	// Health | *******************************************************************************************************************************
 
 	/*
 	*	Returns whether the character has HEALTH greater than 0.0f (REPLICATED).
@@ -219,7 +231,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Health |")
 		TArray<AController*>_DamageInstigators;
 
-	// Health | Burn ********************************************************
+	// Health | Burn **************************************************************************************************************************
 
 	/*
 	*
@@ -233,7 +245,7 @@ protected:
 	UPROPERTY()
 		FTimerHandle _fBurnDelayHandle;
 
-	// Health | Flesh *******************************************************
+	// Health | Flesh *************************************************************************************************************************
 
 	/*
 	*	The current health value of the character (REPLICATED).
@@ -241,7 +253,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Health | Flesh", Replicated)
 		float _fFleshHealth = _MAX_FLESH_HEALTH;
 
-	// Health | Shield ******************************************************
+	// Health | Shield ************************************************************************************************************************
 
 	/*
 	*	Returns whether the character can recharge their shields or not (REPLICATED).
@@ -268,7 +280,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Health | Shield", Replicated)
 		float _fShield = _MAX_SHIELD;
 
-	// Inventory | Starting ****************************************************
+	// Inventory | Starting *******************************************************************************************************************
 
 	/*
 	*	Returns whether the starting loadout of this character should use the loadout defined in the current gamemode.
@@ -297,7 +309,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Starting")
 		TSubclassOf<class AWeapon> _StartingReserveWeaponClass = NULL;
 
-	// Inventory | Weapon ***************************************************
+	// Inventory | Weapon *********************************************************************************************************************
 
 	/*
 	*	A timer handle used for referencing the actual toggle.
@@ -311,7 +323,7 @@ protected:
 	UPROPERTY()
 		FTimerHandle _fExitToggleHandle;
 
-	// Inventory | Weapon | Aiming ******************************************
+	// Inventory | Weapon | Aiming ************************************************************************************************************
 
 	/*
 	*
@@ -352,7 +364,7 @@ protected:
 	UPROPERTY(BlueprintAssignable, Category = "Inventory | Weapon | Aiming")
 		FADSAnimDelegate _fAdsAnimationEvent;
 
-	// Inventory | Weapon | Primary *****************************************
+	// Inventory | Weapon | Primary ***********************************************************************************************************
 
 	/*
 	*	Returns reference to the current primary weapon of the character (REPLICATED).
@@ -390,7 +402,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Primary")
 		AWeapon* _OldPrimaryWeapon = NULL;
 
-	// Inventory | Weapon | Secondary ***************************************
+	// Inventory | Weapon | Secondary *********************************************************************************************************
 
 	/*
 	*	Returns reference to the current secondary weapon of the character (REPLICATED).
@@ -423,7 +435,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Secondary")
 		bool _bCanFireSecondary = true;
 
-	// Inventory | Weapon | Reserve *****************************************
+	// Inventory | Weapon | Reserve ***********************************************************************************************************
 
 	/*
 	*	Returns reference to the current reserve weapon of the character (REPLICATED).
@@ -437,7 +449,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Reserve", Replicated)
 		AWeapon* _OldReserveWeapon = NULL;
 
-	// Inventory | Weapon | Tabbing *****************************************
+	// Inventory | Weapon | Tabbing ***********************************************************************************************************
 
 	/*
 	*	Returns reference if the character is currently tabbing between its inventory weapons or not (REPLICATED).
@@ -450,6 +462,32 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Tabbing", Replicated)
 		bool _bIsEquippingNewWeapon = false;
+
+	// Inventory | Grenade ********************************************************************************************************************
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Grenade", Replicated)
+		int _iFragmentationGrenadeCount = 0;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Grenade", Replicated)
+		int _iEMPGrenadeCount = 0;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Grenade", Replicated)
+		int _iIncendiaryGrenadeCount = 0;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Grenade")
+		int _iMaximumGrenadeCount = 2;
 
 	// Interaction ****************************************************************************************************************************
 
@@ -483,7 +521,7 @@ protected:
 	UPROPERTY()
 		FTimerHandle _fSetWeaponHandle;
 
-	// Movement | Crouching *************************************************
+	// Movement | Crouching *******************************************************************************************************************
 
 	/*
 	*	Returns whether the character is currently in a crouching state or not (REPLICATED).
@@ -491,7 +529,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Crouch", Replicated)
 		bool _bIsCrouching = false;
 
-	// Movement | Jog *******************************************************
+	// Movement | Jog *************************************************************************************************************************
 
 	/*
 	*	A scalar multiplier of the camera shake used when jogging. Higher values means more "bobbing".
@@ -511,7 +549,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jog")
 		TSubclassOf<class UCameraShake> _CameraShakeJog = NULL;
 
-	// Movement | Jump ******************************************************
+	// Movement | Jump ************************************************************************************************************************
 
 	/*
 	*
@@ -567,7 +605,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
 		bool _fJumpGamepadRumbleAffectsRightSmall = true;
 
-	// Movement | Speed *****************************************************
+	// Movement | Speed ***********************************************************************************************************************
 
 	/*
 	*
@@ -593,7 +631,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Speed")
 		float _fMovementSpeedCrouch = 385.0f;
 	
-	// Movement | Sprint ****************************************************
+	// Movement | Sprint **********************************************************************************************************************
 
 	/*
 	*	Returns whether the character can use the sprint mechanic.
@@ -649,7 +687,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Sprint")
 		TSubclassOf<class UCameraShake> _CameraShakeSprint = NULL;
 
-	// Movement | Stamina **************************************************************
+	// Movement | Stamina *********************************************************************************************************************
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory")
 		TArray<UStamina*> _uStaminaComponents;
@@ -660,7 +698,7 @@ private:
 	// ************************************ VARIABLES *****************************************************************************************
 	// ****************************************************************************************************************************************
 
-	// Health | *************************************************************
+	// Health | *******************************************************************************************************************************
 
 	float _bTakingDamageResetTimerPosition = 0.0f;
 
@@ -670,7 +708,7 @@ public:
 	// ************************************ FUNCTIONS *****************************************************************************************
 	// ****************************************************************************************************************************************
 
-	// Character | FirstPerson **********************************************
+	// Character | FirstPerson ****************************************************************************************************************
 
 	/*
 	*
@@ -702,7 +740,7 @@ public:
 	UFUNCTION()
 		USkeletalMeshComponent* GetThirdPersonSecondaryWeaponMesh() { return _ThirdPerson_SecondaryWeapon_SkeletalMesh; }
 
-	// Animation ************************************************************
+	// Animation ******************************************************************************************************************************
 
 	/*
 	*
@@ -718,7 +756,7 @@ public:
 	UFUNCTION()
 		void FreezeAnimation(UAnimMontage* MontageToFreeze, float EndFrame);
 
-	// Current Frame ********************************************************
+	// Current Frame **************************************************************************************************************************
 
 	/**
 	* @summary:	Called every frame.
@@ -745,7 +783,7 @@ public:
 	UFUNCTION()
 		void UpdateReloadingPrimary();
 
-	// Camera ***************************************************************
+	// Camera *********************************************************************************************************************************
 
 	/*
 	*
@@ -753,7 +791,7 @@ public:
 	UFUNCTION(Client, Unreliable, WithValidation)
 		void OwningClient_PlayCameraShake(TSubclassOf<class UCameraShake> ShakeClass, float Scale);
 
-	// Controller | Gamepad *************************************************
+	// Controller | Gamepad *******************************************************************************************************************
 
 	/*
 	*
@@ -762,7 +800,7 @@ public:
 		void OwningClient_GamepadRumble(float Intensity, float Duration,
 										bool AffectsLeftLarge, bool AffectsLeftSmall, bool AffectsRightLarge, bool AffectsRightSmall);
 
-	// Controller | Input ***************************************************
+	// Controller | Input *********************************************************************************************************************
 
 	/**
 	* @summary:	Sets the whether the character is using controller rotation yaw or not.
@@ -773,8 +811,13 @@ public:
 	*
 	* @return:	void
 	*/
-	UFUNCTION(Server, Unreliable, WithValidation)
+	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_SetUseControllerRotationYaw(bool useControllerRotationYaw);
+
+	///////////////////////////////////////////////
+
+	UFUNCTION()
+		void SetForwardInputScale(float ForwardInputScale);
 
 	///////////////////////////////////////////////
 
@@ -787,8 +830,13 @@ public:
 	*
 	* @return:	void
 	*/
-	UFUNCTION(Server, Unreliable, WithValidation)
-		void Server_SetForwardInputScale(float forwardInputScale);
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_SetForwardInputScale(float ForwardInputScale);
+
+	///////////////////////////////////////////////
+
+	UFUNCTION()
+		void SetRightInputScale(float RightInputScale);
 
 	///////////////////////////////////////////////
 
@@ -802,7 +850,7 @@ public:
 	* @return:	void
 	*/
 	UFUNCTION(Server, Unreliable, WithValidation)
-		void Server_SetRightInputScale(float rightInputScale);
+		void Server_SetRightInputScale(float RightInputScale);
 
 	///////////////////////////////////////////////
 
@@ -824,7 +872,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Controller | Input")
 		float GetRightInputScale() { return _fRightInputScale; }
 
-	// First Person | Animation *********************************************
+	// First Person | Animation ***************************************************************************************************************
 
 	/**
 	* @summary:	Plays the specific animation on the client's first person perspective
@@ -849,7 +897,7 @@ public:
 			UAnimMontage* PrimaryGunAnimation = NULL, float PrimaryGunStartingFrame = 0.0f,
 			UAnimMontage* SecondaryGunAnimation = NULL, float SecondaryGunStartingFrame = 0.0f);
 
-	// Health | *************************************************************
+	// Health | *******************************************************************************************************************************
 
 	/*
 	*
@@ -881,7 +929,7 @@ public:
 	UFUNCTION(BlueprintPure)
 		bool IsAlive() { return _bIsAlive;  }
 
-	// Health | Burn ********************************************************
+	// Health | Burn **************************************************************************************************************************
 	
 	/*
 	*
@@ -889,7 +937,7 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_BurnCharacter(int Steps, float Damage, float Delay);
 
-	// Health | Flesh *******************************************************
+	// Health | Flesh *************************************************************************************************************************
 
 	/**
 	* @summary:	Resets the flesh health of the character to the maximum amount.
@@ -917,7 +965,7 @@ public:
 	UFUNCTION(BlueprintPure)
 		float GetMaxFleshHealth() { return (float)_MAX_FLESH_HEALTH; }
 
-	// Health | Shield ******************************************************
+	// Health | Shield ************************************************************************************************************************
 
 	/**
 	* @summary:	Resets the shield health of the character to the maximum amount.
@@ -961,7 +1009,7 @@ public:
 	UFUNCTION(BlueprintPure)
 		float GetShieldRechargeDelayTime() { return _fShieldRechargeDelay; }
 
-	// Inventory | Starting *************************************************
+	// Inventory | Starting *******************************************************************************************************************
 
 	/**
 	* @summary:	Spawns the starting loadout weapons and assigns them to the character.
@@ -973,7 +1021,7 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation, Category = "Inventory | Starting")
 		void Server_Reliable_CreateStartingLoadout();
 
-	// Inventory | Weapon ***************************************************
+	// Inventory | Weapon *********************************************************************************************************************
 
 	/*
 	*
@@ -1013,7 +1061,7 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_ExitToggleWeapon();
 
-	// Inventory | Weapon | Aiming ******************************************
+	// Inventory | Weapon | Aiming ************************************************************************************************************
 
 	/**
 	* @summary:	Sets the whether the character is aiming or not
@@ -1053,7 +1101,7 @@ public:
 	UFUNCTION()
 		void AimWeaponExit();
 
-	// Inventory | Weapon | Primary *****************************************
+	// Inventory | Weapon | Primary ***********************************************************************************************************
 
 	/**
 	* @summary:	Sets the character's primary weapon
@@ -1080,7 +1128,7 @@ public:
 	* @return:	void
 	*/
 	UFUNCTION(NetMulticast, Unreliable, WithValidation, Category = "Inventory | Weapon | Primary")
-		void Multicast_UpdateThirdPersonPrimaryWeaponMesh();
+		void Multicast_UpdateThirdPersonPrimaryWeaponMesh(AWeapon* Weapon);
 
 	///////////////////////////////////////////////
 
@@ -1094,7 +1142,7 @@ public:
 	* @return:	void
 	*/
 	UFUNCTION(Client, Unreliable, WithValidation, Category = "Inventory | Weapon | Primary")
-		void OwningClient_UpdateFirstPersonPrimaryWeaponMesh(bool FirstPickup);
+		void OwningClient_UpdateFirstPersonPrimaryWeaponMesh(AWeapon* Weapon, bool FirstPickup);
 
 	///////////////////////////////////////////////
 
@@ -1156,7 +1204,7 @@ public:
 	*
 	*/
 	UFUNCTION(BlueprintPure)
-		AWeapon* GetPointerPrimaryWeapon() { return _PrimaryWeapon; }
+		AWeapon* GetPointerPrimaryWeapon() const { return _PrimaryWeapon; }
 
 	///////////////////////////////////////////////
 
@@ -1192,7 +1240,7 @@ public:
 	UFUNCTION(BlueprintGetter)
 		bool IsSecondaryReloadCanceled() { return _bSecondaryReloadCancelled; }
 
-	// Inventory | Weapon | Secondary ***************************************
+	// Inventory | Weapon | Secondary *********************************************************************************************************
 
 	/**
 	* @summary:	Sets the character's secondary weapon
@@ -1232,7 +1280,7 @@ public:
 	UFUNCTION(BlueprintPure)
 		AWeapon* GetPointerSecondaryWeapon() { return _SecondaryWeapon; }
 
-	// Inventory | Weapon | Reserve *****************************************
+	// Inventory | Weapon | Reserve ***********************************************************************************************************
 
 	/**
 	* @summary:	Sets the character's reserve weapon
@@ -1261,6 +1309,30 @@ public:
 	*/
 	UFUNCTION()
 		virtual void OnRep_ReserveWeapon();
+
+	// Inventory | Grenade ********************************************************************************************************************
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		int GetFragmentationGrenadeCount() { return _iFragmentationGrenadeCount; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		int GetEMPGrenadeCount() { return _iEMPGrenadeCount; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		int GetIncendiaryGrenadeCount() { return _iIncendiaryGrenadeCount; }
 
 	// Interaction ****************************************************************************************************************************
 
@@ -1344,7 +1416,7 @@ public:
 	UFUNCTION(BlueprintPure)
 		FTimerHandle GetInteractionHandle() const { return _fInteractionHandle; }
 
-	// Movement | Base ******************************************************
+	// Movement | Base ************************************************************************************************************************
 
 	/*
 	*
@@ -1360,7 +1432,7 @@ public:
 	UFUNCTION()
 		virtual void MoveRight(float Value);
 
-	// Movement | Crouch ****************************************************
+	// Movement | Crouch **********************************************************************************************************************
 
 	/*
 	*
@@ -1394,7 +1466,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Movement | Crouch")
 		bool IsCrouching() { return _bIsCrouching; }
 
-	// Movement | Jump ******************************************************
+	// Movement | Jump ************************************************************************************************************************
 
 	/*
 	*
@@ -1416,7 +1488,7 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetJumping(bool Jumping);
 
-	// Movement | Speed *****************************************************
+	// Movement | Speed ***********************************************************************************************************************
 
 	/*
 	*
@@ -1432,7 +1504,7 @@ public:
 	UFUNCTION(NetMulticast, Reliable, WithValidation)
 		void Multicast_Reliable_SetMovingSpeed(float Speed);
 
-	// Movement | Sprint ****************************************************
+	// Movement | Sprint **********************************************************************************************************************
 
 	/**
 	* @summary:	Sets the whether the character is using sprinting or not.
@@ -1471,7 +1543,7 @@ public:
 	UFUNCTION(BlueprintPure)
 		bool GetIsSprinting() { return _bIsSprinting; }
 
-	// Movement | Stamina **************************************************************
+	// Movement | Stamina *********************************************************************************************************************
 
 	/**
 	* @summary:	Returns reference to the list of stamina components attached to this character

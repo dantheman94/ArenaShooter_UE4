@@ -47,9 +47,6 @@ ABaseCharacter::ABaseCharacter()
 
 #pragma region Create components
 
-	// Create components
-	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
-
 	// First person camera component
 	USceneComponent* capsuleRoot = GetCapsuleComponent();
 	_FirstPerson_Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
@@ -225,6 +222,9 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ABaseCharacter, _bIsTogglingWeapons);
 	DOREPLIFETIME(ABaseCharacter, _fForwardInputScale);
 	DOREPLIFETIME(ABaseCharacter, _fRightInputScale);
+	DOREPLIFETIME(ABaseCharacter, _iFragmentationGrenadeCount);
+	DOREPLIFETIME(ABaseCharacter, _iEMPGrenadeCount);
+	DOREPLIFETIME(ABaseCharacter, _iIncendiaryGrenadeCount);
 	DOREPLIFETIME(ABaseCharacter, _PrimaryWeapon);
 	DOREPLIFETIME(ABaseCharacter, _ReserveWeapon);
 	DOREPLIFETIME(ABaseCharacter, _SecondaryWeapon);
@@ -297,9 +297,6 @@ void ABaseCharacter::Tick(float DeltaTime)
 			// Update FOV to target
 			float alpha = _fAimTime / _PrimaryWeapon->GetCurrentFireMode()->GetWeaponAimTime();
 			_FirstPerson_Camera->SetFieldOfView(FMath::Lerp(_fFovStart, _fFovTarget, alpha));
-
-			///FString _Message = TEXT("alpha is: ") + FString::SanitizeFloat(alpha);
-			///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Blue, _Message);
 		}
 
 		// Lerp complete
@@ -373,7 +370,7 @@ void ABaseCharacter::UpdateReloadingPrimary()
 	if (_PrimaryWeapon->GetFireModes().Num() == 0) { return; }
 	if (_PrimaryWeapon->GetCurrentFireMode() == NULL) { return; }
 
-	// Reload hasnt been canceled yet
+	// Reload hasn't been canceled yet
 	if (!_bPrimaryReloadCancelled)
 	{
 		// Ensure that _bIsReloadingPrimaryWeapon == true
@@ -383,7 +380,7 @@ void ABaseCharacter::UpdateReloadingPrimary()
 		_bCanFirePrimary = false;
 	}
 
-	// Reload cancelled
+	// Reload canceled
 	else
 	{
 		// Stop the reload timer
@@ -458,6 +455,14 @@ void ABaseCharacter::Server_SetUseControllerRotationYaw_Implementation(bool useC
 
 ///////////////////////////////////////////////
 
+void ABaseCharacter::SetForwardInputScale(float ForwardInputScale)
+{
+	if (Role == ROLE_Authority) 
+	{ _fForwardInputScale = ForwardInputScale; }
+	else 
+	{ Server_SetForwardInputScale(ForwardInputScale); }
+}
+
 /**
 * @summary:	Sets the whether forward input scale of the character (used for animation)
 *
@@ -467,15 +472,23 @@ void ABaseCharacter::Server_SetUseControllerRotationYaw_Implementation(bool useC
 *
 * @return:	void
 */
-bool ABaseCharacter::Server_SetForwardInputScale_Validate(float forwardInputScale)
+bool ABaseCharacter::Server_SetForwardInputScale_Validate(float ForwardInputScale)
 { return true; }
 
-void ABaseCharacter::Server_SetForwardInputScale_Implementation(float forwardInputScale)
+void ABaseCharacter::Server_SetForwardInputScale_Implementation(float ForwardInputScale)
 {
-	if (HasAuthority()) { _fForwardInputScale = forwardInputScale; }
+	SetForwardInputScale(ForwardInputScale);
 }
 
 ///////////////////////////////////////////////
+
+void ABaseCharacter::SetRightInputScale(float RightInputScale)
+{
+	if (Role == ROLE_Authority) 
+	{ _fRightInputScale = RightInputScale; }
+	else 
+	{ Server_SetRightInputScale(RightInputScale); }
+}
 
 /**
 * @summary:	Sets the whether right input scale of the character (used for animation)
@@ -486,15 +499,17 @@ void ABaseCharacter::Server_SetForwardInputScale_Implementation(float forwardInp
 *
 * @return:	void
 */
-bool ABaseCharacter::Server_SetRightInputScale_Validate(float rightInputScale)
+bool ABaseCharacter::Server_SetRightInputScale_Validate(float RightInputScale)
 { return true; }
 
-void ABaseCharacter::Server_SetRightInputScale_Implementation(float rightInputScale)
+void ABaseCharacter::Server_SetRightInputScale_Implementation(float RightInputScale)
 {
-	if (HasAuthority()) { _fRightInputScale = rightInputScale; }
+	SetRightInputScale(RightInputScale);
 }
 
 // First Person | Animation ***************************************************************************************************************
+
+///////////////////////////////////////////////
 
 /**
 * @summary:	Plays the specific animation on the client's first person perspective
@@ -849,7 +864,7 @@ void ABaseCharacter::AimWeaponExit()
 {
 	if (_bIsAiming)
 	{
-		// Weapon sanity checks
+		// Weapon sanity checks*
 		if (_PrimaryWeapon == NULL) { return; }
 
 		// Enable camera boom
@@ -896,32 +911,31 @@ void ABaseCharacter::Server_Reliable_SetPrimaryWeapon_Implementation(AWeapon* We
 	_PrimaryWeapon = Weapon;
 
 	// Set weapon owner
-	_PrimaryWeapon->SetOwner(this);
-	_PrimaryWeapon->Server_Reliable_SetNewOwner(this);
-	_PrimaryWeapon->Server_Reliable_SetOwnersPrimaryWeapon(true);
-	for (int i = 0; i < _PrimaryWeapon->GetFireModes().Num(); ++i)
-	{
-		_PrimaryWeapon->GetFireModes()[i]->CreateAndAssignCrosshair();
-	}
+	Weapon->SetOwner(this);
+	Weapon->Server_Reliable_SetNewOwner(this);
+	Weapon->Server_Reliable_SetOwnersPrimaryWeapon(true);
 
+	// Update meshes
+	///OwningClient_UpdateFirstPersonPrimaryWeaponMesh(Weapon, FirstPickup);
+	///Multicast_UpdateThirdPersonPrimaryWeaponMesh(Weapon);
 	if (Role == ROLE_Authority) { OnRep_PrimaryWeapon(); }
 }
 
 ///////////////////////////////////////////////
 
-bool ABaseCharacter::Multicast_UpdateThirdPersonPrimaryWeaponMesh_Validate()
+bool ABaseCharacter::Multicast_UpdateThirdPersonPrimaryWeaponMesh_Validate(AWeapon* Weapon)
 { return true; }
 
-void ABaseCharacter::Multicast_UpdateThirdPersonPrimaryWeaponMesh_Implementation()
+void ABaseCharacter::Multicast_UpdateThirdPersonPrimaryWeaponMesh_Implementation(AWeapon* Weapon)
 {
 	// Either update the mesh with the mesh referenced from the weapon, otherwise clear the mesh on the character
-	if (_PrimaryWeapon)
+	if (Weapon)
 	{
 		// Set mesh
-		_ThirdPerson_PrimaryWeapon_SkeletalMesh->SetSkeletalMesh(_PrimaryWeapon->GetThirdPersonMesh());
+		_ThirdPerson_PrimaryWeapon_SkeletalMesh->SetSkeletalMesh(Weapon->GetThirdPersonMesh());
 
 		// Set animation instance (anim BP)
-		GetMesh()->SetAnimInstanceClass(_PrimaryWeapon->GetAnimInstanceThirdPersonCharacter());
+		GetMesh()->SetAnimInstanceClass(Weapon->GetAnimInstanceThirdPersonCharacter());
 	}
 
 	// Weapon == NULL
@@ -930,15 +944,15 @@ void ABaseCharacter::Multicast_UpdateThirdPersonPrimaryWeaponMesh_Implementation
 
 ///////////////////////////////////////////////
 
-bool ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Validate(bool FirstPickup)
+bool ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Validate(AWeapon* Weapon, bool FirstPickup)
 { return true; }
 
-void ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Implementation(bool FirstPickup)
+void ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Implementation(AWeapon* Weapon, bool FirstPickup)
 {
 	// Either update the mesh with the mesh referenced from the weapon, otherwise clear the mesh on the character
-	if (_PrimaryWeapon != NULL)
+	if (Weapon != NULL)
 	{
-		_FirstPerson_PrimaryWeapon_SkeletalMesh->SetSkeletalMesh(_PrimaryWeapon->GetFirstPersonMesh());
+		_FirstPerson_PrimaryWeapon_SkeletalMesh->SetSkeletalMesh(Weapon->GetFirstPersonMesh());
 
 		if (_bIsDuelWielding)
 		{
@@ -946,7 +960,7 @@ void ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Implementat
 			FTransform t = FTransform::Identity;
 			_FirstPerson_Arms->SetRelativeTransform(t);
 			_FirstPerson_Arms->SetHiddenInGame(true);
-			_FirstPerson_PrimaryWeapon_SkeletalMesh->SetRelativeTransform(_PrimaryWeapon->GetTransformOriginDuelPrimary());
+			_FirstPerson_PrimaryWeapon_SkeletalMesh->SetRelativeTransform(Weapon->GetTransformOriginDuelPrimary());
 
 			// Reset origin starting location in arena character (used for first person dash animation)
 			AArenaCharacter* arenaChar = Cast<AArenaCharacter>(this);
@@ -955,17 +969,34 @@ void ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Implementat
 		} else // _bIsDuelWielding == FALSE
 		{
 			// Update origin transforms
-			_FirstPerson_Arms->SetRelativeTransform(_PrimaryWeapon->GetTransformOriginHands());
+			_FirstPerson_Arms->SetRelativeTransform(Weapon->GetTransformOriginHands());
 			_FirstPerson_Arms->SetHiddenInGame(false);
-			_FirstPerson_PrimaryWeapon_SkeletalMesh->SetRelativeTransform(_PrimaryWeapon->GetTransformOriginGun());
+			_FirstPerson_PrimaryWeapon_SkeletalMesh->SetRelativeTransform(Weapon->GetTransformOriginGun());
 
 			// Reset origin starting location in arena character (used for first person dash animation)
 			AArenaCharacter* arenaChar = Cast<AArenaCharacter>(this);
-			if (arenaChar) { arenaChar->SetFPRelativeStartingTransform(_PrimaryWeapon->GetTransformOriginHands()); }
+			if (arenaChar) { arenaChar->SetFPRelativeStartingTransform(Weapon->GetTransformOriginHands()); }
 
 			// Set animation instance (anim BP)
-			_FirstPerson_Arms->SetAnimInstanceClass(_PrimaryWeapon->GetAnimInstanceFirstPersonHands());
-			_FirstPerson_PrimaryWeapon_SkeletalMesh->SetAnimInstanceClass(_PrimaryWeapon->GetAnimInstanceFirstPersonGun());
+			_FirstPerson_Arms->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+			_FirstPerson_Arms->SetAnimInstanceClass(Weapon->GetAnimInstanceFirstPersonHands());
+			_FirstPerson_PrimaryWeapon_SkeletalMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+			_FirstPerson_PrimaryWeapon_SkeletalMesh->SetAnimInstanceClass(Weapon->GetAnimInstanceFirstPersonGun());
+
+			///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("UPDATING PRIMARY FIRST PERSON ORIGIN"));
+		}
+
+		// Play animation
+		if (FirstPickup)
+		{
+			uint8 handAnim = (uint8)E_HandAnimation::eHA_FirstPickup;
+			uint8 gunAnim = (uint8)E_GunAnimation::eGA_FirstPickup;
+			OwningClient_PlayPrimaryWeaponFPAnimation(1.0f, false, true, handAnim, 0.0f, true, gunAnim, 0.0f);
+		} else
+		{
+			uint8 handAnim = (uint8)E_HandAnimation::eHA_Equip;
+			uint8 gunAnim = (uint8)0;
+			OwningClient_PlayPrimaryWeaponFPAnimation(1.0f, false, true, handAnim, 0.0f, false, gunAnim, 0.0f);
 		}
 
 	} else
@@ -1168,6 +1199,8 @@ void ABaseCharacter::InputReloadPrimaryWeapon()
 			float startingFrame = 0.0f;
 			OwningClient_PlayPrimaryWeaponFPAnimation(_fGlobalReloadPlayRate, false, true, handAnimByte, startingFrame, true, gunAnimByte, startingFrame);
 
+			Server_Reliable_SetIsReloadingPrimaryWeapon(true);
+
 			break;
 		}
 		case E_ReloadType::eRT_LoadSingle:
@@ -1194,8 +1227,8 @@ void ABaseCharacter::InputReloadPrimaryWeapon()
 void ABaseCharacter::OnRep_PrimaryWeapon()
 {
 	// Update meshes
-	OwningClient_UpdateFirstPersonPrimaryWeaponMesh(false);
-	Multicast_UpdateThirdPersonPrimaryWeaponMesh();
+	OwningClient_UpdateFirstPersonPrimaryWeaponMesh(_PrimaryWeapon, false);
+	Multicast_UpdateThirdPersonPrimaryWeaponMesh(_PrimaryWeapon);
 }
 
 ///////////////////////////////////////////////
@@ -1511,16 +1544,20 @@ void ABaseCharacter::Server_Reliable_DropWeapon_Implementation(AWeapon* WeaponIn
 	if (actorClass == NULL) { return; }
 
 	// Spawn info
-	FVector forwardVector = this->GetActorForwardVector();
-	FVector location = this->GetActorLocation();
-	FTransform trans = FTransform::Identity;
-	trans.SetLocation(forwardVector + FVector(location.X, location.Y, location.Z + BaseEyeHeight));
-	trans.SetRotation(FQuat(this->GetActorRotation()));
+	ECollisionChannel collisionChannel = ECollisionChannel::ECC_Camera;
+	FCollisionQueryParams queryParams;
+	queryParams.AddIgnoredActor(this);
 	FActorSpawnParameters spawnInfo;
 	spawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
+	// Spawn location
+	FVector forwardVector = GetActorForwardVector() * 100.0f;
+	FVector loc = GetCapsuleComponent()->GetComponentLocation();
+	FVector eyeLocation = FVector(loc.X, loc.Y, loc.Z + BaseEyeHeight);
+	   
 	// Spawn dropped actor
-	AActor* droppedActor = GetWorld()->SpawnActor<AActor>(actorClass, trans, spawnInfo);
+	DrawDebugLine(GetWorld(), eyeLocation, eyeLocation + forwardVector, FColor::Red, true, 20.0f);
+	AActor* droppedActor = GetWorld()->SpawnActor<AActor>(actorClass, eyeLocation + forwardVector, GetActorRotation(), spawnInfo);
 }
 
 ///////////////////////////////////////////////
