@@ -66,6 +66,9 @@ void AProjectile::Tick(float DeltaTime)
 
 void AProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& HitResult)
 {
+	///FString string = OtherComponent->GetName();
+	///GEngine->AddOnScreenDebugMessage(-1, 5.0, FColor::Orange, string);
+	
 	if (Role == ROLE_Authority)
 	{
 		UFireMode* fireMode = _Weapon->GetCurrentFireMode();
@@ -88,7 +91,7 @@ void AProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, U
 						damage = UKismetMathLibrary::SelectFloat(fireMode->GetDamageShieldHead(), fireMode->GetDamageShieldBase(), bSelect);
 
 						// Multiply damage value by damage curve
-						if (fireMode->LosesDamageOverRange())
+						if (fireMode->LosesDamageOverRange() && fireMode->GetDamageCurve() != NULL)
 						{ damage *= fireMode->GetDamageCurve()->GetFloatValue(HitResult.Distance); }
 
 						// Apply bleedthrough? (Only possible if damage is GREATER THAN shield remaining
@@ -111,10 +114,12 @@ void AProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, U
 						damage = fireMode->GetDamageByPawnHitComponent(OtherComponent);
 
 						// Multiply damage value by damage curve
-						if (fireMode->LosesDamageOverRange())
+						if (fireMode->LosesDamageOverRange() && fireMode->GetDamageCurve() != NULL)
 						{ damage *= fireMode->GetDamageCurve()->GetFloatValue(HitResult.Distance); }
 					}
 				}
+
+				///GEngine->AddOnScreenDebugMessage(-1, 5.0, FColor::Orange, FString::SanitizeFloat(damage));
 
 				// Apply final damage
 				FDamageEvent damageEvent;
