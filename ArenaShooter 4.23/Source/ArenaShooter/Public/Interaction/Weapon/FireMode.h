@@ -864,20 +864,6 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Projectile")
 		TSubclassOf<AProjectile> _uProjectileClass = NULL;
 
-	/*
-	*
-	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Projectile",
-		meta = (EditCondition = "!_bUseDataTable"))
-		bool _bProjectileTracksTarget = false;
-
-	/*
-	*
-	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Projectile",
-		meta = (EditCondition = "!_bUseDataTable"))
-		float _bProjectileTrackingStrength = 0.0f;
-
 	// Projectile Spread **********************************************************************************************************************
 
 	/*
@@ -1201,6 +1187,12 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "UMG")
 		TSubclassOf<class UCrosshair> _CrosshairUMG;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "UMG")
+		UCrosshair* _CrosshairInstance = NULL;
 
 public:
 
@@ -1537,6 +1529,11 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetOverheated(bool Overheated);
 
+	// Impact Effects *************************************************************************************************************************
+
+	UFUNCTION(BlueprintPure)
+		AImpactEffectManager* GetImpactEffectManager() { return _ImpactEffectManager; }
+
 	// Muzzle Effect **************************************************************************************************************************
 
 	UFUNCTION(NetMulticast, Unreliable, WithValidation)
@@ -1639,6 +1636,14 @@ public:
 	*/
 	UFUNCTION(BlueprintPure)
 		float GetReloadStartingTimeChamberRound() { return _fStartingTimeChamberRound; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable)
+		void SetReloadAnimationComplete(bool Complete) { _bReloadComplete = Complete; }
 
 	// Spread *********************************************************************************************************************************
 
