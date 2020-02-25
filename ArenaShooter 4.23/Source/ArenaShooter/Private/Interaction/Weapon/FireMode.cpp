@@ -134,6 +134,9 @@ void UFireMode::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompon
 				FRotator rotation = weaponskeletal->GetSocketRotation(_MuzzleSocketName);
 				_pLocalMuzzleEffect->SetRelativeLocationAndRotation(position, rotation);
 				///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Orange, TEXT("Updating local muzzle position"));
+
+				/*	NOTE: The muzzle effect isn't being destroyed/re-pooled at the moment so the tick is constantly
+				*	firing up to this point even after the muzzle effect has finished its cycle. */
 			}
 		}
 	}
@@ -154,6 +157,9 @@ void UFireMode::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompon
 				FRotator rotation = weaponskeletal->GetSocketRotation(_MuzzleSocketName);
 				_pThirdPersonMuzzleEffect->SetRelativeLocationAndRotation(position, rotation);
 				///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Orange, TEXT("Updating third person muzzle position"));
+
+				/*	NOTE: The muzzle effect isn't being destroyed/re-pooled at the moment so the tick is constantly
+				*	firing up to this point even after the muzzle effect has finished its cycle. */
 			}
 		}
 	}
@@ -325,26 +331,29 @@ bool UFireMode::Multicast_Unreliable_PlayThirdPersonContrail_Validate(FHitResult
 
 void UFireMode::Multicast_Unreliable_PlayThirdPersonContrail_Implementation(FHitResult HitResult, FVector StartLocation)
 {
-	// Play contrail effect
-	if (_pContrailParticleSystem != NULL)
+	// Play contrail effect on all non-local clients (owner no see)
+	if (!_WeaponParentAttached->GetPawnOwner()->IsLocallyControlled())
 	{
-		FRotator contrailRotation = UKismetMathLibrary::MakeRotFromX(HitResult.Normal);
-
-		// Spawn contrail
-		UParticleSystemComponent* particleTP = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), _pContrailParticleSystem, StartLocation, contrailRotation, FVector(1.0f, 1.0f, 1.0f));
-
-		// Rotate contrail effect to face impact point
-		if (HitResult.IsValidBlockingHit())
+		if (_pContrailParticleSystem != NULL && _WeaponParentAttached->Role < ROLE_Authority)
 		{
-			particleTP->SetVectorParameter(_fContrailName, HitResult.ImpactPoint);
-		} else
-		{
-			// Get facing direction of the pawn
-			FVector dir = FVector::ZeroVector;
-			AActor* owningActor = _WeaponParentAttached->GetPawnOwner();
-			dir = owningActor->GetActorForwardVector();
+			FRotator contrailRotation = UKismetMathLibrary::MakeRotFromX(HitResult.Normal);
 
-			particleTP->SetVectorParameter(_fContrailName, StartLocation + (dir * _fMaxRangeThreshold));
+			// Spawn contrail
+			UParticleSystemComponent* particleTP = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), _pContrailParticleSystem, StartLocation, contrailRotation, FVector(1.0f, 1.0f, 1.0f));
+
+			// Rotate contrail effect to face impact point
+			if (HitResult.IsValidBlockingHit())
+			{
+				particleTP->SetVectorParameter(_fContrailName, HitResult.ImpactPoint);
+			} else
+			{
+				// Contrail didn't hit anything >> get facing direction of the pawn
+				FVector dir = FVector::ZeroVector;
+				AActor* owningActor = _WeaponParentAttached->GetPawnOwner();
+				dir = owningActor->GetActorForwardVector();
+
+				particleTP->SetVectorParameter(_fContrailName, StartLocation + (dir * _fMaxRangeThreshold));
+			}
 		}
 	}
 }
@@ -373,7 +382,7 @@ void UFireMode::OwningClient_Unreliable_PlayFirstPersonContrail_Implementation(F
 			particleFP->SetVectorParameter(_fContrailName, HitResult.ImpactPoint);
 		} else
 		{
-			// Get facing direction of the pawn
+			// Contrail didn't hit anything >> get facing direction of the pawn
 			FVector dir = FVector::ZeroVector;
 			AActor* owningActor = _WeaponParentAttached->GetPawnOwner();
 			dir = owningActor->GetActorForwardVector();
@@ -610,11 +619,7 @@ void UFireMode::Fire(FHitResult HitResult, FTransform ProjectileTransform, USkel
 	   
 	// Play muzzle effects
 	OwningClient_Unreliable_PlayFirstPersonMuzzle(SkCharWepMeshFirstP);
-	if (_WeaponParentAttached->GetLocalRole() != ENetRole::ROLE_AutonomousProxy)
-	{
-		// Third person should be visible by everyone except the owner
-		Multicast_Unreliable_PlayThirdPersonMuzzle(SkCharWepMeshThirdP);
-	}
+	Multicast_Unreliable_PlayThirdPersonMuzzle(SkCharWepMeshThirdP);
 
 	// Play firing animations
 	ABaseCharacter* character = Cast<ABaseCharacter>(_WeaponParentAttached->GetPawnOwner());
@@ -761,6 +766,7 @@ void UFireMode::Server_Reliable_FireProjectileTrace_Implementation(APawn* Pawn, 
 	ECollisionChannel collisionChannel = ECollisionChannel::ECC_GameTraceChannel15;
 	FCollisionQueryParams queryParams;
 	queryParams.AddIgnoredActor(Pawn);
+	queryParams.bReturnPhysicalMaterial = true;
 	GetWorld()->LineTraceSingleByChannel(traceHitOut, muzzleLaunchPointFP, traceEnd, collisionChannel, queryParams);
 	///DrawDebugLine(GetWorld(), muzzleLaunchPointFP, traceEnd, FColor::Red, true, 1.0f);
 	///OwningClient_Unreliable_DebugFireTrace(muzzleLaunchPointFP, traceEnd);
@@ -866,11 +872,9 @@ void UFireMode::Server_Reliable_FireProjectileTrace_Implementation(APawn* Pawn, 
 	
 	// Play contrail effects
 	OwningClient_Unreliable_PlayFirstPersonContrail(traceHitOut, muzzleLaunchPointFP);
-	if (_WeaponParentAttached->GetLocalRole() != ENetRole::ROLE_AutonomousProxy)
-	{
-		// Third person should be visible by everyone except the owner
-		Multicast_Unreliable_PlayThirdPersonContrail(traceHitOut, muzzleLaunchPointTP);
-	}
+
+	// Third person should be visible by everyone except the owner
+	Multicast_Unreliable_PlayThirdPersonContrail(traceHitOut, muzzleLaunchPointTP);
 }
 
 ///////////////////////////////////////////////
@@ -957,13 +961,16 @@ bool UFireMode::Multicast_Unreliable_PlayThirdPersonMuzzle_Validate(USkeletalMes
 
 void UFireMode::Multicast_Unreliable_PlayThirdPersonMuzzle_Implementation(USkeletalMeshComponent* SkCharWepMeshThirdP)
 {
-	// Sanity check
-	if (_pMuzzleEffectParticleSystem != NULL)
+	// Play contrail effect on all non-local clients (owner no see)
+	if (!_WeaponParentAttached->GetPawnOwner()->IsLocallyControlled())
 	{
-		// Spawn muzzle effect
-		FVector position = SkCharWepMeshThirdP->GetSocketLocation(_MuzzleSocketName);
-		FRotator rotation = SkCharWepMeshThirdP->GetSocketRotation(_MuzzleSocketName);
-		_pThirdPersonMuzzleEffect = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), _pMuzzleEffectParticleSystem, position, rotation, FVector(1.0f, 1.0f, 1.0f));
+		if (_pMuzzleEffectParticleSystem != NULL && _WeaponParentAttached->Role < ROLE_Authority)
+		{
+			// Spawn muzzle effect
+			FVector position = SkCharWepMeshThirdP->GetSocketLocation(_MuzzleSocketName);
+			FRotator rotation = SkCharWepMeshThirdP->GetSocketRotation(_MuzzleSocketName);
+			_pThirdPersonMuzzleEffect = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), _pMuzzleEffectParticleSystem, position, rotation, FVector(1.0f, 1.0f, 1.0f));
+		}
 	}
 }
 
