@@ -10,7 +10,7 @@
 #include "PhysicalMaterials/PhysicalMaterial.h"
 #include "UnrealNetwork.h"
 
-// Startup **************************************************************
+// Startup ********************************************************************************************************************************
 
 /**
 * @summary:	Sets default values for this actor's properties.
@@ -30,6 +30,8 @@ AImpactEffectManager::AImpactEffectManager()
 	SetRemoteRoleForBackwardsCompat(ROLE_SimulatedProxy);
 }
 
+///////////////////////////////////////////////
+
 /**
 * @summary:	Called when the game starts or when spawned.
 *
@@ -41,7 +43,7 @@ void AImpactEffectManager::BeginPlay()
 
 }
 
-// Current Frame ********************************************************
+// Current Frame **************************************************************************************************************************
 
 /**
 * @summary:	Called every frame.
@@ -56,9 +58,7 @@ void AImpactEffectManager::Tick(float DeltaTime)
 
 }
 
-// Spawning *************************************************************
-
-#pragma region Server_Reliable_SpawnImpactEffect
+// Spawning *******************************************************************************************************************************
 
 /*
 *
@@ -71,9 +71,12 @@ void AImpactEffectManager::Server_Reliable_SpawnImpactEffect_Implementation(FHit
 	// Get physics material
 	TWeakObjectPtr<UPhysicalMaterial> physicsMat = HitResult.PhysMaterial;
 	EPhysicalSurface surfaceType;
-	if (physicsMat == NULL) { return; }
+	if (physicsMat == NULL) { 
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("No Physics Material from HitResult")); return; }
 	surfaceType = physicsMat->SurfaceType;
-	if (surfaceType == NULL) { return; }
+	if (surfaceType == NULL) {
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("No surface type from HitResult")); return;
+	}
 
 	// Find matching effect group
 	for (int i = 0; i < _ImpactEffectGroups.Num(); i++)
@@ -87,9 +90,7 @@ void AImpactEffectManager::Server_Reliable_SpawnImpactEffect_Implementation(FHit
 	}
 }
 
-#pragma endregion
-
-#pragma region Server_Unreliable_SpawnImpactEffectGroup
+///////////////////////////////////////////////
 
 /*
 *
@@ -117,5 +118,3 @@ void AImpactEffectManager::Server_Unreliable_SpawnImpactEffectGroup_Implementati
 	if (decalMaterialToSpawn != NULL) { UGameplayStatics::SpawnDecalAtLocation(GetWorld(), decalMaterialToSpawn, FVector(_fDecalSize, _fDecalSize, _fDecalSize), HitResult.ImpactPoint, decalRotation, _fDecalLifespan); }
 	if (soundToPlay != NULL) { UGameplayStatics::PlaySoundAtLocation(GetWorld(), soundToPlay, HitResult.ImpactPoint); }
 }
-
-#pragma endregion
