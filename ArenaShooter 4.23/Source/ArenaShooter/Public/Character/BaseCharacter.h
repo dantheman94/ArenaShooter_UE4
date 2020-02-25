@@ -23,6 +23,7 @@ enum class E_AimDirection : uint8
 // *** EVENT DISPATCHERS / DELEGATES
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FADSAnimDelegate, bool, AimingEnter);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTakeDamage, float, DamageAmount);
 
 // *** CLASSES
 
@@ -48,7 +49,11 @@ public:
 
 	// Startup ********************************************************************************************************************************
 
-	// Sets default values for this character's properties
+	/**
+	* @summary:	Sets default values for this component's properties.
+	*
+	* @return:	Constructor
+	*/
 	ABaseCharacter();
 
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const;
@@ -194,7 +199,7 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Controller | Input", Replicated)
 		float _fForwardInputScale = 0.0f;
-
+	
 	/*
 	*	A scalar value (0 - 1 FLOAT) that represents the amount of input being driven into the right/left input (REPLICATED).
 	*	EG: Keyboard will either be -1.0, 0.0 or 1.0 explicitly, but a gamepad could be somewhere in between this range due to its axis controller).
@@ -231,6 +236,12 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Health |")
 		TArray<AController*>_DamageInstigators;
 
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintAssignable)
+		FOnTakeDamage _fOnTakeDamage;
+	
 	// Health | Burn **************************************************************************************************************************
 
 	/*
@@ -905,6 +916,9 @@ public:
 	UFUNCTION()
 		virtual void OnAnyDamage(AActor* Actor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);
 
+	/*
+	*
+	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_OnAnyDamage(AActor* Actor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);
 
@@ -929,8 +943,22 @@ public:
 	/*
 	*
 	*/
+	UFUNCTION()
+		virtual void OnDeath();
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_OnDeath();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
 	UFUNCTION(BlueprintPure)
-		bool IsAlive() { return /*_bIsAlive = */_fFleshHealth > 0.0f;  }
+		bool IsAlive() { return /*_bIsAlive = */_fFleshHealth > 0.0f; }
 
 	// Health | Burn **************************************************************************************************************************
 	

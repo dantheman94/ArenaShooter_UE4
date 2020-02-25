@@ -568,6 +568,7 @@ void ABaseCharacter::OnAnyDamage(AActor* Actor, float Damage, const UDamageType*
 		// Is taking damage
 		_bTakingDamageResetTimerPosition = 0.0f;
 		_bIsTakingDamage = true;
+		_fOnTakeDamage.Broadcast(Damage);
 
 		if (GetCurrentShield() > 0.0f)
 		{
@@ -584,7 +585,6 @@ void ABaseCharacter::OnAnyDamage(AActor* Actor, float Damage, const UDamageType*
 		// Check if dead
 		if (!IsAlive())
 		{
-
 		}
 	}
 	
@@ -613,6 +613,26 @@ void ABaseCharacter::OnPointDamage(float Damage)
 void ABaseCharacter::OnRadialDamage(float Damage)
 {
 
+}
+
+void ABaseCharacter::OnDeath()
+{
+	if (Role == ROLE_Authority)
+	{
+
+	}
+
+	// Ensure that the method only runs server-side
+	else
+	{ Server_Reliable_OnDeath(); }
+}
+
+bool ABaseCharacter::Server_Reliable_OnDeath_Validate()
+{ return true; }
+
+void ABaseCharacter::Server_Reliable_OnDeath_Implementation()
+{
+	OnDeath();
 }
 
 // Health | Burn **************************************************************************************************************************
