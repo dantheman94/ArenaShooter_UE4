@@ -116,8 +116,6 @@ protected:
 	*/
 	virtual void SetupInputComponent() override;
 
-	///////////////////////////////////////////////
-
 	/**
 	* @summary:	Calculates raw input against the deadzone by a scaled radial factor.
 	*
@@ -128,8 +126,6 @@ protected:
 	*/
 	FVector2D CalcScaledRadialDeadZonedInput(float HorizonalInput, float VerticalInput);
 
-	///////////////////////////////////////////////
-
 	/**
 	* @summary:	Sets the axis mapping information into oldBinding from newBinding.
 	*
@@ -139,8 +135,6 @@ protected:
 	* @return:	static void
 	*/
 	static void UpdateAxisMapping(FInputAxisKeyMapping& OldBinding, FInputAxisKeyMapping& NewBinding);
-
-	///////////////////////////////////////////////
 
 	/**
 	* @summary:	Sets the action mapping information into oldBinding from newBinding.
@@ -156,8 +150,6 @@ protected:
 
 	void AimWeaponEnter();
 
-	///////////////////////////////////////////////
-
 	void AimWeaponExit();
 
 	// Combat | Tabbing ***********************************************************************************************************************
@@ -168,31 +160,19 @@ protected:
 
 	void FirePrimaryWeaponEnter();
 
-	///////////////////////////////////////////////
-
 	void FirePrimaryWeaponExit();
-
-	///////////////////////////////////////////////
 
 	void FireSecondaryWeaponEnter();
 
-	///////////////////////////////////////////////
-
 	void FireSecondaryWeaponExit();
 
-	///////////////////////////////////////////////
-
 	void ReloadPrimaryWeapon();
-
-	///////////////////////////////////////////////
 
 	void ReloadSecondaryWeapon();
 
 	// Combat | Grenade ***********************************************************************************************************************
 
 	void ChargeGrenade();
-
-	///////////////////////////////////////////////
 
 	void ThrowGrenade();
 
@@ -204,11 +184,7 @@ protected:
 
 	void InteractPrimary();
 
-	///////////////////////////////////////////////
-
 	void InteractSecondary();
-
-	///////////////////////////////////////////////
 
 	void CancelInteraction();
 
@@ -223,8 +199,6 @@ protected:
 	*/
 	void MoveForward(float Value);
 
-	///////////////////////////////////////////////
-
 	/**
 	* @summary:	Moves the character's position that is connected to the controller on the horizontal axis (left/right).
 	*
@@ -234,8 +208,6 @@ protected:
 	*/
 	void MoveRight(float Value);
 
-	///////////////////////////////////////////////
-
 	/**
 	* @summary:	Moves the character's aiming direction that is connected to the controller on the vertical axis (up/down).
 	*
@@ -244,8 +216,6 @@ protected:
 	* @return:	void
 	*/
 	void LookUp(float Value);
-
-	///////////////////////////////////////////////
 
 	/**
 	* @summary:	Moves the character's aiming direction that is connected to the controller on the horizontal axis (left/right).
@@ -268,11 +238,7 @@ protected:
 
 	void CrouchHoldEnter();
 
-	///////////////////////////////////////////////
-
 	void CrouchHoldExit();
-
-	///////////////////////////////////////////////
 
 	void CrouchToggle();
 
@@ -280,15 +246,11 @@ protected:
 
 	void HoverEnter();
 
-	///////////////////////////////////////////////
-
 	void HoverExit();
 
 	// Movement | Jump ************************************************************************************************************************
 
 	void Jump();
-
-	// Movement | Slide ***********************************************************************************************************************
 
 	void Slide();
 
@@ -296,9 +258,11 @@ protected:
 
 	void SprintEnter();
 
-	///////////////////////////////////////////////
-
 	void SprintExit();
+
+	// Movement | Vauit ***********************************************************************************************************************
+
+	void Vault();
 
 public:
 
@@ -331,8 +295,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Input | Rebinding")
 		bool RebindAxisKey(FInputAxisKeyMapping OldBinding, FInputAxisKeyMapping NewBinding);
 
-	///////////////////////////////////////////////
-
 	/**
 	* @summary:	Tries to find the matching action binding & replaces the input key with the new binding.
 	*
@@ -344,12 +306,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Input | Rebinding")
 		bool RebindActionKey(FInputActionKeyMapping OldBinding, FInputActionKeyMapping NewBinding);
 
-	///////////////////////////////////////////////
-
 	UFUNCTION(exec)
 		virtual void RemoveRoundFromChamber();
-
-	///////////////////////////////////////////////
 
 	virtual bool ProcessConsoleExec(const TCHAR* Cmd, FOutputDevice& Ar, UObject* Executor) override;
 

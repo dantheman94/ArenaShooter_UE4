@@ -64,6 +64,7 @@ void ABasePlayerController::SetupInputComponent()
 	InputComponent->BindAction("Slide", IE_Pressed, this, &ABasePlayerController::Slide);
 	InputComponent->BindAction("Sprint", IE_Pressed, this, &ABasePlayerController::SprintEnter);
 	InputComponent->BindAction("Sprint", IE_Released, this, &ABasePlayerController::SprintExit);
+	InputComponent->BindAction("Vault", IE_Released, this, &ABasePlayerController::Vault);
 
 	// Bind combat controls
 	InputComponent->BindAction("AimWeapon", IE_Pressed, this, &ABasePlayerController::AimWeaponEnter);
@@ -86,8 +87,6 @@ void ABasePlayerController::SetupInputComponent()
 	InputComponent->BindAction("DuelWield", IE_Released, this, &ABasePlayerController::CancelInteraction);
 }
 
-///////////////////////////////////////////////
-
 /**
 * @summary:	Calculates raw input against the deadzone by a scaled radial factor.
 *
@@ -106,8 +105,6 @@ FVector2D ABasePlayerController::CalcScaledRadialDeadZonedInput(float HorizonalI
 	return rawInput;
 }
 
-///////////////////////////////////////////////
-
 /**
 * @summary:	Sets the axis mapping information into oldBinding from newBinding.
 *
@@ -121,8 +118,6 @@ void ABasePlayerController::UpdateAxisMapping(FInputAxisKeyMapping& OldBinding, 
 	OldBinding.Key = NewBinding.Key;
 	OldBinding.Scale = NewBinding.Scale;
 }
-
-///////////////////////////////////////////////
 
 /**
 * @summary:	Sets the action mapping information into oldBinding from newBinding.
@@ -149,8 +144,6 @@ void ABasePlayerController::AimWeaponEnter()
 	if (pawn) { pawn->AimWeaponEnter(); }
 }
 
-///////////////////////////////////////////////
-
 void ABasePlayerController::AimWeaponExit()
 {
 	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
@@ -173,15 +166,11 @@ void ABasePlayerController::FirePrimaryWeaponEnter()
 	if (pawn) { pawn->InputPrimaryFirePress(); }
 }
 
-///////////////////////////////////////////////
-
 void ABasePlayerController::FirePrimaryWeaponExit()
 {
 	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
 	if (pawn) { pawn->InputPrimaryFireRelease(); }
 }
-
-///////////////////////////////////////////////
 
 void ABasePlayerController::FireSecondaryWeaponEnter()
 {
@@ -189,23 +178,17 @@ void ABasePlayerController::FireSecondaryWeaponEnter()
 	if (pawn) { pawn->InputFireSecondaryWeapon(); }
 }
 
-///////////////////////////////////////////////
-
 void ABasePlayerController::FireSecondaryWeaponExit()
 {
 	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
 	if (pawn) { pawn->InputFireSecondaryWeapon(); }
 }
 
-///////////////////////////////////////////////
-
 void ABasePlayerController::ReloadPrimaryWeapon()
 {
 	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
 	if (pawn) { pawn->InputReloadPrimaryWeapon(); }
 }
-
-///////////////////////////////////////////////
 
 void ABasePlayerController::ReloadSecondaryWeapon()
 {
@@ -220,15 +203,12 @@ void ABasePlayerController::ChargeGrenade()
 
 }
 
-///////////////////////////////////////////////
-
 void ABasePlayerController::ThrowGrenade()
 {
 
 }
 
 // Combat | Melee *************************************************************************************************************************
-
 
 void ABasePlayerController::Melee()
 {
@@ -243,15 +223,11 @@ void ABasePlayerController::InteractPrimary()
 	if (pawn) { pawn->InteractPrimary(); }
 }
 
-///////////////////////////////////////////////
-
 void ABasePlayerController::InteractSecondary()
 {
 	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
 	if (pawn) { pawn->InteractSecondary(); }
 }
-
-///////////////////////////////////////////////
 
 void ABasePlayerController::CancelInteraction()
 {
@@ -296,8 +272,6 @@ void ABasePlayerController::MoveForward(float Value)
 	}
 }
 
-///////////////////////////////////////////////
-
 /**
 * @summary:	Moves the character (if valid) connected to the controller on the horizontal axis (left/right).
 *
@@ -332,8 +306,6 @@ void ABasePlayerController::MoveRight(float Value)
 		}
 	}
 }
-
-///////////////////////////////////////////////
 
 /**
 * @summary:	Moves the character's aiming direction that is connected to the controller on the vertical axis (up/down).
@@ -377,8 +349,6 @@ void ABasePlayerController::LookUp(float Value)
 		}
 	}
 }
-
-///////////////////////////////////////////////
 
 /**
 * @summary:	Moves the character's aiming direction that is connected to the controller on the horizontal axis (left/right).
@@ -446,14 +416,10 @@ void ABasePlayerController::CrouchHoldEnter()
 
 }
 
-///////////////////////////////////////////////
-
 void ABasePlayerController::CrouchHoldExit()
 {
 
 }
-
-///////////////////////////////////////////////
 
 void ABasePlayerController::CrouchToggle()
 {
@@ -469,8 +435,6 @@ void ABasePlayerController::HoverEnter()
 	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
 	pawn->HoverEnter();
 }
-
-///////////////////////////////////////////////
 
 void ABasePlayerController::HoverExit()
 {
@@ -501,12 +465,18 @@ void ABasePlayerController::SprintEnter()
 	///if (pawn) { pawn->Sprint(); }
 }
 
-///////////////////////////////////////////////
-
 void ABasePlayerController::SprintExit()
 {
 	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
 	///if (pawn) { pawn->Sprint(); }
+}
+
+// Movement | Vauit ***********************************************************************************************************************
+
+void ABasePlayerController::Vault()
+{
+	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
+	pawn->InputVault();
 }
 
 // Controller *****************************************************************************************************************************
@@ -561,8 +531,6 @@ bool ABasePlayerController::RebindAxisKey(FInputAxisKeyMapping oldBinding, FInpu
 	return matchFound;
 }
 
-///////////////////////////////////////////////
-
 /**
 * @summary:	Tries to find the matching action binding & replaces the input key with the new binding.
 *
@@ -605,16 +573,11 @@ bool ABasePlayerController::RebindActionKey(FInputActionKeyMapping oldBinding, F
 	return matchFound;
 }
 
-///////////////////////////////////////////////
-
 void ABasePlayerController::RemoveRoundFromChamber()
 {
 	ABaseCharacter* character = Cast<ABaseCharacter>(GetPawn());
 	character->GetPointerPrimaryWeapon()->GetCurrentFireMode()->GetAmmoPool()->Server_Reliable_SetRoundInChamber(false);
 }
-
-///////////////////////////////////////////////
-
 bool ABasePlayerController::ProcessConsoleExec(const TCHAR* Cmd, FOutputDevice& Ar, UObject* Executor)
 {
 	bool handled = Super::ProcessConsoleExec(Cmd, Ar, Executor);
