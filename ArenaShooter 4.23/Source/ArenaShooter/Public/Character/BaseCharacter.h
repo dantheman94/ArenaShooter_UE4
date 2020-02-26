@@ -700,8 +700,73 @@ protected:
 
 	// Movement | Stamina *********************************************************************************************************************
 
+	/*
+	*
+	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory")
 		TArray<UStamina*> _uStaminaComponents;
+
+	// Movement | Vault ***********************************************************************************************************************
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Vault")
+		float _fLedgeForwardTraceRadius = 40.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Vault")
+		float _fLedgeForwardTraceLength = 200.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Vault")
+		FName _sPelvisSocket = TEXT("pelvisSocket");
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Vault")
+		float _fLedgeGrabThresholdMin = -75.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Vault")
+		float _fLedgeGrabThresholdMax = 50.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault")
+		FVector _vWallImpactPoint = FVector::ZeroVector;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault")
+		FVector _vWallNormal = FVector::ZeroVector;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault")
+		FVector _vWallTraceStart = FVector::ZeroVector;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault")
+		FVector _vWallTraceEnd = FVector::ZeroVector;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault")
+		FVector _vWallHeightLocation = FVector::ZeroVector;
 
 private:
 
@@ -1596,7 +1661,30 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 		UStamina* GetStaminaComponentByChannel(int Channel);
 
+	// Movement | Vault ***********************************************************************************************************************
+
+	UFUNCTION()
+		void InputVault();
+
 	///////////////////////////////////////////////
+
+	UFUNCTION()
+		void LedgeForwardTrace();
+
+	///////////////////////////////////////////////
+
+	UFUNCTION()
+		void LedgeHeightTrace();
+
+	///////////////////////////////////////////////
+
+	UFUNCTION()
+		bool GetHipToLedge();
+
+	///////////////////////////////////////////////
+
+	UFUNCTION()
+		void GrabLedge();
 
 	// TEMPORARILY PLACED HERE FOR EASE OF USE -> TO BE MOVED INTO A SEPARATE CLASS LATER
 	const FString EnumToString(const TCHAR* Enum, int32 EnumValue)

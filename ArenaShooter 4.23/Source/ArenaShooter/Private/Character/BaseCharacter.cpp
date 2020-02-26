@@ -1858,3 +1858,113 @@ UStamina* ABaseCharacter::GetStaminaComponentByChannel(int Channel)
 	}
 	return stamina;
 }
+
+// Movement | Vault ***********************************************************************************************************************
+
+/*
+*
+*/
+void ABaseCharacter::InputVault()
+{
+	LedgeForwardTrace();
+	LedgeHeightTrace();
+	if (UKismetMathLibrary::NotEqual_VectorVector(_vWallHeightLocation, FVector(0.0f, 0.0f, 0.0f), 10.0f))
+	{
+		if (GetHipToLedge())
+		{
+			GrabLedge();
+		}
+	}
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseCharacter::LedgeForwardTrace()
+{
+	// Get trace vectors
+	FVector traceStart = GetActorLocation();
+	FVector traceEnd = traceStart;
+	FVector forwardVec = UKismetMathLibrary::GetForwardVector(GetActorRotation());
+	FVector additive = FVector(forwardVec.X * _fLedgeForwardTraceLength, forwardVec.Y * _fLedgeForwardTraceLength, forwardVec.Z);
+	traceEnd += additive;
+
+	// Fire sphere trace
+	FHitResult hitResult;
+	ETraceTypeQuery traceChannel = ETraceTypeQuery::TraceTypeQuery15;
+	bool traceComplex = false;
+	TArray<AActor*> ignoreList;
+	ignoreList.Add(this);
+	UKismetSystemLibrary::SphereTraceSingle(GetWorld(), traceStart, traceEnd, _fLedgeForwardTraceRadius, traceChannel, traceComplex, ignoreList, EDrawDebugTrace::ForOneFrame, hitResult, true);
+
+	// Set global variables for vault
+	_vWallImpactPoint = hitResult.ImpactPoint;
+	_vWallNormal = hitResult.ImpactNormal;
+	_vWallTraceStart = hitResult.TraceStart;
+	_vWallTraceEnd = hitResult.TraceEnd;
+
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseCharacter::LedgeHeightTrace()
+{
+	// Get trace vectors
+	FVector traceStart = FVector(GetActorLocation().X, GetActorLocation().Y, GetActorLocation().Z + 200.0f);
+	FVector traceEnd = traceStart;
+	FVector forwardVec = UKismetMathLibrary::GetForwardVector(GetActorRotation());
+	FVector additive = forwardVec * 70.0f;
+	traceStart += additive;
+	traceEnd = FVector(traceStart.X, traceStart.Y, traceStart.Z - 300.0f);
+
+	// Fire sphere trace
+	FHitResult hitResult;
+	ETraceTypeQuery traceChannel = ETraceTypeQuery::TraceTypeQuery15;
+	bool traceComplex = false;
+	TArray<AActor*> ignoreList;
+	ignoreList.Add(this);
+	UKismetSystemLibrary::SphereTraceSingle(GetWorld(), traceStart, traceEnd, _fLedgeForwardTraceRadius, traceChannel, traceComplex, ignoreList, EDrawDebugTrace::ForOneFrame, hitResult, true);
+
+	// Set global variables for vault
+	_vWallHeightLocation = hitResult.ImpactPoint;
+
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+bool ABaseCharacter::GetHipToLedge()
+{
+	// Sanity check
+	if (GetMesh() == NULL) { return false; }
+
+	// Determine range
+	FVector socketLocation = GetMesh()->GetSocketLocation(_sPelvisSocket);
+	float range = socketLocation.Z - _vWallHeightLocation.Z;
+
+	return UKismetMathLibrary::InRange_FloatFloat(range, _fLedgeGrabThresholdMin, _fLedgeGrabThresholdMax);
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseCharacter::GrabLedge()
+{
+	// Cancel any actions
+	_bPrimaryReloadCancelled = true;
+	_bSecondaryReloadCancelled = true;
+
+	// Play animation FP
+	uint8 byteHandAnim = (uint8)E_HandAnimation::eHA_Equip;
+	uint8 byteGunAnim = (uint8)0;
+	OwningClient_PlayPrimaryWeaponFPAnimation(1.0f, false, true, byteHandAnim, 0.f, false, byteGunAnim, 0.0f);
+}
