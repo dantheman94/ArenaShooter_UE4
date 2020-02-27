@@ -1649,6 +1649,14 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void SetReloadAnimationComplete(bool Complete) { _bReloadComplete = Complete; }
 
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		float GetReloadStartingTime();
+
 	// Spread *********************************************************************************************************************************
 
 	/*

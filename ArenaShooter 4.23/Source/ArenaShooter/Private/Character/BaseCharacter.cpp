@@ -1240,20 +1240,20 @@ void ABaseCharacter::InputReloadPrimaryWeapon()
 			
 			// Get reload montage reference (hands)
 			uint8 handAnimByte;
-			if (ammoPool->GetMagazineAmmo() > 0 && ammoPool->IsRoundInChamber())
+			if (ammoPool->GetMagazineAmmo() >= 0 && ammoPool->IsRoundInChamber())
 			{ handAnimByte = (uint8)E_HandAnimation::eHA_ReloadFullNotEmpty; } 
 			else
 			{ handAnimByte = (uint8)E_HandAnimation::eHA_ReloadFullEmpty; }
 
 			// Get reload montage reference (weapon)
 			uint8 gunAnimByte;
-			if (ammoPool->GetMagazineAmmo() > 0 && ammoPool->IsRoundInChamber())
+			if (ammoPool->GetMagazineAmmo() >= 0 && ammoPool->IsRoundInChamber())
 			{ gunAnimByte = (uint8)E_GunAnimation::eGA_ReloadFullNotEmpty; } 
 			else
 			{ gunAnimByte = (uint8)E_GunAnimation::eGA_ReloadFullEmpty; }
 
 			// Play reload animation
-			float startingFrame = 0.0f;
+			float startingFrame = _PrimaryWeapon->GetCurrentFireMode()->GetReloadStartingTime();
 			OwningClient_PlayPrimaryWeaponFPAnimation(_fGlobalReloadPlayRate, false, true, handAnimByte, startingFrame, true, gunAnimByte, startingFrame);
 
 			Server_Reliable_SetIsReloadingPrimaryWeapon(true);

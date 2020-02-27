@@ -1026,7 +1026,7 @@ void UFireMode::Server_Reliable_EjectMagazine_Implementation()
 	_pAmmoPool->Server_Reliable_SetMagazineCount(0);
 
 	// Set reload stage
-	_eReloadStage = E_ReloadStage::eRS_EjectMagazine;
+	_eReloadStage = E_ReloadStage::eRS_NewMagazine;
 }
 
 ///////////////////////////////////////////////
@@ -1043,7 +1043,8 @@ void UFireMode::Server_Reliable_NewMagazine_Implementation()
 	_pAmmoPool->Server_Reliable_Reload();
 
 	// Set reload stage
-	_eReloadStage = E_ReloadStage::eRS_NewMagazine;
+	if (_bIsRoundInChamber) { _eReloadStage = E_ReloadStage::eRS_Ready; }
+	else { _eReloadStage = E_ReloadStage::eRS_ChamberRound; }
 }
 
 ///////////////////////////////////////////////
@@ -1059,6 +1060,9 @@ void UFireMode::Server_Reliable_ChamberRound_Implementation()
 	// Update bullet in chamber
 	if (_pAmmoPool == NULL) { DetermineAmmoPool(); return; }
 	_pAmmoPool->Server_Reliable_DetermineIfBulletShouldBeInChamber();
+
+	// Set reload stage
+	_eReloadStage = E_ReloadStage::eRS_Ready;
 }
 
 ///////////////////////////////////////////////
@@ -1069,6 +1073,28 @@ bool UFireMode::Server_Reliable_SetReloadStage_Validate(E_ReloadStage ReloadStat
 void UFireMode::Server_Reliable_SetReloadStage_Implementation(E_ReloadStage ReloadStage)
 {
 	_eReloadStage = ReloadStage;
+}
+
+///////////////////////////////////////////////
+
+float UFireMode::GetReloadStartingTime()
+{
+	float time = 0.0f;
+
+	switch (_eReloadStage)
+	{
+	case E_ReloadStage::eRS_Ready: time = 0.0f; break;
+	case E_ReloadStage::eRS_EjectMagazine: time = _fStartingTimeEjectMagazine; break;
+	case E_ReloadStage::eRS_NewMagazine: time = _fStartingTimeNewMagazine; break;
+	case E_ReloadStage::eRS_ChamberRound: time = _fStartingTimeChamberRound; break;
+
+	default: break;
+	}
+
+	FString msg = TEXT("Reload stage: " + Cast<ABaseCharacter>(_WeaponParentAttached->GetPawnOwner())->EnumToString(TEXT("E_ReloadStage"), static_cast<uint8>(_eReloadStage)));
+	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Purple, msg);
+
+	return time;
 }
 
 // Spread *********************************************************************************************************************************
