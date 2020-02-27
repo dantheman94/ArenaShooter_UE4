@@ -71,11 +71,22 @@ void AImpactEffectManager::Server_Reliable_SpawnImpactEffect_Implementation(FHit
 	// Get physics material
 	TWeakObjectPtr<UPhysicalMaterial> physicsMat = HitResult.PhysMaterial;
 	EPhysicalSurface surfaceType;
-	if (physicsMat == NULL) { 
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("No Physics Material from HitResult")); return; }
+	if (physicsMat == NULL) { return; }
 	surfaceType = physicsMat->SurfaceType;
 	if (surfaceType == NULL) {
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("No surface type from HitResult")); return;
+
+		// Play default effect
+		EPhysicalSurface defaultSurface = EPhysicalSurface::SurfaceType1;
+		for (int i = 0; i < _ImpactEffectGroups.Num(); i++)
+		{
+			if (_ImpactEffectGroups[i].GetPhysicsMaterial()->SurfaceType == defaultSurface)
+			{
+				// Play the effect on all clients
+				Server_Unreliable_SpawnImpactEffectGroup(i, HitResult);
+				break;
+			}
+		}
+		return;
 	}
 
 	// Find matching effect group
