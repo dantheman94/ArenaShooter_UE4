@@ -256,6 +256,12 @@ protected:
 	/*
 	*
 	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Double Jump")
+		float _fDoubleJumpCameraShakeScale = 1.5f;
+
+	/*
+	*
+	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Double Jump")
 		bool _bCanDoubleJump = true;
 

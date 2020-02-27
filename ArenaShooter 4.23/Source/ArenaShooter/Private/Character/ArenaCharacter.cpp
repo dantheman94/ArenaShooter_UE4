@@ -617,7 +617,9 @@ void AArenaCharacter::Multicast_Reliable_ChangeHoverState_Implementation(bool Is
 */
 void AArenaCharacter::InputJump()
 {
-	if (_bCanJump)
+	InputVault();
+
+	if (_bCanJump && !_bIsTryingToVault)
 	{
 		// Sanity check
 		if (GetCharacterMovement() == NULL) { return; } 
@@ -629,14 +631,16 @@ void AArenaCharacter::InputJump()
 				// Uncrouch then jump
 				if (_bIsCrouching) { ExitCrouch(); } else
 				{
-					// Jump
-					Server_Reliable_SetJumping(true);
+					// Set _bIsJumping = TRUE
+					if (Role == ROLE_Authority)
+					{ _bIsJumping = true; } else
+					{ Server_Reliable_SetJumping(true); }
+
+					// Action jump
 					Jump();
 
-					// Start landing checks
-					_bIsPerformingGroundChecks = true;
-
-					// Gamepad rumble
+					// Play feedback(s) [Camera shakes / Gamepad Rumbles]
+					OwningClient_PlayCameraShake(_CameraShakeJumpStart, 1.0f);
 					OwningClient_GamepadRumble(_fJumpGamepadRumbleIntensity, _fJumpGamepadRumbleDuration,
 						_fJumpGamepadRumbleAffectsLeftLarge, _fJumpGamepadRumbleAffectsLeftSmall,
 						_fJumpGamepadRumbleAffectsRightLarge, _fJumpGamepadRumbleAffectsRightSmall);
@@ -653,7 +657,7 @@ void AArenaCharacter::InputJump()
 			// Falling 
 			else { InputDoubleJump(); }
 		}
-	} else { return; }
+	}
 }
 
 ///////////////////////////////////////////////
@@ -663,7 +667,9 @@ void AArenaCharacter::InputJump()
 */
 void AArenaCharacter::InputDoubleJump()
 {
-	if (_bDoubleJumpEnabled && _bCanDoubleJump && _uStaminaComponents.Num() > 0)
+	InputVault();
+
+	if (_bDoubleJumpEnabled && _bCanDoubleJump &&  !IsTryingToVault() && _uStaminaComponents.Num() > 0)
 	{
 		// Get relevant stamina via matching channel
 		UStamina* stamina = NULL;
@@ -687,13 +693,23 @@ void AArenaCharacter::InputDoubleJump()
 				
 				// Double jump
 				_bCanDoubleJump = false;
-				Server_Reliable_LaunchCharacter(FVector(0.0f, 0.0f, _fDoubleJumpForce), false, true);
-				Server_Reliable_SetDoubleJumping(true);
+				FVector force = FVector(0.0f, 0.0f, _fDoubleJumpForce);
+				if (Role == ROLE_Authority)
+				{
+					LaunchCharacter(force, false, true);
+					_bIsDoubleJumping = true;
+				}
+				else
+				{
+					Server_Reliable_LaunchCharacter(force, false, true);
+					Server_Reliable_SetDoubleJumping(true);
+				}
 
 				// Start landing checks
 				_bIsPerformingGroundChecks = true;
 
-				// Gamepad rumble
+				// Play feedback(s) [Camera shakes / Gamepad Rumbles]
+				OwningClient_PlayCameraShake(_CameraShakeJumpStart, _fDoubleJumpCameraShakeScale);
 				OwningClient_GamepadRumble(_fThrustGamepadRumbleIntensity, _fThrustGamepadRumbleDuration,
 					_fThrustGamepadRumbleAffectsLeftLarge, _fThrustGamepadRumbleAffectsLeftSmall,
 					_fThrustGamepadRumbleAffectsRightLarge, _fThrustGamepadRumbleAffectsRightSmall);
