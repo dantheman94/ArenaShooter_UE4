@@ -64,7 +64,7 @@ void ABasePlayerController::SetupInputComponent()
 	InputComponent->BindAction("Slide", IE_Pressed, this, &ABasePlayerController::Slide);
 	InputComponent->BindAction("Sprint", IE_Pressed, this, &ABasePlayerController::SprintEnter);
 	InputComponent->BindAction("Sprint", IE_Released, this, &ABasePlayerController::SprintExit);
-	InputComponent->BindAction("Vault", IE_Released, this, &ABasePlayerController::Vault);
+	///InputComponent->BindAction("Vault", IE_Released, this, &ABasePlayerController::Vault);
 
 	// Bind combat controls
 	InputComponent->BindAction("AimWeapon", IE_Pressed, this, &ABasePlayerController::AimWeaponEnter);
