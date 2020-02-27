@@ -138,7 +138,7 @@ void AArenaCharacter::OnGroundChecks()
 
 		// Landing camera shake
 		float shakeScale = UKismetMathLibrary::NormalizeToRange(_fFallingVelocity *= -1, 0.0f, 2000.0f);
-		shakeScale *= 2;
+		shakeScale *= 4;
 		OwningClient_PlayCameraShake(_CameraShakeJumpLand, shakeScale);
 
 		_bIsPerformingGroundChecks = false;

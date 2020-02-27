@@ -129,7 +129,7 @@ protected:
 	/*
 	*
 	*/
-	void FireProjectile(FHitResult hitResult, FTransform ProjectileTransform, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP);
+	void FireProjectile(FHitResult hitResult, FVector CameraRotationXVector, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP);
 
 	// ****************************************************************************************************************************************
 	// ************************************ VARIABLES *****************************************************************************************
@@ -997,6 +997,13 @@ protected:
 	/*
 	*
 	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current")
+		float _fCurrentRecoilInterpolationSpeed = 0.0f;
+
+
+	/*
+	*
+	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
 		meta = (EditCondition = "!_bRecoilUsesDataTable"))
 		float _fRecoilInterpolationSpeedAimingMinimum = 0.0f;
@@ -1491,7 +1498,7 @@ public:
 	*
 	*/
 	UFUNCTION()
-		void Fire(FHitResult hitResult, FTransform ProjectileTransform, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP);
+		void Fire(FHitResult hitResult, FVector CameraRotationXVector, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP);
 
 	///////////////////////////////////////////////
 
@@ -1499,7 +1506,7 @@ public:
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
-		void Server_Reliable_FireProjectileTrace(APawn* Pawn, FTransform ProjectileTransform, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP);
+		void Server_Reliable_FireProjectileTrace(APawn* Pawn, FVector CameraRotationXVector, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP);
 
 	///////////////////////////////////////////////
 
@@ -1507,7 +1514,7 @@ public:
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
-		void Server_Reliable_FireProjectilePhysics(APawn* Pawn, FHitResult hitResult, FTransform ProjectileTransform, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP);
+		void Server_Reliable_FireProjectilePhysics(APawn* Pawn, FHitResult hitResult, FVector CameraRotationXVector, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP);
 
 	///////////////////////////////////////////////
 
@@ -1547,6 +1554,14 @@ public:
 
 	UFUNCTION(Client, Unreliable, WithValidation)
 		void OwningClient_Unreliable_PlayFirstPersonMuzzle(USkeletalMeshComponent* SkCharWepMeshFirstP);
+
+	// Recoil *********************************************************************************************************************************
+
+	/*
+	*
+	*/
+	UFUNCTION(Client, Reliable, WithValidation)
+		void OwningClient_Reliable_RecoilCamera();
 
 	// Reload *********************************************************************************************************************************
 

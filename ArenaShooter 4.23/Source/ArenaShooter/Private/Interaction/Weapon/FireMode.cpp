@@ -451,7 +451,7 @@ void UFireMode::ApplyPointDamage(AActor* DamagedActor, float DamageToCause, USke
 /*
 *
 */
-void UFireMode::Fire(FHitResult HitResult, FTransform ProjectileTransform, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
+void UFireMode::Fire(FHitResult HitResult, FVector CameraRotationXVector, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
 {
 	// Sanity check
 	if (_WeaponParentAttached == NULL) { return; }
@@ -480,7 +480,7 @@ void UFireMode::Fire(FHitResult HitResult, FTransform ProjectileTransform, USkel
 					{
 						// Fire projectile (per spread)
 						for (int i = 0; i < _iShotsFiredPerSpread; i++)
-						{ FireProjectile(HitResult, ProjectileTransform, SkCharWepMeshFirstP, SkCharWepMeshThirdP); }
+						{ FireProjectile(HitResult, CameraRotationXVector, SkCharWepMeshFirstP, SkCharWepMeshThirdP); }
 					}
 				}
 
@@ -492,7 +492,7 @@ void UFireMode::Fire(FHitResult HitResult, FTransform ProjectileTransform, USkel
 					{
 						// Fire projectile (per spread)
 						for (int i = 0; i < _iShotsFiredPerSpread; i++)
-						{ FireProjectile(HitResult, ProjectileTransform, SkCharWepMeshFirstP, SkCharWepMeshThirdP); }
+						{ FireProjectile(HitResult, CameraRotationXVector, SkCharWepMeshFirstP, SkCharWepMeshThirdP); }
 					}
 					else
 					{
@@ -548,7 +548,7 @@ void UFireMode::Fire(FHitResult HitResult, FTransform ProjectileTransform, USkel
 				{
 					// Fire projectile
 					Server_Reliable_SetMisfired(false); // Just to be safe
-					FireProjectile(HitResult, ProjectileTransform, SkCharWepMeshFirstP, SkCharWepMeshThirdP);
+					FireProjectile(HitResult, CameraRotationXVector, SkCharWepMeshFirstP, SkCharWepMeshThirdP);
 				}
 
 				// Can potentially misfire the weapon
@@ -576,7 +576,7 @@ void UFireMode::Fire(FHitResult HitResult, FTransform ProjectileTransform, USkel
 					{
 						// Fire projectile
 						Server_Reliable_SetMisfired(false);
-						FireProjectile(HitResult, ProjectileTransform, SkCharWepMeshFirstP, SkCharWepMeshThirdP);
+						FireProjectile(HitResult, CameraRotationXVector, SkCharWepMeshFirstP, SkCharWepMeshThirdP);
 					}
 				}
 			} else
@@ -607,6 +607,9 @@ void UFireMode::Fire(FHitResult HitResult, FTransform ProjectileTransform, USkel
 
 	// Update spread
 	IncreaseSpread();
+
+	// Update recoil
+	OwningClient_Reliable_RecoilCamera();
 
 	// Start decreasing spread on the "repeating/automatic" styled firing types
 	if (_FiringType == E_FiringModeType::eFMT_FullAuto || _FiringType == E_FiringModeType::eFMT_Burst && !_bIsUpdatingSpread)
@@ -640,6 +643,11 @@ void UFireMode::Fire(FHitResult HitResult, FTransform ProjectileTransform, USkel
 
 		character->OwningClient_PlayPrimaryWeaponFPAnimation(1.0f, false, true, handByte, 0.0f, true, gunByte, 0.0f);
 	}
+
+	// Camera shake
+	bool aiming = character->IsAiming();
+	TSubclassOf<UCameraShake> cameraShakeClass = aiming ? _AimingRecoilCamShakeClass : _HipfireRecoilCamShakeClass;
+	character->OwningClient_PlayCameraShake(cameraShakeClass, 1.0f);
 
 	// Gamepad rumble(s)
 	APlayerController* playerController = Cast<APlayerController>(character->GetController());
@@ -724,21 +732,21 @@ void UFireMode::Fire(FHitResult HitResult, FTransform ProjectileTransform, USkel
 /*
 *
 */
-void UFireMode::FireProjectile(FHitResult hitResult, FTransform ProjectileTransform, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
+void UFireMode::FireProjectile(FHitResult hitResult, FVector CameraRotationXVec, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
 {
 	switch (_eProjectileType)
 	{
 	case E_ProjectileType::ePT_Physics:
 	{
 		// Spawn physics projectile
-		Server_Reliable_FireProjectilePhysics(Cast<APawn>(_WeaponParentAttached->GetOwner()), hitResult, ProjectileTransform, SkCharWepMeshFirstP, SkCharWepMeshThirdP);
+		Server_Reliable_FireProjectilePhysics(Cast<APawn>(_WeaponParentAttached->GetOwner()), hitResult, CameraRotationXVec, SkCharWepMeshFirstP, SkCharWepMeshThirdP);
 		break;
 	}
 
 	case E_ProjectileType::ePT_Raycast:
 	{
 		// Fire hitscan projectile
-		Server_Reliable_FireProjectileTrace(Cast<APawn>(_WeaponParentAttached->GetOwner()), ProjectileTransform, SkCharWepMeshFirstP, SkCharWepMeshThirdP);
+		Server_Reliable_FireProjectileTrace(Cast<APawn>(_WeaponParentAttached->GetOwner()), CameraRotationXVec, SkCharWepMeshFirstP, SkCharWepMeshThirdP);
 		break;
 	}
 	default: break;
@@ -747,20 +755,20 @@ void UFireMode::FireProjectile(FHitResult hitResult, FTransform ProjectileTransf
 
 ///////////////////////////////////////////////
 
-bool UFireMode::Server_Reliable_FireProjectileTrace_Validate(APawn* Pawn, FTransform ProjectileTransform, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
+bool UFireMode::Server_Reliable_FireProjectileTrace_Validate(APawn* Pawn, FVector CameraRotationXVec, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
 { return true; }
 
-void UFireMode::Server_Reliable_FireProjectileTrace_Implementation(APawn* Pawn, FTransform ProjectileTransform, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
+void UFireMode::Server_Reliable_FireProjectileTrace_Implementation(APawn* Pawn, FVector CameraRotationXVec, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
 {
 	FHitResult traceHitOut;
 	FVector muzzleLaunchPointFP = SkCharWepMeshFirstP->GetSocketLocation("MuzzleLaunchPoint");
 	FVector muzzleLaunchPointTP = SkCharWepMeshThirdP->GetSocketLocation("MuzzleLaunchPoint");
 	
 	// Get rotation X Vector
-	FVector cameraRotationXVec = ProjectileTransform.GetRotation().Vector();
+	///FVector cameraRotationXVec = ProjectileTransform.GetRotation().Vector();
 
 	// Get trace end
-	FVector traceEnd = cameraRotationXVec * 20000.0f;							
+	FVector traceEnd = CameraRotationXVec * 20000.0f;
 
 	// Fire projectile trace
 	ECollisionChannel collisionChannel = ECollisionChannel::ECC_GameTraceChannel15;
@@ -768,8 +776,8 @@ void UFireMode::Server_Reliable_FireProjectileTrace_Implementation(APawn* Pawn, 
 	queryParams.AddIgnoredActor(Pawn);
 	queryParams.bReturnPhysicalMaterial = true;
 	GetWorld()->LineTraceSingleByChannel(traceHitOut, muzzleLaunchPointFP, traceEnd, collisionChannel, queryParams);
-	///DrawDebugLine(GetWorld(), muzzleLaunchPointFP, traceEnd, FColor::Red, true, 1.0f);
-	///OwningClient_Unreliable_DebugFireTrace(muzzleLaunchPointFP, traceEnd);
+	DrawDebugLine(GetWorld(), muzzleLaunchPointFP, traceEnd, FColor::Blue, false, 1.0f);
+	OwningClient_Unreliable_DebugFireTrace(muzzleLaunchPointFP, traceEnd);
 	
 	// Passed max distance threshold?
 	if (traceHitOut.Distance <= _fMaxRangeThreshold)
@@ -883,21 +891,21 @@ bool UFireMode::OwningClient_Unreliable_DebugFireTrace_Validate(FVector StartPoi
 { return true; }
 
 void UFireMode::OwningClient_Unreliable_DebugFireTrace_Implementation(FVector StartPoint, FVector EndPoint)
-{ DrawDebugLine(GetWorld(), StartPoint, EndPoint, FColor::Red, true, 1.0f); }
+{ DrawDebugLine(GetWorld(), StartPoint, EndPoint, FColor::Blue, false, 1.0f); }
 
 ///////////////////////////////////////////////
 
-bool UFireMode::Server_Reliable_FireProjectilePhysics_Validate(APawn* Pawn, FHitResult hitResult, FTransform ProjectileTransform, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
+bool UFireMode::Server_Reliable_FireProjectilePhysics_Validate(APawn* Pawn, FHitResult hitResult, FVector CameraRotationXVec, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
 { return true; }
 
-void UFireMode::Server_Reliable_FireProjectilePhysics_Implementation(APawn* Pawn, FHitResult hitResult, FTransform ProjectileTransform, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
+void UFireMode::Server_Reliable_FireProjectilePhysics_Implementation(APawn* Pawn, FHitResult hitResult, FVector CameraRotationXVec, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
 {
 	if (_uProjectileClass == NULL) { return; }
 
 	// Spawn projectile class at muzzle launch point
 	FVector muzzleLocation = SkCharWepMeshFirstP->GetSocketLocation("MuzzleLaunchPoint");
-	FVector cameraRotationXVec = ProjectileTransform.GetRotation().Vector();
-	FRotator muzzleRotation = cameraRotationXVec.Rotation();
+	///FVector cameraRotationXVec = ProjectileTransform.GetRotation().Vector();
+	FRotator muzzleRotation = CameraRotationXVec.Rotation();
 	
 	FActorSpawnParameters spawnInfo;
 	spawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -991,6 +999,50 @@ void UFireMode::OwningClient_Unreliable_PlayFirstPersonMuzzle_Implementation(USk
 		FVector position = SkCharWepMeshFirstP->GetSocketLocation(_MuzzleSocketName);
 		FRotator rotation = SkCharWepMeshFirstP->GetSocketRotation(_MuzzleSocketName);
 		_pLocalMuzzleEffect = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), _pMuzzleEffectParticleSystem, position, rotation, FVector(1.0f, 1.0f, 1.0f));
+	}
+}
+
+// Recoil *********************************************************************************************************************************
+
+/*
+*
+*/
+bool UFireMode::OwningClient_Reliable_RecoilCamera_Validate()
+{ return true; }
+
+void UFireMode::OwningClient_Reliable_RecoilCamera_Implementation()
+{
+	// No random recoiling on either axis
+	if (!_bRandomPitchRecoil && !_bRandomYawRecoil)
+	{
+		ABaseCharacter* character = Cast<ABaseCharacter>(_WeaponParentAttached->GetPawnOwner());
+		FRotator currentRot = character->GetControlRotation();
+		FRotator newRot = FRotator::ZeroRotator;
+		FRotator targetRot = FRotator::ZeroRotator;
+		if (character->IsAiming())
+		{
+			targetRot = FRotator(currentRot.Roll, currentRot.Pitch + _fCameraAimingRecoilPitch, currentRot.Yaw + _fCameraAimingRecoilYaw);
+		}
+		
+		// Character isn't aiming
+		else
+		{
+			targetRot = FRotator(currentRot.Roll, currentRot.Pitch + _fCameraHipfireRecoilPitch, currentRot.Yaw + _fCameraHipfireRecoilYaw);
+		}
+		newRot = UKismetMathLibrary::RInterpTo(currentRot, newRot, GetWorld()->GetDeltaSeconds(), _fCurrentRecoilInterpolationSpeed);
+
+		// Add recoil to the controller
+		AController* controller = character->GetController();
+		if (controller == NULL) { return; }
+		APlayerController* playerController = Cast<APlayerController>(controller);
+		if (playerController != NULL)
+		{
+			playerController->SetControlRotation(newRot);
+		}
+	}
+	else
+	{
+
 	}
 }
 

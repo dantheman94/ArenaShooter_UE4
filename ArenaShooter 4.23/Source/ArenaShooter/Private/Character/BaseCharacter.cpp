@@ -1128,7 +1128,7 @@ void ABaseCharacter::OwningClient_Reliable_PrimaryWeaponCameraTrace_Implementati
 	params.bTraceComplex = false;
 	params.AddIgnoredActor(this);
 	GetWorld()->LineTraceSingleByChannel(hitResult, worldLocation, traceEnd, ECollisionChannel::ECC_Camera, params);
-	///DrawDebugLine(GetWorld(), worldLocation, traceEnd, FColor::Red, true, 1.0f);
+	DrawDebugLine(GetWorld(), worldLocation, traceEnd, FColor::Red, false, 1.0f);
 
 	Server_Reliable_PrimaryWeaponCameraTrace(hitResult);
 }
@@ -1148,14 +1148,16 @@ void ABaseCharacter::Server_Reliable_PrimaryWeaponCameraTrace_Implementation(FHi
 		FTransform trans = FTransform::Identity;
 		FVector charMuzzle = _FirstPerson_PrimaryWeapon_SkeletalMesh->GetSocketLocation("MuzzleLaunchPoint");
 		FVector v = FVector(ClientHitResult.ImpactPoint - charMuzzle);
-		UKismetMathLibrary::Vector_Normalize(v);
+		UKismetMathLibrary::Vector_Normalize(v, 0.0001);
 		FRotator rot = UKismetMathLibrary::MakeRotFromX(v);
 		FQuat quat = FQuat(rot);
 		trans.SetLocation(charMuzzle);
 		trans.SetRotation(quat);
 
+		FVector cameraForwardXVector = trans.GetRotation().Vector();
+
 		// Start primary weapon fire
-		_PrimaryWeapon->GetCurrentFireMode()->Fire(ClientHitResult, trans, _FirstPerson_PrimaryWeapon_SkeletalMesh, _ThirdPerson_PrimaryWeapon_SkeletalMesh);
+		_PrimaryWeapon->GetCurrentFireMode()->Fire(ClientHitResult, cameraForwardXVector, _FirstPerson_PrimaryWeapon_SkeletalMesh, _ThirdPerson_PrimaryWeapon_SkeletalMesh);
 	}
 
 	// !ClientHitResult.bBlockingHit
@@ -1165,14 +1167,16 @@ void ABaseCharacter::Server_Reliable_PrimaryWeaponCameraTrace_Implementation(FHi
 		FTransform trans = FTransform::Identity;
 		FVector charMuzzle = _FirstPerson_PrimaryWeapon_SkeletalMesh->GetSocketLocation("MuzzleLaunchPoint");
 		FVector v = FVector(ClientHitResult.TraceEnd - charMuzzle);
-		UKismetMathLibrary::Vector_Normalize(v);
+		UKismetMathLibrary::Vector_Normalize(v, 0.0001);
 		FRotator rot = UKismetMathLibrary::MakeRotFromX(v);
 		FQuat quat = FQuat(rot);
 		trans.SetLocation(charMuzzle);
 		trans.SetRotation(quat);
 
+		FVector cameraForwardXVector = trans.GetRotation().Vector();
+
 		// Start primary weapon fire
-		_PrimaryWeapon->GetCurrentFireMode()->Fire(ClientHitResult, trans, _FirstPerson_PrimaryWeapon_SkeletalMesh, _ThirdPerson_PrimaryWeapon_SkeletalMesh);
+		_PrimaryWeapon->GetCurrentFireMode()->Fire(ClientHitResult, cameraForwardXVector, _FirstPerson_PrimaryWeapon_SkeletalMesh, _ThirdPerson_PrimaryWeapon_SkeletalMesh);
 	}
 }
 
