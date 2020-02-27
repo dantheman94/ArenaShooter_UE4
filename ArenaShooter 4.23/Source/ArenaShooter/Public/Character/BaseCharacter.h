@@ -20,6 +20,14 @@ enum class E_AimDirection : uint8
 	ePT_ZoomOut UMETA(DisplayName = "ZoomOut")
 };
 
+UENUM(BlueprintType)
+enum class E_GrenadeTypes : uint8
+{
+	eGT_Frag UMETA(DisplayName = "Framentation"),
+	eGT_Emp UMETA(DisplayName = "EMP"),
+	eGT_Flame UMETA(DisplayName = "Incendiary")
+};
+
 // *** EVENT DISPATCHERS / DELEGATES
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FADSAnimDelegate, bool, AimingEnter);
@@ -151,6 +159,7 @@ protected:
 	// Startup ********************************************************************************************************************************
 
 	float _fDefaultAirControl = 0.0f;
+	float _fCapsuleHalfHeight = 0.0f;
 
 	// Current Frame **************************************************************************************************************************
 
@@ -500,6 +509,9 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Grenade")
 		int _iMaximumGrenadeCount = 2;
 
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Grenade")
+		E_GrenadeTypes _eCurrentGrenadeType = E_GrenadeTypes::eGT_Frag;
+
 	// Interaction ****************************************************************************************************************************
 
 	/*
@@ -540,6 +552,9 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Crouch", Replicated)
 		bool _bIsCrouching = false;
 
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Crouch")
+		bool _bLerpCrouchCamera = false;
+
 	// Movement | Jog *************************************************************************************************************************
 
 	/*
@@ -573,6 +588,12 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Jump", Replicated)
 		bool _bIsJumping = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
+		TSubclassOf<class UCameraShake> _CameraShakeJumpStart = NULL;
 
 	/*
 	*
@@ -724,6 +745,30 @@ protected:
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Vault")
+		float _fLedgeHeightTraceVerticalOffset= 200.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Vault")
+		float _fLedgeHeightTraceForwardOffset = 100.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Vault")
+		float _fLedgeHeightTraceLength = 300.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Vault")
+		float _fVaultTime = 0.35;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Vault")
 		FName _sPelvisSocket = TEXT("pelvisSocket");
 
 	/*
@@ -737,6 +782,36 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Vault")
 		float _fLedgeGrabThresholdMax = 50.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Vault")
+		float _fVaultHeightOffset = 100.0f;
+	
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Vault")
+		float _fVaultForwardOffset = 100.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Vault")
+		TEnumAsByte<ETraceTypeQuery> _eVaultTraceChannel = ETraceTypeQuery::TraceTypeQuery15;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault", Replicated)
+		bool _bIsVaulting = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault")
+		bool _bIsTryingToVault = false;
 
 	/*
 	*
@@ -767,6 +842,12 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault")
 		FVector _vWallHeightLocation = FVector::ZeroVector;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault")
+		int32 _NextUUID = 0;
 
 private:
 
@@ -1430,6 +1511,14 @@ public:
 	UFUNCTION(BlueprintPure)
 		int GetIncendiaryGrenadeCount() { return _iIncendiaryGrenadeCount; }
 
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		E_GrenadeTypes GetCurrentGrenadeType() { return _eCurrentGrenadeType; }
+
 	// Interaction ****************************************************************************************************************************
 
 	/*
@@ -1528,6 +1617,14 @@ public:
 	UFUNCTION()
 		virtual void MoveRight(float Value);
 
+	///////////////////////////////////////////////
+
+	UFUNCTION(Server, Unreliable, WithValidation)
+		void Server_SetMovementMode(EMovementMode MovementMode);
+
+	UFUNCTION(NetMulticast, Unreliable, WithValidation)
+		void Multicast_SetMovementMode(EMovementMode MovementMode);
+
 	// Movement | Crouch **********************************************************************************************************************
 
 	/*
@@ -1551,6 +1648,14 @@ public:
 	*/
 	UFUNCTION()
 		void ExitCrouch();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_SetIsCrouching(bool IsCrouching);
 
 	///////////////////////////////////////////////
 
@@ -1663,28 +1768,88 @@ public:
 
 	// Movement | Vault ***********************************************************************************************************************
 
+	/*
+	*
+	*/
 	UFUNCTION()
 		void InputVault();
 
 	///////////////////////////////////////////////
 
+	/*
+	*
+	*/
 	UFUNCTION()
-		void LedgeForwardTrace();
+		FHitResult LedgeForwardTrace();
 
 	///////////////////////////////////////////////
 
+	/*
+	*
+	*/
 	UFUNCTION()
-		void LedgeHeightTrace();
+		FHitResult LedgeHeightTrace();
 
 	///////////////////////////////////////////////
 
+	/*
+	*
+	*/
 	UFUNCTION()
 		bool GetHipToLedge();
 
 	///////////////////////////////////////////////
 
+	/*
+	*
+	*/
 	UFUNCTION()
-		void GrabLedge();
+		FVector GetMoveToLocation(float HeightOffset, float ForwardOffset);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void GrabLedge(FVector MoveLocation);
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_GrabLedge(FVector MoveLocation);
+
+	UFUNCTION(NetMulticast, Reliable, WithValidation)
+		void Multicast_Reliable_GrabLedge(FVector MoveLocation);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void ClimbLedge();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_SetIsVaulting(bool Vaulting);
+	
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		bool IsTryingToVault() { return _bIsTryingToVault; }
+
+	/*
+	*	Doing ++ after the variable means add one to it but returns the value before the addition, 
+	*	where as if we did it before it would return the value after the addition.
+	*/
+	UFUNCTION()
+		int32 GetNextUUID() { return _NextUUID++; }
 
 	// TEMPORARILY PLACED HERE FOR EASE OF USE -> TO BE MOVED INTO A SEPARATE CLASS LATER
 	const FString EnumToString(const TCHAR* Enum, int32 EnumValue)

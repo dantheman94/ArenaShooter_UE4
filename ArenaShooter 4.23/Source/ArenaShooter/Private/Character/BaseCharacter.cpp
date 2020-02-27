@@ -203,6 +203,7 @@ ABaseCharacter::ABaseCharacter()
 
 	// Get default variable values
 	_fCameraRotationLagSpeed = _FirstPerson_SpringArm->CameraRotationLagSpeed;
+	_fCapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 }
 
 ///////////////////////////////////////////////
@@ -220,6 +221,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ABaseCharacter, _bIsReloadingSecondaryWeapon);
 	DOREPLIFETIME(ABaseCharacter, _bIsSprinting);
 	DOREPLIFETIME(ABaseCharacter, _bIsTogglingWeapons);
+	DOREPLIFETIME(ABaseCharacter, _bIsVaulting);
 	DOREPLIFETIME(ABaseCharacter, _fForwardInputScale);
 	DOREPLIFETIME(ABaseCharacter, _fRightInputScale);
 	DOREPLIFETIME(ABaseCharacter, _iFragmentationGrenadeCount);
@@ -1743,6 +1745,24 @@ void ABaseCharacter::MoveRight(float Value)
 
 ///////////////////////////////////////////////
 
+bool ABaseCharacter::Server_SetMovementMode_Validate(EMovementMode MovementMode)
+{ return true; }
+
+void ABaseCharacter::Server_SetMovementMode_Implementation(EMovementMode MovementMode)
+{
+	Multicast_SetMovementMode(MovementMode);
+}
+
+bool ABaseCharacter::Multicast_SetMovementMode_Validate(EMovementMode MovementMode)
+{ return true; }
+
+void ABaseCharacter::Multicast_SetMovementMode_Implementation(EMovementMode MovementMode)
+{
+	GetCharacterMovement()->SetMovementMode(MovementMode);
+}
+
+///////////////////////////////////////////////
+
 bool ABaseCharacter::Server_Reliable_SetMovingSpeed_Validate(float Speed)
 { return GetCharacterMovement() != NULL; }
 
@@ -1761,28 +1781,81 @@ void ABaseCharacter::Multicast_Reliable_SetMovingSpeed_Implementation(float Spee
 
 void ABaseCharacter::CrouchToggle(bool Crouch)
 {
+	// Crouch enter
+	if (Crouch)
+	{
+		// When initiating a crouch from a sprint state
+		if (_bIsSprinting)
+		{
 
+		}
+
+		// _bIsSprinting == FALSE
+		else
+		{ EnterCrouch(); }
+	}
+
+	// Crouch exit
+	else
+	{ ExitCrouch(); }
 }
 
 ///////////////////////////////////////////////
 
 void ABaseCharacter::EnterCrouch()
 {
+	// Cannot crouch when airborne
+	if (!GetCharacterMovement()->IsMovingOnGround()) { return; }
 
+	// Lerp camera transform?
+	if (_PrimaryWeapon != NULL)
+	{
+		if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled())
+		{ _bLerpCrouchCamera = !IsAiming(); } else
+		{ _bLerpCrouchCamera = true; }
+	}
+
+	// _PrimaryWeapon == NULL
+	else
+	{ _bLerpCrouchCamera = true; }
+
+	// Set _bIsCrouching = TRUE
+	if (Role == ROLE_Authority)
+	{ _bIsCrouching = true; } else
+	{ Server_Reliable_SetIsCrouching(true); }
 }
 
 ///////////////////////////////////////////////
 
 void ABaseCharacter::ExitCrouch()
 {
+	// Can only stop crouching if we we're previously crouching TRUE????
+	if (_bIsCrouching)
+	{
+		// Set _bIsCrouching = FALSE
+		if (Role == ROLE_Authority)
+		{ _bIsCrouching = false; } else
+		{ Server_Reliable_SetIsCrouching(false); }
+	}
+}
 
+///////////////////////////////////////////////
+
+bool ABaseCharacter::Server_Reliable_SetIsCrouching_Validate(bool IsCrouching)
+{ return true; }
+
+void ABaseCharacter::Server_Reliable_SetIsCrouching_Implementation(bool IsCrouching)
+{
+	_bIsCrouching = IsCrouching;
 }
 
 // Movement | Jump ************************************************************************************************************************
 
 void ABaseCharacter::InputJump()
 {
-	if (_bCanJump)
+	InputVault();
+
+	if (_bCanJump && !_bIsTryingToVault)
 	{
 		// Sanity check
 		if (GetCharacterMovement() == NULL) { return; } else
@@ -1793,8 +1866,16 @@ void ABaseCharacter::InputJump()
 				// Uncrouch then jump
 				if (_bIsCrouching) { ExitCrouch(); } else
 				{
-					Server_Reliable_SetJumping(true);
+					// Set _bIsJumping = TRUE
+					if (Role == ROLE_Authority)
+					{ _bIsJumping = true; } else
+					{ Server_Reliable_SetJumping(true); }
+
+					// Action jump
 					Jump();
+
+					// Play feedback(s) [Camera shakes / Gamepad Rumbles]
+					OwningClient_PlayCameraShake(_CameraShakeJumpStart, 1.0f);
 					OwningClient_GamepadRumble(_fJumpGamepadRumbleIntensity, _fJumpGamepadRumbleDuration,
 						_fJumpGamepadRumbleAffectsLeftLarge, _fJumpGamepadRumbleAffectsLeftSmall,
 						_fJumpGamepadRumbleAffectsRightLarge, _fJumpGamepadRumbleAffectsRightSmall);
@@ -1866,13 +1947,50 @@ UStamina* ABaseCharacter::GetStaminaComponentByChannel(int Channel)
 */
 void ABaseCharacter::InputVault()
 {
-	LedgeForwardTrace();
-	LedgeHeightTrace();
+	// Reset
+	_vWallHeightLocation = FVector::ZeroVector;
+	_vWallImpactPoint = FVector::ZeroVector;
+	_vWallNormal = FVector::ZeroVector;
+	_vWallTraceEnd = FVector::ZeroVector;
+	_vWallTraceStart = FVector::ZeroVector;
+
+	// Forward trace
+	FHitResult forwardHit = LedgeForwardTrace();
+	_vWallImpactPoint = forwardHit.ImpactPoint;
+	_vWallNormal = forwardHit.ImpactNormal;
+	_vWallTraceStart = forwardHit.TraceStart;
+	_vWallTraceEnd = forwardHit.TraceEnd;
+
+	// Height trace
+	FHitResult heightHit = LedgeHeightTrace();
+	_vWallHeightLocation = heightHit.ImpactPoint;
+
+	// Grab ledge check
 	if (UKismetMathLibrary::NotEqual_VectorVector(_vWallHeightLocation, FVector(0.0f, 0.0f, 0.0f), 10.0f))
 	{
-		if (GetHipToLedge())
+		// Distance check
+		_bIsTryingToVault = GetHipToLedge();
+		if (_bIsTryingToVault)
 		{
-			GrabLedge();
+			// Cancel any actions
+			_bPrimaryReloadCancelled = true;
+			_bSecondaryReloadCancelled = true;
+
+			// Play animation FP
+			uint8 byteHandAnim = (uint8)E_HandAnimation::eHA_Equip;
+			uint8 byteGunAnim = (uint8)0;
+			OwningClient_PlayPrimaryWeaponFPAnimation(1.0f, false, true, byteHandAnim, 0.f, false, byteGunAnim, 0.0f);
+
+			// Grab ledge (on ALL clients)
+			FVector moveLocation = GetMoveToLocation(_fVaultHeightOffset, _fVaultForwardOffset);
+			if (Role == ROLE_Authority) { Multicast_Reliable_GrabLedge(moveLocation); }
+			else { Server_Reliable_GrabLedge(moveLocation); }
+
+			// Set IsCliming/Vaulting
+			if (Role == ROLE_Authority)
+			{ _bIsVaulting = true; } 
+			else
+			{ Server_Reliable_SetIsVaulting(true); }
 		}
 	}
 }
@@ -1882,7 +2000,7 @@ void ABaseCharacter::InputVault()
 /*
 *
 */
-void ABaseCharacter::LedgeForwardTrace()
+FHitResult ABaseCharacter::LedgeForwardTrace()
 {
 	// Get trace vectors
 	FVector traceStart = GetActorLocation();
@@ -1893,18 +2011,12 @@ void ABaseCharacter::LedgeForwardTrace()
 
 	// Fire sphere trace
 	FHitResult hitResult;
-	ETraceTypeQuery traceChannel = ETraceTypeQuery::TraceTypeQuery15;
 	bool traceComplex = false;
 	TArray<AActor*> ignoreList;
 	ignoreList.Add(this);
-	UKismetSystemLibrary::SphereTraceSingle(GetWorld(), traceStart, traceEnd, _fLedgeForwardTraceRadius, traceChannel, traceComplex, ignoreList, EDrawDebugTrace::ForOneFrame, hitResult, true);
+	UKismetSystemLibrary::SphereTraceSingle(GetWorld(), traceStart, traceEnd, _fLedgeForwardTraceRadius, _eVaultTraceChannel, traceComplex, ignoreList, EDrawDebugTrace::None, hitResult, true);
 
-	// Set global variables for vault
-	_vWallImpactPoint = hitResult.ImpactPoint;
-	_vWallNormal = hitResult.ImpactNormal;
-	_vWallTraceStart = hitResult.TraceStart;
-	_vWallTraceEnd = hitResult.TraceEnd;
-
+	return hitResult;
 }
 
 ///////////////////////////////////////////////
@@ -1912,27 +2024,24 @@ void ABaseCharacter::LedgeForwardTrace()
 /*
 *
 */
-void ABaseCharacter::LedgeHeightTrace()
+FHitResult ABaseCharacter::LedgeHeightTrace()
 {
 	// Get trace vectors
-	FVector traceStart = FVector(GetActorLocation().X, GetActorLocation().Y, GetActorLocation().Z + 200.0f);
+	FVector traceStart = FVector(GetActorLocation().X, GetActorLocation().Y, GetActorLocation().Z + _fLedgeHeightTraceVerticalOffset);
 	FVector traceEnd = traceStart;
 	FVector forwardVec = UKismetMathLibrary::GetForwardVector(GetActorRotation());
-	FVector additive = forwardVec * 70.0f;
+	FVector additive = forwardVec * _fLedgeHeightTraceForwardOffset;
 	traceStart += additive;
-	traceEnd = FVector(traceStart.X, traceStart.Y, traceStart.Z - 300.0f);
+	traceEnd = FVector(traceStart.X, traceStart.Y, traceStart.Z - _fLedgeHeightTraceLength);
 
 	// Fire sphere trace
 	FHitResult hitResult;
-	ETraceTypeQuery traceChannel = ETraceTypeQuery::TraceTypeQuery15;
 	bool traceComplex = false;
 	TArray<AActor*> ignoreList;
 	ignoreList.Add(this);
-	UKismetSystemLibrary::SphereTraceSingle(GetWorld(), traceStart, traceEnd, _fLedgeForwardTraceRadius, traceChannel, traceComplex, ignoreList, EDrawDebugTrace::ForOneFrame, hitResult, true);
+	UKismetSystemLibrary::SphereTraceSingle(GetWorld(), traceStart, traceEnd, _fLedgeForwardTraceRadius, _eVaultTraceChannel, traceComplex, ignoreList, EDrawDebugTrace::None, hitResult, true);
 
-	// Set global variables for vault
-	_vWallHeightLocation = hitResult.ImpactPoint;
-
+	return hitResult;
 }
 
 ///////////////////////////////////////////////
@@ -1957,14 +2066,77 @@ bool ABaseCharacter::GetHipToLedge()
 /*
 *
 */
-void ABaseCharacter::GrabLedge()
+void ABaseCharacter::GrabLedge(FVector MoveLocation)
 {
-	// Cancel any actions
-	_bPrimaryReloadCancelled = true;
-	_bSecondaryReloadCancelled = true;
+	// Disable movement mode
+	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
+	GetCharacterMovement()->DisableMovement();
 
-	// Play animation FP
-	uint8 byteHandAnim = (uint8)E_HandAnimation::eHA_Equip;
-	uint8 byteGunAnim = (uint8)0;
-	OwningClient_PlayPrimaryWeaponFPAnimation(1.0f, false, true, byteHandAnim, 0.f, false, byteGunAnim, 0.0f);
+	FLatentActionInfo info = FLatentActionInfo();
+	info.CallbackTarget = this;
+	info.ExecutionFunction = FName("ClimbLedge");
+	info.Linkage = 0;
+	info.UUID = GetNextUUID();
+	UKismetSystemLibrary::MoveComponentTo(GetCapsuleComponent(), MoveLocation, GetActorRotation(), false, false, _fVaultTime, false, EMoveComponentAction::Move, info);
+}
+
+bool ABaseCharacter::Server_Reliable_GrabLedge_Validate(FVector MoveLocation)
+{ return true; }
+
+void ABaseCharacter::Server_Reliable_GrabLedge_Implementation(FVector MoveLocation)
+{
+	Multicast_Reliable_GrabLedge(MoveLocation);
+}
+
+bool ABaseCharacter::Multicast_Reliable_GrabLedge_Validate(FVector MoveLocation)
+{ return true; }
+
+void ABaseCharacter::Multicast_Reliable_GrabLedge_Implementation(FVector MoveLocation)
+{
+	GrabLedge(MoveLocation);
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseCharacter::ClimbLedge()
+{
+	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
+
+	// No longer climbing/vaulting
+	if (Role == ROLE_Authority)
+	{ _bIsVaulting = false; }
+	else
+	{ Server_Reliable_SetIsVaulting(false); }
+
+	_bIsTryingToVault = false;
+}
+
+///////////////////////////////////////////////
+
+bool ABaseCharacter::Server_Reliable_SetIsVaulting_Validate(bool Vaulting)
+{ return true; }
+
+void ABaseCharacter::Server_Reliable_SetIsVaulting_Implementation(bool Vaulting)
+{
+	_bIsVaulting = Vaulting;
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+FVector ABaseCharacter::GetMoveToLocation(float HeightOffset, float ForwardOffset)
+{
+	FVector wallNormal = _vWallNormal * FVector(34.0f, 34.0f, 0.0f);
+	FVector height = FVector(wallNormal.X + _vWallImpactPoint.X, wallNormal.Y + _vWallImpactPoint.Y, _vWallHeightLocation.Z + HeightOffset);
+	FVector forward = _vWallTraceEnd - _vWallTraceStart;
+	forward.Normalize(1.0f);
+	forward *= ForwardOffset;
+	///DrawDebugLine(GetWorld(), _vWallTraceStart, _vWallTraceStart + forward, FColor::Blue, true, 10.0f);
+
+	return height + forward;
 }
