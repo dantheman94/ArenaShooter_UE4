@@ -7,6 +7,7 @@
 #include "BaseHUD.h"
 #include "BasePlayerController.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/TimelineComponent.h"
 #include "Crosshair.h"
 #include "DrawDebugHelpers.h"
 #include "ImpactEffectManager.h"
@@ -80,9 +81,10 @@ void UFireMode::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(UFireMode, _bCanTryToVentCooldown);
+	DOREPLIFETIME(UFireMode, _bIsFiring);
 	DOREPLIFETIME(UFireMode, _bIsMagazineInWeapon);
 	DOREPLIFETIME(UFireMode, _bIsRoundInChamber);
-	DOREPLIFETIME(UFireMode, _bReloadComplete);
+	DOREPLIFETIME(UFireMode, _bReloadComplete); 
 	DOREPLIFETIME(UFireMode, _eReloadStage);
 	DOREPLIFETIME(UFireMode, _fHeatDecreaseMultiplier);
 	DOREPLIFETIME(UFireMode, _fProjectileSpread);
@@ -191,6 +193,9 @@ void UFireMode::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompon
 
 	// Reload complete?
 	if (_bReloadComplete) { Server_Reliable_SetReloadComplete(false); }
+
+	// Tick recoil interpolation
+	if (_bUpdateRecoilInterpolation) { RecoilInterpolationUpdate(); }
 }
 
 ///////////////////////////////////////////////
@@ -234,6 +239,30 @@ bool UFireMode::Server_Reliable_SetWeaponAttached_Validate(AWeapon* Weapon)
 
 void UFireMode::Server_Reliable_SetWeaponAttached_Implementation(AWeapon* Weapon)
 { _WeaponParentAttached = Weapon; }
+
+///////////////////////////////////////////////
+
+void UFireMode::SetIsFiring(bool Firing)
+{
+	// Started firing
+	if (!_bIsFiring && Firing == true) { OwningClient_Reliable_StartRecoilInterpolation(); }
+
+	// Stopped firing
+	if (_bIsFiring && Firing == false) { OwningClient_Reliable_StopRecoilInterpolation(); }
+
+	// Set _bIsFiring to the new value (network replicated)
+	if (_WeaponParentAttached->Role == ROLE_Authority)
+	{ _bIsFiring = Firing; } else
+	{ Server_Reliable_SetIsFiring(Firing); }
+}
+
+bool UFireMode::Server_Reliable_SetIsFiring_Validate(bool Firing)
+{ return true; }
+
+void UFireMode::Server_Reliable_SetIsFiring_Implementation(bool Firing)
+{
+	SetIsFiring(Firing);
+}
 
 // Animation ******************************************************************************************************************************
 
@@ -1012,13 +1041,15 @@ bool UFireMode::OwningClient_Reliable_RecoilCamera_Validate()
 
 void UFireMode::OwningClient_Reliable_RecoilCamera_Implementation()
 {
+	if (_fFiringTime < 1.0f) { return; }
+
 	// No random recoiling on either axis
 	if (!_bRandomPitchRecoil && !_bRandomYawRecoil)
 	{
 		ABaseCharacter* character = Cast<ABaseCharacter>(_WeaponParentAttached->GetPawnOwner());
 		FRotator currentRot = character->GetControlRotation();
-		FRotator newRot = FRotator::ZeroRotator;
-		FRotator targetRot = FRotator::ZeroRotator;
+		FRotator newRot = currentRot;
+		FRotator targetRot = currentRot;
 		if (character->IsAiming())
 		{
 			targetRot = FRotator(currentRot.Roll, currentRot.Pitch + _fCameraAimingRecoilPitch, currentRot.Yaw + _fCameraAimingRecoilYaw);
@@ -1029,7 +1060,11 @@ void UFireMode::OwningClient_Reliable_RecoilCamera_Implementation()
 		{
 			targetRot = FRotator(currentRot.Roll, currentRot.Pitch + _fCameraHipfireRecoilPitch, currentRot.Yaw + _fCameraHipfireRecoilYaw);
 		}
-		newRot = UKismetMathLibrary::RInterpTo(currentRot, newRot, GetWorld()->GetDeltaSeconds(), _fCurrentRecoilInterpolationSpeed);
+		newRot = UKismetMathLibrary::RInterpTo_Constant(currentRot, targetRot, GetWorld()->GetDeltaSeconds(), _fCurrentRecoilInterpolationSpeed);
+
+		GEngine->AddOnScreenDebugMessage(6, 5.0f, FColor::Purple, TEXT("Roll: ") + FString::SanitizeFloat(newRot.Roll));
+		GEngine->AddOnScreenDebugMessage(7, 5.0f, FColor::Purple, TEXT("Pitch: ") + FString::SanitizeFloat(newRot.Pitch));
+		GEngine->AddOnScreenDebugMessage(8, 5.0f, FColor::Purple, TEXT("Yaw: ") + FString::SanitizeFloat(newRot.Yaw));
 
 		// Add recoil to the controller
 		AController* controller = character->GetController();
@@ -1044,6 +1079,61 @@ void UFireMode::OwningClient_Reliable_RecoilCamera_Implementation()
 	{
 
 	}
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+bool UFireMode::OwningClient_Reliable_StartRecoilInterpolation_Validate()
+{ return true; }
+
+void UFireMode::OwningClient_Reliable_StartRecoilInterpolation_Implementation()
+{
+	// Restart from zero (safety measure)
+	_fFiringTime = 1.0f;
+	_bUpdateRecoilInterpolation = true;
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+bool UFireMode::OwningClient_Reliable_StopRecoilInterpolation_Validate()
+{ return true; }
+
+void UFireMode::OwningClient_Reliable_StopRecoilInterpolation_Implementation()
+{
+	// Firing time is finished - zero out
+	_fFiringTime = 0.0f;
+	_bUpdateRecoilInterpolation = false;
+}
+
+///////////////////////////////////////////////
+
+void UFireMode::RecoilInterpolationUpdate()
+{
+	// Add to firing time
+	_fFiringTime += GetWorld()->GetDeltaSeconds();
+
+	float lerp = 0.0f;
+	float alpha = UKismetMathLibrary::FClamp(_fFiringTime / _fRecoilInterpolationMinMaxTransitionSpeed, 0.0f, 1.0f);
+
+	// Aiming
+	if (_WeaponParentAttached->GetIsAiming())
+	{ lerp = UKismetMathLibrary::Lerp(_fRecoilInterpolationSpeedAimingMinimum, _fRecoilInterpolationSpeedAimingMaximum, alpha); }
+
+	// Hipfire
+	else
+	{ lerp = UKismetMathLibrary::Lerp(_fRecoilInterpolationSpeedHipfireMinimum, _fRecoilInterpolationSpeedHipfireMaximum, alpha); }
+
+	_fCurrentRecoilInterpolationSpeed = lerp;	
+
+	///GEngine->AddOnScreenDebugMessage(6, 5.0f, FColor::Purple, TEXT("Firing Time Clamped: ") + FString::SanitizeFloat(alpha));
+	///GEngine->AddOnScreenDebugMessage(5, 5.0f, FColor::Purple, TEXT("Firing Time Unclamped: ") + FString::SanitizeFloat(_fFiringTime / _fRecoilInterpolationMinMaxTransitionSpeed));
+	///GEngine->AddOnScreenDebugMessage(7, 5.0f, FColor::Purple, TEXT("Current Recoil Interpolation Speed: ") + FString::SanitizeFloat(lerp));
 }
 
 // Reload *********************************************************************************************************************************

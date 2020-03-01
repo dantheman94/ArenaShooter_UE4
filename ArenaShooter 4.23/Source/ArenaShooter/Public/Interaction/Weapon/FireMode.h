@@ -74,6 +74,7 @@ enum class E_ReloadStage : uint8
 
 class UAmmo;
 class UCrosshair;
+class UTimelineComponent;
 class UUserWidget;
 class AProjectile;
 
@@ -212,7 +213,7 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current")
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current", Replicated)
 		float _fFiringTime = 0.0f;
 
 	/*
@@ -248,7 +249,7 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current")
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current", Replicated)
 		bool _bIsFiring = false;
 
 	/*
@@ -1000,6 +1001,11 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current")
 		float _fCurrentRecoilInterpolationSpeed = 0.0f;
 
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current")
+		bool _bUpdateRecoilInterpolation = false;
 
 	/*
 	*
@@ -1290,7 +1296,13 @@ public:
 	*
 	*/
 	UFUNCTION(BlueprintSetter)
-		void SetIsFiring(bool Firing) { _bIsFiring = Firing; }
+		void SetIsFiring(bool Firing);
+	
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_SetIsFiring(bool Firing);
 
 	///////////////////////////////////////////////
 
@@ -1562,6 +1574,30 @@ public:
 	*/
 	UFUNCTION(Client, Reliable, WithValidation)
 		void OwningClient_Reliable_RecoilCamera();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Client, Reliable, WithValidation)
+		void OwningClient_Reliable_StartRecoilInterpolation();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Client, Reliable, WithValidation)
+		void OwningClient_Reliable_StopRecoilInterpolation();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void RecoilInterpolationUpdate();
 
 	// Reload *********************************************************************************************************************************
 

@@ -317,7 +317,7 @@ void ABaseCharacter::Tick(float DeltaTime)
 	
 	// Trying to fire primary
 	if (_bIsTryingToFirePrimary) { InitFirePrimaryWeapon(); }
-	else
+	else // Stopped trying to fire primary
 	{
 		if (_PrimaryWeapon == NULL) { return; }
 		if (_PrimaryWeapon->GetFireModes().Num() == 0) { return; }
