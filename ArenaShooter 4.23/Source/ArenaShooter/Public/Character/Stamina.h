@@ -115,19 +115,19 @@ public:
 	/*
 	*
 	*/
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 		void StartRechargingStamina();
 
 	/*
 	*
 	*/
-	UFUNCTION()
-		void StartDrainingStamina();
+	UFUNCTION(BlueprintCallable)
+		void StartDrainingStamina(float DrainRate);
 
 	/*
 	*
 	*/
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 		void StopDrainingStamina();
 
 	/*
@@ -139,7 +139,7 @@ public:
 	/*
 	*
 	*/
-	UFUNCTION()
+	UFUNCTION(BlueprintPure)
 		float GetStamina() { return _fStamina; }
 
 	/*
@@ -151,7 +151,7 @@ public:
 	/*
 	*
 	*/
-	UFUNCTION()
+	UFUNCTION(BlueprintPure)
 		bool IsFullyRecharged() { return _fStamina == _MAX_STAMINA; }
 
 	/*

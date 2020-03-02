@@ -108,8 +108,10 @@ void UStamina::StartRechargingStamina()
 /*
 *
 */
-void UStamina::StartDrainingStamina()
+void UStamina::StartDrainingStamina(float DrainRate = 0.0f)
 {
+	if (DrainRate != 0.0f) { _fDrainRate = DrainRate; }
+
 	_eStaminaState = E_StaminaStateType::ePT_Subtractive;
 	_bShouldBeTicking = true;
 	SetComponentTickEnabled(_bShouldBeTicking);
