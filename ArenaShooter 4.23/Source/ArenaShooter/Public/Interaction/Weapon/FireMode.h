@@ -1530,11 +1530,17 @@ public:
 
 	///////////////////////////////////////////////
 
+	/*
+	*
+	*/
 	UFUNCTION(Client, Unreliable, WithValidation)
 		void OwningClient_Unreliable_DebugFireTrace(FVector StartPoint, FVector EndPoint);
 
 	///////////////////////////////////////////////
 
+	/*
+	*
+	*/
 	UFUNCTION(BlueprintPure)
 		E_FiringTriggerType GetFiringTriggerType() { return _FiringTrigger; }
 	
@@ -1554,16 +1560,25 @@ public:
 
 	// Impact Effects *************************************************************************************************************************
 
+	/*
+	*
+	*/
 	UFUNCTION(BlueprintPure)
 		AImpactEffectManager* GetImpactEffectManager() { return _ImpactEffectManager; }
 
 	// Muzzle Effect **************************************************************************************************************************
 
+	/*
+	*
+	*/
 	UFUNCTION(NetMulticast, Unreliable, WithValidation)
 		void Multicast_Unreliable_PlayThirdPersonMuzzle(USkeletalMeshComponent* SkCharWepMeshThirdP);
 
 	///////////////////////////////////////////////
 
+	/*
+	*
+	*/
 	UFUNCTION(Client, Unreliable, WithValidation)
 		void OwningClient_Unreliable_PlayFirstPersonMuzzle(USkeletalMeshComponent* SkCharWepMeshFirstP);
 
@@ -1609,6 +1624,9 @@ public:
 
 	///////////////////////////////////////////////
 
+	/*
+	*
+	*/
 	UFUNCTION(BlueprintPure)
 		FTimerHandle GetReloadTimerHandle()	{ return _fReloadStageHandle; }
 

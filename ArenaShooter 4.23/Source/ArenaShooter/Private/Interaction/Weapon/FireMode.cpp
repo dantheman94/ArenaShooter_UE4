@@ -234,6 +234,9 @@ void UFireMode::Server_Reliable_SetMagazineInWeapon_Implementation(bool MagIn)
 
 ///////////////////////////////////////////////
 
+/*
+*
+*/
 bool UFireMode::Server_Reliable_SetWeaponAttached_Validate(AWeapon* Weapon)
 { return true; }
 
@@ -242,6 +245,9 @@ void UFireMode::Server_Reliable_SetWeaponAttached_Implementation(AWeapon* Weapon
 
 ///////////////////////////////////////////////
 
+/*
+*
+*/
 void UFireMode::SetIsFiring(bool Firing)
 {
 	// Started firing
@@ -784,6 +790,9 @@ void UFireMode::FireProjectile(FHitResult hitResult, FVector CameraRotationXVec,
 
 ///////////////////////////////////////////////
 
+/*
+*
+*/
 bool UFireMode::Server_Reliable_FireProjectileTrace_Validate(APawn* Pawn, FHitResult hitResult, FVector CameraRotationXVec, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
 { return true; }
 
@@ -920,6 +929,9 @@ void UFireMode::Server_Reliable_FireProjectileTrace_Implementation(APawn* Pawn, 
 
 ///////////////////////////////////////////////
 
+/*
+*
+*/
 bool UFireMode::OwningClient_Unreliable_DebugFireTrace_Validate(FVector StartPoint, FVector EndPoint)
 { return true; }
 
@@ -928,6 +940,9 @@ void UFireMode::OwningClient_Unreliable_DebugFireTrace_Implementation(FVector St
 
 ///////////////////////////////////////////////
 
+/*
+*
+*/
 bool UFireMode::Server_Reliable_FireProjectilePhysics_Validate(APawn* Pawn, FHitResult hitResult, FVector CameraRotationXVec, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
 { return true; }
 
@@ -951,6 +966,9 @@ void UFireMode::Server_Reliable_FireProjectilePhysics_Implementation(APawn* Pawn
 
 ///////////////////////////////////////////////
 
+/*
+*
+*/
 bool UFireMode::OwningClient_SetFireDelayComplete_Validate(bool Complete)
 { return true; }
 
@@ -1223,6 +1241,9 @@ void UFireMode::Server_Reliable_ChamberRound_Implementation()
 
 ///////////////////////////////////////////////
 
+/*
+*
+*/
 bool UFireMode::Server_Reliable_SetReloadStage_Validate(E_ReloadStage ReloadState)
 { return true; }
 
@@ -1233,6 +1254,9 @@ void UFireMode::Server_Reliable_SetReloadStage_Implementation(E_ReloadStage Relo
 
 ///////////////////////////////////////////////
 
+/*
+*
+*/
 float UFireMode::GetReloadStartingTime()
 {
 	float time = 0.0f;
