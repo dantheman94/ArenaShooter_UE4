@@ -51,6 +51,24 @@ void ABaseHUD::Debug_DisplayHUD(bool Draw)
 	_bDisplayCrosshairSecondaryWeapon = _bDisplayHUD;
 }
 
+void ABaseHUD::SetDisplayHud(bool Display)
+{
+	// Set master
+	_bDisplayHUD = Display;
+
+	// Set individual HUD elements
+	_bDisplayHealthBars = _bDisplayHUD;
+	_bDisplayStaminabar = _bDisplayHUD;
+	_bDisplayStatsPrimaryWeapon = _bDisplayHUD;
+	_bDisplayStatsSecondaryWeapon = _bDisplayHUD;
+	_bDisplayStatsReserveWeapon = _bDisplayHUD;
+	_bDisplayGrenadeInventory = _bDisplayHUD;
+	_bDisplayVisorOverlay = _bDisplayHUD;
+	_bDisplayCrosshairPrimaryWeapon = _bDisplayHUD;
+	_bDisplayCrosshairSecondaryWeapon = _bDisplayHUD;
+
+}
+
 // Crosshair ******************************************************************************************************************************
 
 void ABaseHUD::TickDraw_PrimaryWeaponCrosshair()

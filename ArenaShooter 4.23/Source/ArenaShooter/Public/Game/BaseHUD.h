@@ -241,6 +241,9 @@ public:
 	UFUNCTION(exec)
 		void Debug_DisplayHUD(bool Draw);
 
+	UFUNCTION(BlueprintCallable)
+		void SetDisplayHud(bool Display);
+
 	// Crosshair ******************************************************************************************************************************
 
 	/*
