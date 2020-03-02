@@ -1128,7 +1128,7 @@ void ABaseCharacter::OwningClient_Reliable_PrimaryWeaponCameraTrace_Implementati
 	params.bTraceComplex = false;
 	params.AddIgnoredActor(this);
 	GetWorld()->LineTraceSingleByChannel(hitResult, worldLocation, traceEnd, ECollisionChannel::ECC_Camera, params);
-	DrawDebugLine(GetWorld(), worldLocation, traceEnd, FColor::Red, false, 1.0f);
+	///DrawDebugLine(GetWorld(), worldLocation, traceEnd, FColor::Red, false, 1.0f);
 
 	Server_Reliable_PrimaryWeaponCameraTrace(hitResult);
 }
