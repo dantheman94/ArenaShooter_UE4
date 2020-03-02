@@ -279,16 +279,19 @@ void ABaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// If we're taking damage, add to the boolean reset timer
-	if (_bIsTakingDamage && _bTakingDamageResetTimerPosition <= _fTakingDamageResetDelay)
-	{ _bTakingDamageResetTimerPosition += GetWorld()->GetDeltaSeconds(); } 
-	else
+	// Recharging shields
+	if (_bRechargeShields && _fShield < _MAX_SHIELD && Role == ROLE_Authority)
 	{
-		// Reset timer & taking damage boolean to false
-		_bTakingDamageResetTimerPosition = 0.0f;
-		_bIsTakingDamage = false;
-	}
+		_fShield += _fShieldRechargingRate * DeltaTime;
 
+		// Clamp to max
+		if (_fShield >= _MAX_SHIELD)
+		{
+			_fShield = _MAX_SHIELD;
+			_bRechargeShields = false;
+		}
+	}
+	
 	// Aim FOV lerping
 	if (_bIsAimLerping && _PrimaryWeapon != NULL)
 	{
@@ -570,9 +573,9 @@ void ABaseCharacter::OnAnyDamage(AActor* Actor, float Damage, const UDamageType*
 	if (Role == ROLE_Authority)
 	{
 		// Is taking damage
-		_bTakingDamageResetTimerPosition = 0.0f;
 		_bIsTakingDamage = true;
 		_fOnTakeDamage.Broadcast(Damage);
+		ResetShieldRecharge();
 
 		if (GetCurrentShield() > 0.0f)
 		{
@@ -695,6 +698,37 @@ bool ABaseCharacter::Server_Reliable_ResetShield_Validate()
 
 void ABaseCharacter::Server_Reliable_ResetShield_Implementation()
 { _fShield = _MAX_SHIELD; }
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseCharacter::ResetShieldRecharge()
+{
+	// Reset timer
+	GetWorld()->GetTimerManager().ClearTimer(_fShieldRechargeDelayHandle);
+	_bRechargeShields = false;
+
+	// Start timer
+	FTimerDelegate rechargeDelegate;
+	rechargeDelegate.BindUFunction(this, FName("StartRechargingShields"));
+	GetWorld()->GetTimerManager().SetTimer(_fShieldRechargeDelayHandle, rechargeDelegate, 1.0f, false, _fShieldRechargeDelay);
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseCharacter::StartRechargingShields()
+{
+	if (Role == ROLE_Authority) 
+	{
+		_bIsTakingDamage = false;
+		_bRechargeShields = true;
+	}
+}
 
 // Inventory | Starting *******************************************************************************************************************
 

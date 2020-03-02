@@ -252,7 +252,7 @@ protected:
 	*/
 	UPROPERTY(BlueprintAssignable)
 		FOnTakeDamage _fOnTakeDamage;
-	
+
 	// Health | Burn **************************************************************************************************************************
 
 	/*
@@ -278,12 +278,6 @@ protected:
 	// Health | Shield ************************************************************************************************************************
 
 	/*
-	*	Returns whether the character can recharge their shields or not (REPLICATED).
-	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Health | Flesh", Replicated)
-		bool _bCanRechargeShields = false;
-
-	/*
 	*	The minimum delay of time (in seconds) that must pass since the last frame that the character was inflicted with damage,
 	*	before the shields can begin recharging.
 	*/
@@ -301,6 +295,15 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Health | Shield", Replicated)
 		float _fShield = _MAX_SHIELD;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Health | Shield")
+		bool _bRechargeShields = false;
+
+	/*
+	*	A timer handle used for referencing the shield recharging delay.
+	*/
+	UPROPERTY()
+		FTimerHandle _fShieldRechargeDelayHandle;
 
 	// Inventory | Starting *******************************************************************************************************************
 
@@ -851,16 +854,6 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault")
 		int32 _NextUUID = 0;
 
-private:
-
-	// ****************************************************************************************************************************************
-	// ************************************ VARIABLES *****************************************************************************************
-	// ****************************************************************************************************************************************
-
-	// Health | *******************************************************************************************************************************
-
-	float _bTakingDamageResetTimerPosition = 0.0f;
-
 public:
 
 	// ****************************************************************************************************************************************
@@ -1187,6 +1180,30 @@ public:
 	*/
 	UFUNCTION(BlueprintPure)
 		float GetShieldRechargeDelayTime() { return _fShieldRechargeDelay; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void ResetShieldRecharge();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void StartRechargingShields();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		FTimerHandle GetShieldRechargeDelayTimerHandle() { return _fShieldRechargeDelayHandle;}
 
 	// Inventory | Starting *******************************************************************************************************************
 
