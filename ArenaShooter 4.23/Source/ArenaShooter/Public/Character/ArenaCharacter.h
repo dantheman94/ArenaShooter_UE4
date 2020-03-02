@@ -303,6 +303,12 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Hover")
 		bool _bHoverCancelled = false;
 
+	/*
+	*	A timer handle used for referencing the hovering.
+	*/
+	UPROPERTY()
+		FTimerHandle _fHoverHandle;
+
 	// Movement | Slide ***********************************************************************************************************************
 
 	/*
@@ -481,6 +487,18 @@ public:
 		void Multicast_Reliable_ChangeHoverState(bool IsHovering);
 
 	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_SetGravityScale(float Scale);
+
+	/*
+	*
+	*/
+	UFUNCTION(NetMulticast, Reliable, WithValidation)
+		void Multicast_Reliable_SetGravityScale(float Scale);
 
 	// Movement | Jump ************************************************************************************************************************
 

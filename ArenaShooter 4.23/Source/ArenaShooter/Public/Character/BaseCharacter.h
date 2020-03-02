@@ -166,6 +166,8 @@ protected:
 	bool _bIsPerformingGroundChecks = false;
 	float _fFallingVelocity = 0.0f;
 	float _fCameraRotationLagSpeed = 0.0f;
+	float _fBaseGravityScale = 0.0f;
+	float _fBaseAirControl = 0.0f;
 
 	// Animation ******************************************************************************************************************************
 

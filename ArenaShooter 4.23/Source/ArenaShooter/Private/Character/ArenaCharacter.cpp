@@ -25,9 +25,6 @@ AArenaCharacter::AArenaCharacter()
 	// Actor replicates
 	bReplicates = true;
 	bReplicateMovement = true;
-
-	// Get default vars 
-	_fDefaultAirControl = GetCharacterMovement()->AirControl;
 }
 
 ///////////////////////////////////////////////
@@ -127,12 +124,23 @@ void AArenaCharacter::OnGroundChecks()
 	if (GetCharacterMovement()->IsMovingOnGround()) 
 	{
 		// Reset jumping
-		Server_Reliable_SetJumping(false);
-		Server_Reliable_SetDoubleJumping(false);		
+		if (_bIsJumping)
+		{
+			if (Role == ROLE_Authority)
+			{ _bIsJumping = false; }
+			else
+			{ Server_Reliable_SetJumping(false); }
+		}
+		if (_bIsDoubleJumping)
+		{
+			if (Role == ROLE_Authority)
+			{ _bIsDoubleJumping = false; }
+			else
+			{ Server_Reliable_SetDoubleJumping(false); }
+		}
 		if (_bDoubleJumpEnabled) { _bCanDoubleJump = true; }
 
 		// Reset falling/hover
-		GetCharacterMovement()->AirControl = _fDefaultAirControl;
 		_bCanHover = true;
 		_bHoverCancelled = false;
 
@@ -534,14 +542,54 @@ void AArenaCharacter::DetermineFinalLaunchVelocity(FVector& LaunchVelocity, FVec
 */
 void AArenaCharacter::HoverEnter()
 {
+	// Possible to hover?
 	if (_bHoverEnabled && _bCanHover && !_bIsDuelWielding)
 	{
 		UCharacterMovementComponent* moveComp = GetCharacterMovement();
 		if (moveComp == NULL) { return; }
 
+		// Can only hover if we're currently in the air
 		if (moveComp->IsFalling())
 		{
+			// Stop jumping if we are
+			if (_bIsJumping)
+			{
+				if (Role == ROLE_Authority) 
+				{ _bIsJumping = false; }
+				else 
+				{ Server_Reliable_SetJumping(false); }
+			}
 
+			// Stop double jumping if we are
+			if (_bIsDoubleJumping)
+			{
+				if (Role == ROLE_Authority)
+				{ _bIsDoubleJumping = false; }
+				else
+				{ Server_Reliable_SetDoubleJumping(false); }
+			}		
+
+			// Start hovering
+			if (Role == ROLE_Authority)
+			{ 
+				_bIsHovering = true;
+				Multicast_Reliable_ChangeHoverState(true); 
+			}
+			else
+			{ 
+				Server_Reliable_SetHovering(true);
+				Server_Reliable_ChangeHoverState(true); 
+			}
+
+			// Cannot perform air control maneuverabilities
+			moveComp->AirControl = 0.0f;
+
+			_bCanHover = false;
+			_bHoverCancelled = false;
+
+			FTimerDelegate hoverDelegate;
+			hoverDelegate.BindUFunction(this, FName("HoverExit"));
+			GetWorld()->GetTimerManager().SetTimer(_fHoverHandle, hoverDelegate, 1.0f, false, _fHoverDuration);
 		}
 	}
 }
@@ -555,12 +603,31 @@ void AArenaCharacter::HoverExit()
 {
 	if (_bIsHovering)
 	{
-		// Stop hovering
-		Server_Reliable_SetHovering(false);
-		Server_Reliable_ChangeHoverState(false);
+		_bHoverCancelled = true;
 
 		// Landing on ground checks [ updates on Tick() ]
 		_bIsPerformingGroundChecks = true;
+
+		// Reset gravity back to default
+		if (Role == ROLE_Authority) 
+		{ Multicast_Reliable_SetGravityScale(_fBaseGravityScale); }
+		else
+		{ Server_Reliable_SetGravityScale(_fBaseGravityScale); }
+
+		// Stop hovering
+		if (Role == ROLE_Authority)
+		{ 
+			_bIsHovering = false;
+			Multicast_Reliable_ChangeHoverState(false); 
+		}
+		else
+		{ 
+			Server_Reliable_SetHovering(false);
+			Server_Reliable_ChangeHoverState(false); 
+		}
+
+		// Reset air control maneuverabilities
+		GetCharacterMovement()->AirControl = _fBaseAirControl;
 	}
 }
 
@@ -591,8 +658,9 @@ bool AArenaCharacter::Multicast_Reliable_ChangeHoverState_Validate(bool IsHoveri
 
 void AArenaCharacter::Multicast_Reliable_ChangeHoverState_Implementation(bool IsHovering)
 {
+	// Hovering (Flying :O)
 	if (IsHovering)
-	{ Server_Reliable_SetMovementMode(MOVE_Falling); }
+	{ Server_Reliable_SetMovementMode(MOVE_Flying); }
 
 	// Not hovering
 	else
@@ -608,6 +676,26 @@ void AArenaCharacter::Multicast_Reliable_ChangeHoverState_Implementation(bool Is
 		else
 		{ Server_Reliable_SetMovementMode(MOVE_Walking); }
 	}
+}
+
+///////////////////////////////////////////////
+
+bool AArenaCharacter::Server_Reliable_SetGravityScale_Validate(float Scale)
+{ return true; }
+
+void AArenaCharacter::Server_Reliable_SetGravityScale_Implementation(float Scale)
+{
+	Multicast_Reliable_SetGravityScale(Scale);
+}
+
+///////////////////////////////////////////////
+
+bool AArenaCharacter::Multicast_Reliable_SetGravityScale_Validate(float Scale)
+{ return true; }
+
+void AArenaCharacter::Multicast_Reliable_SetGravityScale_Implementation(float Scale)
+{
+	GetCharacterMovement()->GravityScale = Scale;
 }
 
 // Movement | Jump ************************************************************************************************************************

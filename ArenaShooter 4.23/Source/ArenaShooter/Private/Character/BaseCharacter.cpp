@@ -204,6 +204,8 @@ ABaseCharacter::ABaseCharacter()
 	// Get default variable values
 	_fCameraRotationLagSpeed = _FirstPerson_SpringArm->CameraRotationLagSpeed;
 	_fCapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	_fBaseGravityScale = GetCharacterMovement()->GravityScale;
+	_fBaseAirControl = GetCharacterMovement()->AirControl;
 }
 
 ///////////////////////////////////////////////
