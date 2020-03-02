@@ -775,7 +775,7 @@ void UFireMode::FireProjectile(FHitResult hitResult, FVector CameraRotationXVec,
 	case E_ProjectileType::ePT_Raycast:
 	{
 		// Fire hitscan projectile
-		Server_Reliable_FireProjectileTrace(Cast<APawn>(_WeaponParentAttached->GetOwner()), CameraRotationXVec, SkCharWepMeshFirstP, SkCharWepMeshThirdP);
+		Server_Reliable_FireProjectileTrace(Cast<APawn>(_WeaponParentAttached->GetOwner()), hitResult, CameraRotationXVec, SkCharWepMeshFirstP, SkCharWepMeshThirdP);
 		break;
 	}
 	default: break;
@@ -784,10 +784,10 @@ void UFireMode::FireProjectile(FHitResult hitResult, FVector CameraRotationXVec,
 
 ///////////////////////////////////////////////
 
-bool UFireMode::Server_Reliable_FireProjectileTrace_Validate(APawn* Pawn, FVector CameraRotationXVec, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
+bool UFireMode::Server_Reliable_FireProjectileTrace_Validate(APawn* Pawn, FHitResult hitResult, FVector CameraRotationXVec, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
 { return true; }
 
-void UFireMode::Server_Reliable_FireProjectileTrace_Implementation(APawn* Pawn, FVector CameraRotationXVec, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
+void UFireMode::Server_Reliable_FireProjectileTrace_Implementation(APawn* Pawn, FHitResult hitResult, FVector CameraRotationXVec, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP)
 {
 	FHitResult traceHitOut;
 	FVector muzzleLaunchPointFP = SkCharWepMeshFirstP->GetSocketLocation("MuzzleLaunchPoint");
@@ -797,7 +797,11 @@ void UFireMode::Server_Reliable_FireProjectileTrace_Implementation(APawn* Pawn, 
 	///FVector cameraRotationXVec = ProjectileTransform.GetRotation().Vector();
 
 	// Get trace end
-	FVector traceEnd = CameraRotationXVec * 20000.0f;
+	FVector traceEnd = FVector::ZeroVector;
+	if (hitResult.IsValidBlockingHit())
+	{ traceEnd = hitResult.ImpactPoint; }
+	else 
+	{ traceEnd = CameraRotationXVec * 20000.0f; }
 
 	// Fire projectile trace
 	ECollisionChannel collisionChannel = ECollisionChannel::ECC_GameTraceChannel15;
@@ -805,8 +809,8 @@ void UFireMode::Server_Reliable_FireProjectileTrace_Implementation(APawn* Pawn, 
 	queryParams.AddIgnoredActor(Pawn);
 	queryParams.bReturnPhysicalMaterial = true;
 	GetWorld()->LineTraceSingleByChannel(traceHitOut, muzzleLaunchPointFP, traceEnd, collisionChannel, queryParams);
-	DrawDebugLine(GetWorld(), muzzleLaunchPointFP, traceEnd, FColor::Blue, false, 1.0f);
-	OwningClient_Unreliable_DebugFireTrace(muzzleLaunchPointFP, traceEnd);
+	///DrawDebugLine(GetWorld(), muzzleLaunchPointFP, traceEnd, FColor::Blue, false, 1.0f);
+	///OwningClient_Unreliable_DebugFireTrace(muzzleLaunchPointFP, traceEnd);
 	
 	// Passed max distance threshold?
 	if (traceHitOut.Distance <= _fMaxRangeThreshold)
@@ -1043,41 +1047,55 @@ void UFireMode::OwningClient_Reliable_RecoilCamera_Implementation()
 {
 	if (_fFiringTime < 1.0f) { return; }
 
-	// No random recoiling on either axis
-	if (!_bRandomPitchRecoil && !_bRandomYawRecoil)
-	{
-		ABaseCharacter* character = Cast<ABaseCharacter>(_WeaponParentAttached->GetPawnOwner());
-		FRotator currentRot = character->GetControlRotation();
-		FRotator newRot = currentRot;
-		FRotator targetRot = currentRot;
-		if (character->IsAiming())
-		{
-			targetRot = FRotator(currentRot.Roll, currentRot.Pitch + _fCameraAimingRecoilPitch, currentRot.Yaw + _fCameraAimingRecoilYaw);
-		}
-		
-		// Character isn't aiming
-		else
-		{
-			targetRot = FRotator(currentRot.Roll, currentRot.Pitch + _fCameraHipfireRecoilPitch, currentRot.Yaw + _fCameraHipfireRecoilYaw);
-		}
-		newRot = UKismetMathLibrary::RInterpTo_Constant(currentRot, targetRot, GetWorld()->GetDeltaSeconds(), _fCurrentRecoilInterpolationSpeed);
+	ABaseCharacter* character = Cast<ABaseCharacter>(_WeaponParentAttached->GetPawnOwner());
+	FRotator currentRot = character->GetControlRotation();
+	FRotator targetRot = currentRot;
+	float pitch, yaw = 0.0f;
 
-		GEngine->AddOnScreenDebugMessage(6, 5.0f, FColor::Purple, TEXT("Roll: ") + FString::SanitizeFloat(newRot.Roll));
-		GEngine->AddOnScreenDebugMessage(7, 5.0f, FColor::Purple, TEXT("Pitch: ") + FString::SanitizeFloat(newRot.Pitch));
-		GEngine->AddOnScreenDebugMessage(8, 5.0f, FColor::Purple, TEXT("Yaw: ") + FString::SanitizeFloat(newRot.Yaw));
+	// Random pitch (vertical) recoil pattern
+	if (_bRandomPitchRecoil) {
 
-		// Add recoil to the controller
-		AController* controller = character->GetController();
-		if (controller == NULL) { return; }
-		APlayerController* playerController = Cast<APlayerController>(controller);
-		if (playerController != NULL)
-		{
-			playerController->SetControlRotation(newRot);
-		}
+		if (character->IsAiming()) 
+		{ pitch = FMath::RandRange(_fRandomCameraAimingRecoilPitchMinimum, _fRandomCameraAimingRecoilPitchMaximum); }
+		else 
+		{ pitch = FMath::RandRange(_fRandomCameraHipfireRecoilPitchMinimum, _fRandomCameraHipfireRecoilPitchMaximum); }
 	}
-	else
-	{
 
+	// No random Pitch (vertical) recoil pattern
+	else
+	{ pitch = character->IsAiming() ? _fCameraAimingRecoilPitch : _fCameraHipfireRecoilPitch; }
+
+	// Random Yaw (sideways) recoil pattern
+	if (_bRandomYawRecoil) {
+
+		if (character->IsAiming())
+		{ yaw = FMath::RandRange(_fRandomCameraAimingRecoilYawMinimum, _fRandomCameraAimingRecoilYawMaximum); }
+		else 
+		{ yaw = FMath::RandRange(_fRandomCameraHipfireRecoilYawMinimum, _fRandomCameraHipfireRecoilYawMaximum); }
+	}
+
+	// No random Yaw (sideways) recoil pattern
+	else
+	{ yaw = character->IsAiming() ? _fCameraAimingRecoilYaw : _fCameraHipfireRecoilYaw; }
+
+	targetRot += FRotator(pitch, yaw, 0.0f);
+	targetRot.Roll = 0.0f; // Ensures that the controller doesn't somehow manage to affect "roll" in the FRotator...
+
+	// Interpolate to the new FRotator
+	FRotator newRot = currentRot;
+	newRot = UKismetMathLibrary::RInterpTo_Constant(currentRot, targetRot, GetWorld()->GetDeltaSeconds(), _fCurrentRecoilInterpolationSpeed);
+
+	///GEngine->AddOnScreenDebugMessage(6, 5.0f, FColor::Purple, TEXT("Roll: ") + FString::SanitizeFloat(newRot.Roll));
+	///GEngine->AddOnScreenDebugMessage(7, 5.0f, FColor::Purple, TEXT("Pitch: ") + FString::SanitizeFloat(newRot.Pitch));
+	///GEngine->AddOnScreenDebugMessage(8, 5.0f, FColor::Purple, TEXT("Yaw: ") + FString::SanitizeFloat(newRot.Yaw));
+
+	// Add recoil to the controller
+	AController* controller = character->GetController();
+	if (controller == NULL) { return; }
+	APlayerController* playerController = Cast<APlayerController>(controller);
+	if (playerController != NULL)
+	{
+		playerController->SetControlRotation(newRot);
 	}
 }
 
@@ -1119,7 +1137,7 @@ void UFireMode::RecoilInterpolationUpdate()
 	_fFiringTime += GetWorld()->GetDeltaSeconds();
 
 	float lerp = 0.0f;
-	float alpha = UKismetMathLibrary::FClamp(_fFiringTime / _fRecoilInterpolationMinMaxTransitionSpeed, 0.0f, 1.0f);
+	float alpha = UKismetMathLibrary::FClamp(_fFiringTime / _fRecoilInterpolationTransitionSpeed, 0.0f, 1.0f);
 
 	// Aiming
 	if (_WeaponParentAttached->GetIsAiming())
@@ -1129,11 +1147,7 @@ void UFireMode::RecoilInterpolationUpdate()
 	else
 	{ lerp = UKismetMathLibrary::Lerp(_fRecoilInterpolationSpeedHipfireMinimum, _fRecoilInterpolationSpeedHipfireMaximum, alpha); }
 
-	_fCurrentRecoilInterpolationSpeed = lerp;	
-
-	///GEngine->AddOnScreenDebugMessage(6, 5.0f, FColor::Purple, TEXT("Firing Time Clamped: ") + FString::SanitizeFloat(alpha));
-	///GEngine->AddOnScreenDebugMessage(5, 5.0f, FColor::Purple, TEXT("Firing Time Unclamped: ") + FString::SanitizeFloat(_fFiringTime / _fRecoilInterpolationMinMaxTransitionSpeed));
-	///GEngine->AddOnScreenDebugMessage(7, 5.0f, FColor::Purple, TEXT("Current Recoil Interpolation Speed: ") + FString::SanitizeFloat(lerp));
+	_fCurrentRecoilInterpolationSpeed = lerp;
 }
 
 // Reload *********************************************************************************************************************************
@@ -1233,8 +1247,8 @@ float UFireMode::GetReloadStartingTime()
 	default: break;
 	}
 
-	FString msg = TEXT("Reload stage: " + Cast<ABaseCharacter>(_WeaponParentAttached->GetPawnOwner())->EnumToString(TEXT("E_ReloadStage"), static_cast<uint8>(_eReloadStage)));
-	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Purple, msg);
+	///FString msg = TEXT("Reload stage: " + Cast<ABaseCharacter>(_WeaponParentAttached->GetPawnOwner())->EnumToString(TEXT("E_ReloadStage"), static_cast<uint8>(_eReloadStage)));
+	///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Purple, msg);
 
 	return time;
 }

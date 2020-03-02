@@ -984,22 +984,8 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
-		meta = (EditCondition = "!_bRecoilUsesDataTable"))
-		float _fRecoilInterpolationSpeedHipfireMinimum = 0.0f;
-
-	/*
-	*
-	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
-		meta = (EditCondition = "!_bRecoilUsesDataTable"))
-		float _fRecoilInterpolationSpeedHipfireMaximum = 0.0f;
-
-	/*
-	*
-	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current")
-		float _fCurrentRecoilInterpolationSpeed = 0.0f;
+		float _fCurrentRecoilInterpolationSpeed = 0.1f;
 
 	/*
 	*
@@ -1011,22 +997,36 @@ protected:
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
-		meta = (EditCondition = "!_bRecoilUsesDataTable"))
+		meta = (EditCondition = "!_bRecoilUsesDataTable", ClampMin = 0.0f, ClampMax = 100.0f))
+		float _fRecoilInterpolationSpeedHipfireMinimum = 0.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
+		meta = (EditCondition = "!_bRecoilUsesDataTable", ClampMin = 0.0f, ClampMax = 100.0f))
+		float _fRecoilInterpolationSpeedHipfireMaximum = 0.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
+		meta = (EditCondition = "!_bRecoilUsesDataTable", ClampMin = 0.0f, ClampMax = 100.0f))
 		float _fRecoilInterpolationSpeedAimingMinimum = 0.0f;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
-		meta = (EditCondition = "!_bRecoilUsesDataTable"))
+		meta = (EditCondition = "!_bRecoilUsesDataTable", ClampMin = 0.0f, ClampMax = 100.0f))
 		float _fRecoilInterpolationSpeedAimingMaximum = 0.0f;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
-		meta = (EditCondition = "!_bRecoilUsesDataTable"))
-		float _fRecoilInterpolationMinMaxTransitionSpeed = 3.0f;
+		meta = (EditCondition = "!_bRecoilUsesDataTable", ClampMin = 0.0f, ClampMax = 10.0f))
+		float _fRecoilInterpolationTransitionSpeed = 3.0f;
 
 	/*
 	*
@@ -1039,42 +1039,42 @@ protected:
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
-		meta = (EditCondition = "!_bRecoilUsesDataTable && _bRandomPitchRecoil"))
+		meta = (EditCondition = "!_bRecoilUsesDataTable && _bRandomPitchRecoil", ClampMin = -15.0f, ClampMax = 15.0f))
 		float _fRandomCameraHipfireRecoilPitchMinimum = 0.0f;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
-		meta = (EditCondition = "!_bRecoilUsesDataTable && _bRandomPitchRecoil"))
+		meta = (EditCondition = "!_bRecoilUsesDataTable && _bRandomPitchRecoil", ClampMin = -15.0f, ClampMax = 15.0f))
 		float _fRandomCameraHipfireRecoilPitchMaximum = 0.0f;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
-		meta = (EditCondition = "!_bRecoilUsesDataTable && _bRandomPitchRecoil"))
+		meta = (EditCondition = "!_bRecoilUsesDataTable && _bRandomPitchRecoil", ClampMin = -15.0f, ClampMax = 15.0f))
 		float _fRandomCameraAimingRecoilPitchMinimum = 0.0f;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
-		meta = (EditCondition = "!_bRecoilUsesDataTable && _bRandomPitchRecoil"))
+		meta = (EditCondition = "!_bRecoilUsesDataTable && _bRandomPitchRecoil", ClampMin = -15.0f, ClampMax = 15.0f))
 		float _fRandomCameraAimingRecoilPitchMaximum = 0.0f;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
-		meta = (EditCondition = "!_bRecoilUsesDataTable && !_bRandomPitchRecoil"))
+		meta = (EditCondition = "!_bRecoilUsesDataTable && !_bRandomPitchRecoil", ClampMin = -15.0f, ClampMax = 15.0f))
 		float _fCameraHipfireRecoilPitch = 0.0f;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
-		meta = (EditCondition = "!_bRecoilUsesDataTable && !_bRandomPitchRecoil"))
+		meta = (EditCondition = "!_bRecoilUsesDataTable && !_bRandomPitchRecoil", ClampMin = -15.0f, ClampMax = 15.0f))
 		float _fCameraAimingRecoilPitch = 0.0f;
 
 	/*
@@ -1088,42 +1088,42 @@ protected:
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
-		meta = (EditCondition = "!_bRecoilUsesDataTable && _bRandomYawRecoil"))
+		meta = (EditCondition = "!_bRecoilUsesDataTable && _bRandomYawRecoil", ClampMin = -15.0f, ClampMax = 15.0f))
 		float _fRandomCameraHipfireRecoilYawMinimum = 0.0f;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
-		meta = (EditCondition = "!_bRecoilUsesDataTable && _bRandomYawRecoil"))
+		meta = (EditCondition = "!_bRecoilUsesDataTable && _bRandomYawRecoil", ClampMin = -15.0f, ClampMax = 15.0f))
 		float _fRandomCameraHipfireRecoilYawMaximum = 0.0f;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
-		meta = (EditCondition = "!_bRecoilUsesDataTable && _bRandomYawRecoil"))
+		meta = (EditCondition = "!_bRecoilUsesDataTable && _bRandomYawRecoil", ClampMin = -15.0f, ClampMax = 15.0f))
 		float _fRandomCameraAimingRecoilYawMinimum = 0.0f;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
-		meta = (EditCondition = "!_bRecoilUsesDataTable && _bRandomYawRecoil"))
+		meta = (EditCondition = "!_bRecoilUsesDataTable && _bRandomYawRecoil", ClampMin = -15.0f, ClampMax = 15.0f))
 		float _fRandomCameraAimingRecoilYawMaximum = 0.0f;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
-		meta = (EditCondition = "!_bRecoilUsesDataTable && !_bRandomYawRecoil"))
+		meta = (EditCondition = "!_bRecoilUsesDataTable && !_bRandomYawRecoil", ClampMin = -15.0f, ClampMax = 15.0f))
 		float _fCameraHipfireRecoilYaw = 0.0f;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Recoil",
-		meta = (EditCondition = "!_bRecoilUsesDataTable && !_bRandomYawRecoil"))
+		meta = (EditCondition = "!_bRecoilUsesDataTable && !_bRandomYawRecoil", ClampMin = -15.0f, ClampMax = 15.0f))
 		float _fCameraAimingRecoilYaw = 0.0f;
 
 	// Reload *********************************************************************************************************************************
@@ -1518,7 +1518,7 @@ public:
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
-		void Server_Reliable_FireProjectileTrace(APawn* Pawn, FVector CameraRotationXVector, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP);
+		void Server_Reliable_FireProjectileTrace(APawn* Pawn, FHitResult hitResult, FVector CameraRotationXVector, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP);
 
 	///////////////////////////////////////////////
 
