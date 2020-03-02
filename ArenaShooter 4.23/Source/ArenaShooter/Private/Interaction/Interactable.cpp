@@ -36,7 +36,6 @@ AInteractable::AInteractable()
 	_FocusMesh_Static->SetupAttachment(_InteractionTrigger);
 	_FocusMesh_Skeletal = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FocusMesh_Skeletal"));
 	_FocusMesh_Skeletal->SetupAttachment(_InteractionTrigger);
-
 }
 
 ///////////////////////////////////////////////
