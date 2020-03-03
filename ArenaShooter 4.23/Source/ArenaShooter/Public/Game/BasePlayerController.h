@@ -72,13 +72,13 @@ protected:
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Input | Sensitivity")
-		float _fSensitivityKeyboardVertical = 20.0f;
+		float _fSensitivityKeyboardVertical = 60.0f;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Input | Sensitivity")
-		float _fSensitivityDesktopHorizontal = 20.0f;
+		float _fSensitivityDesktopHorizontal = 60.0f;
 
 	/*
 	*
