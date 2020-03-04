@@ -29,3 +29,8 @@ void UBaseGameInstance::ShowUI_HostLobby_Implementation(int ZOrder = 0) {}
 void UBaseGameInstance::ShowUI_LobbyRoster_Implementation(int ZOrder = 0) {}
 
 ///////////////////////////////////////////////
+
+/*
+*
+*/
+void UBaseGameInstance::ShowUI_LoadingServer_Implementation(int ZOrder = 0) {}

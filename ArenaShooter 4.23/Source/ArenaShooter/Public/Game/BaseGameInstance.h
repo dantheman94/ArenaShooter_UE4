@@ -58,6 +58,18 @@ protected:
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
 		UUserWidget* _UI_LobbyRoster_Instance = NULL;
 
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Main Menu")
+		TSubclassOf<class UUserWidget> _UI_LoadingServer_Class;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
+		UUserWidget* _UI_LoadingServer_Instance = NULL;
+
 	// Random Names ****************************************************************************************************************************
 
 	/*
@@ -101,6 +113,14 @@ public:
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_LobbyRoster(int ZOrder);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void ShowUI_LoadingServer(int ZOrder);
 
 	///////////////////////////////////////////////
 

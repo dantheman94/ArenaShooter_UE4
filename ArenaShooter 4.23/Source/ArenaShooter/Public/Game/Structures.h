@@ -140,26 +140,23 @@ struct FPlayerInfo
 {
 	GENERATED_BODY()
 
-		FPlayerInfo() {}
+	FPlayerInfo() {}
 
 public:
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 		FString _PlayerName;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 		FString _PlayerTag;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 		bool _bIsHost = false;
 
-	FString GetPlayerName()
-	{ return _PlayerName; }
+	FString GetPlayerName() { return _PlayerName; }
 
-	FString GetPlayerTag()
-	{ return _PlayerTag; }
+	FString GetPlayerTag() { return _PlayerTag; }
 
-	bool IsHost()
-	{ return _bIsHost; }
+	bool IsHost() { return _bIsHost; }
 
 };
