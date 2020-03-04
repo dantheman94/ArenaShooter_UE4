@@ -23,6 +23,6 @@ ArenaShooter/ArenaShooter.png
 *.rar
 *.uproject
 *.db
-*.ini
+# *.ini
 ArenaShooter 4.23/Content/Blueprints/Environmental/Planet/
 Data/
