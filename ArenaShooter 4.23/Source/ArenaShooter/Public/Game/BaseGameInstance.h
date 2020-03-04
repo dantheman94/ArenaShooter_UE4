@@ -58,6 +58,20 @@ protected:
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
 		UUserWidget* _UI_LobbyRoster_Instance = NULL;
 
+	// Random Names ****************************************************************************************************************************
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Random Generator | Player Names")
+		TArray<FString> _RandPlayerNameList;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Random Generator | Player Names")
+		TArray<FString> _RandPlayerTagList;
+
 public:
 
 	// ****************************************************************************************************************************************
@@ -89,5 +103,19 @@ public:
 		void ShowUI_LobbyRoster(int ZOrder);
 
 	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		TArray<FString> GetRandPlayerNameList() { return _RandPlayerNameList; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		TArray<FString> GetRandPlayerTagList() { return _RandPlayerTagList; }
 
 };

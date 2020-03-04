@@ -19,7 +19,8 @@
 */
 ABasePlayerController::ABasePlayerController()
 {
-
+	_eCurrentControllerType = _eDefaultControllerType;
+	_ePreviousControllerType = _eCurrentControllerType;
 }
 
 /**
@@ -134,6 +135,51 @@ void ABasePlayerController::UpdateActionMapping(FInputActionKeyMapping& OldBindi
 	OldBinding.bCtrl = NewBinding.bCtrl;
 	OldBinding.bAlt = NewBinding.bAlt;
 	OldBinding.bCmd = NewBinding.bCmd;
+}
+
+/*
+* Resources used: http://www.recursiveblueprints.fun/controller-detection/
+*/
+bool ABasePlayerController::InputAxis(FKey Key, float Delta, float DeltaTime, int32 NumSamples, bool bGamepad)
+{
+	bool ret = Super::InputAxis(Key, Delta, DeltaTime, NumSamples, bGamepad);
+
+	// Determine controller type
+	if (bGamepad)
+	{ _eCurrentControllerType = E_ControllerType::eCT_Xbox; }
+	else
+	{ _eCurrentControllerType = E_ControllerType::eCT_Keyboard; }
+
+	// New controller type?
+	if (_eCurrentControllerType != _ePreviousControllerType)
+	{
+		_fOnControllerSwitch.Broadcast(_eCurrentControllerType);
+		_ePreviousControllerType = _eCurrentControllerType;
+	}
+
+	return ret;
+}
+
+/*
+* Resources used: http://www.recursiveblueprints.fun/controller-detection/
+*/
+bool ABasePlayerController::InputKey(FKey Key, EInputEvent EventType, float AmountDepressed, bool bGamepad)
+{
+	bool ret = Super::InputKey(Key, EventType, AmountDepressed, bGamepad);
+
+	// Determine controller type
+	if (bGamepad)
+	{ _eCurrentControllerType = E_ControllerType::eCT_Xbox; } else
+	{ _eCurrentControllerType = E_ControllerType::eCT_Keyboard; }
+
+	// New controller type?
+	if (_eCurrentControllerType != _ePreviousControllerType)
+	{
+		_fOnControllerSwitch.Broadcast(_eCurrentControllerType);
+		_ePreviousControllerType = _eCurrentControllerType;
+	}
+
+	return ret;
 }
 
 // Combat | Aiming ************************************************************************************************************************
@@ -329,7 +375,7 @@ void ABasePlayerController::LookUp(float Value)
 
 			// Get initial sensitivity based on controller type
 			float sensitivity = 1.0f;
-			switch (_eControllerType)
+			switch (_eCurrentControllerType)
 			{
 			case E_ControllerType::eCT_Keyboard:	sensitivity = _fSensitivityKeyboardVertical; break;
 			case E_ControllerType::eCT_Xbox:		sensitivity = _fSensitivityXbox; break;
@@ -372,7 +418,7 @@ void ABasePlayerController::LookRight(float Value)
 
 			// Get initial sensitivity based on controller type
 			float sensitivity = 1.0f;
-			switch (_eControllerType)
+			switch (_eCurrentControllerType)
 			{
 			case E_ControllerType::eCT_Keyboard:	sensitivity = _fSensitivityKeyboardVertical; break;
 			case E_ControllerType::eCT_Xbox:		sensitivity = _fSensitivityXbox; break;
@@ -433,13 +479,13 @@ void ABasePlayerController::CrouchToggle()
 void ABasePlayerController::HoverEnter()
 {
 	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
-	pawn->HoverEnter();
+	if (pawn) { pawn->HoverEnter(); }
 }
 
 void ABasePlayerController::HoverExit()
 {
 	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
-	pawn->HoverExit();
+	if (pawn) { pawn->HoverExit(); }
 }
 
 // Movement | Jump ************************************************************************************************************************
@@ -447,7 +493,7 @@ void ABasePlayerController::HoverExit()
 void ABasePlayerController::Jump()
 {
 	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
-	pawn->InputJump();
+	if (pawn) { pawn->InputJump(); }
 }
 
 // Movement | Slide ***********************************************************************************************************************
@@ -476,7 +522,7 @@ void ABasePlayerController::SprintExit()
 void ABasePlayerController::Vault()
 {
 	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
-	pawn->InputVault();
+	if (pawn) { pawn->InputVault(); }
 }
 
 // Controller *****************************************************************************************************************************
@@ -573,11 +619,6 @@ bool ABasePlayerController::RebindActionKey(FInputActionKeyMapping oldBinding, F
 	return matchFound;
 }
 
-void ABasePlayerController::RemoveRoundFromChamber()
-{
-	ABaseCharacter* character = Cast<ABaseCharacter>(GetPawn());
-	character->GetPointerPrimaryWeapon()->GetCurrentFireMode()->GetAmmoPool()->Server_Reliable_SetRoundInChamber(false);
-}
 bool ABasePlayerController::ProcessConsoleExec(const TCHAR* Cmd, FOutputDevice& Ar, UObject* Executor)
 {
 	bool handled = Super::ProcessConsoleExec(Cmd, Ar, Executor);

@@ -110,3 +110,56 @@ public:
 		UAnimMontage* _Anim_LoopingReloadExit = NULL;
 
 };
+
+
+USTRUCT(BlueprintType)
+struct FTeamProperties
+{
+	GENERATED_BODY()
+
+		FTeamProperties() {}
+
+public:
+
+	///UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	///	E_TeamNames _eTeam = E_TeamNames::eTN_Alpha;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		FLinearColor _cTeamColour = FLinearColor::White;
+
+	///E_TeamNames GetTeam()
+	///{ return _eTeam; }
+
+	FLinearColor GetTeamColour()
+	{ return _cTeamColour; }
+
+};
+
+USTRUCT(BlueprintType)
+struct FPlayerInfo
+{
+	GENERATED_BODY()
+
+		FPlayerInfo() {}
+
+public:
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		FString _PlayerName;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		FString _PlayerTag;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		bool _bIsHost = false;
+
+	FString GetPlayerName()
+	{ return _PlayerName; }
+
+	FString GetPlayerTag()
+	{ return _PlayerTag; }
+
+	bool IsHost()
+	{ return _bIsHost; }
+
+};

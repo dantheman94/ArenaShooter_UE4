@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "Structures.h"
+
 #include "BaseGameMode.generated.h"
 
 // *** ENUMS
@@ -17,32 +19,10 @@ enum class E_TeamNames : uint8
 	eTN_Delta UMETA(DisplayName = "Delta")
 };
 
-// *** STRUCTS
-
-USTRUCT(BlueprintType)
-struct FTeamProperties
-{
-	GENERATED_BODY()
-
-		FTeamProperties() {}
-
-public:
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		E_TeamNames _eTeam = E_TeamNames::eTN_Alpha;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		FLinearColor _cTeamColour = FLinearColor::White;
-
-	E_TeamNames GetTeam()
-	{ return _eTeam; }
-
-	FLinearColor GetTeamColour()
-	{ return _cTeamColour; }
-
-};
-
 // *** CLASSES
+
+class ABasePlayerController;
+class ABaseGameState;
 
 UCLASS()
 class ARENASHOOTER_API ABaseGameMode : public AGameModeBase
@@ -50,5 +30,41 @@ class ARENASHOOTER_API ABaseGameMode : public AGameModeBase
 	GENERATED_BODY()
 
 public:
+
+protected:
+
+	// Startup ********************************************************************************************************************************
+
+	// ****************************************************************************************************************************************
+	// ************************************ FUNCTIONS *****************************************************************************************
+	// ****************************************************************************************************************************************
+
+	/**
+	* @summary:	Called when the game starts or when spawned.
+	*
+	* @return:	virtual void
+	*/
+	virtual void BeginPlay() override;
+
+	TArray<ABasePlayerController*> _ConnectedBasePlayerControllers;
+
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Lobby Properties")
+		int _iMaxLobbySize = 10;
+
+public:
+
+	virtual void PostLogin(APlayerController* NewPlayer) override;
+
+	///////////////////////////////////////////////
+
+	virtual void Logout(AController* ExitingController) override;
+
+	///////////////////////////////////////////////
+
+	TArray<ABasePlayerController*>GetConnectedPlayerControllers() { return _ConnectedBasePlayerControllers; }
+
+	///////////////////////////////////////////////
+
+	int GetMaxLobbySize() { return _iMaxLobbySize; }
 
 };

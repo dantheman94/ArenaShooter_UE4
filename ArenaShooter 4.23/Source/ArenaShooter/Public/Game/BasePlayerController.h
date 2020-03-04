@@ -17,6 +17,12 @@ enum class E_ControllerType : uint8
 	eCT_PlayStation UMETA(DisplayName = "PlayStation  Gamepad")
 };
 
+// *** STRUCTS
+
+// *** EVENT DISPATCHERS / DELEGATES
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnControllerSwitch, E_ControllerType, NewControllerType);
+
 // *** CLASSES
 
 struct FInputActionKeyMapping;
@@ -34,9 +40,11 @@ public:
 
 protected:
 
-	// Startup ********************************************************************************************************************************
+	// ****************************************************************************************************************************************
+	// ************************************ FUNCTIONS *****************************************************************************************
+	// ****************************************************************************************************************************************
 
-	// *** FUNCTIONS
+	// Startup ********************************************************************************************************************************
 
 	/**
 	* @summary:	Called when the game starts or when spawned.
@@ -45,7 +53,9 @@ protected:
 	*/
 	virtual void BeginPlay() override;
 
-	// *** VARIABLES
+	// ****************************************************************************************************************************************
+	// ************************************ VARIABLES *****************************************************************************************
+	// ****************************************************************************************************************************************
 
 	// Combat | Aiming ************************************************************************************************************************
 
@@ -55,18 +65,38 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Combat | Aiming")
 		float _fDefaultFov = 90.0f;
 
+	// Input | Controller *********************************************************************************************************************
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Input | Sensitivity")
+		E_ControllerType _eDefaultControllerType = E_ControllerType::eCT_Keyboard;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Input | Sensitivity")
+		E_ControllerType _eCurrentControllerType = E_ControllerType::eCT_Keyboard;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Input | Sensitivity")
+		E_ControllerType _ePreviousControllerType = E_ControllerType::eCT_Keyboard;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintAssignable)
+		FOnControllerSwitch _fOnControllerSwitch;
+	
 	// Input | Sensitivity ********************************************************************************************************************
 
 	float _fRawVerticalMovementInput = 0.0f;
 	float _fRawHorzontalMovementInput = 0.0f;
 	float _fRawVerticalLookInput = 0.0f;
 	float _fRawHorzontalLookInput = 0.0f;
-
-	/*
-	*
-	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Input | Sensitivity")
-		E_ControllerType _eControllerType = E_ControllerType::eCT_Keyboard;
 
 	/*
 	*
@@ -103,7 +133,9 @@ protected:
 	UPROPERTY(BlueprintReadWrite, Category = "Input | Double Click")
 		float _fDoubleClickTime = 0.2f;
 
-	// *** FUNCTIONS
+	// ****************************************************************************************************************************************
+	// ************************************ FUNCTIONS *****************************************************************************************
+	// ****************************************************************************************************************************************
 
 	// Input **********************************************************************************************************************************
 
@@ -145,6 +177,16 @@ protected:
 	* @return:	static void
 	*/
 	static void UpdateActionMapping(FInputActionKeyMapping& OldBinding, FInputActionKeyMapping& NewBinding);
+
+	/*
+	*
+	*/
+	virtual bool InputAxis(FKey Key, float Delta, float DeltaTime, int32 NumSamples, bool bGamepad) override;
+
+	/*
+	*
+	*/
+	virtual bool InputKey(FKey Key, EInputEvent EventType, float AmountDepressed, bool bGamepad) override;
 
 	// Combat | Aiming ************************************************************************************************************************
 
@@ -278,10 +320,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Combat | Aiming")
 		float GetDefaultFov() { return _fDefaultFov; }
 
-	// Combat | Firing ************************************************************************************************************************
-
-
-
 	// Input | Rebinding **********************************************************************************************************************
 
 	/**
@@ -295,6 +333,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Input | Rebinding")
 		bool RebindAxisKey(FInputAxisKeyMapping OldBinding, FInputAxisKeyMapping NewBinding);
 
+	///////////////////////////////////////////////
+
 	/**
 	* @summary:	Tries to find the matching action binding & replaces the input key with the new binding.
 	*
@@ -306,8 +346,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Input | Rebinding")
 		bool RebindActionKey(FInputActionKeyMapping OldBinding, FInputActionKeyMapping NewBinding);
 
-	UFUNCTION(exec)
-		virtual void RemoveRoundFromChamber();
+	///////////////////////////////////////////////
 
 	virtual bool ProcessConsoleExec(const TCHAR* Cmd, FOutputDevice& Ar, UObject* Executor) override;
 
