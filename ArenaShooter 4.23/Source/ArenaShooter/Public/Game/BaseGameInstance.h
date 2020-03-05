@@ -5,8 +5,10 @@
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
 #include "Online.h"
+#include "Runtime/Online/HTTP/Public/Http.h"
 #include "UnrealNetwork.h"
 #include "UObject/CoreOnline.h"
+#include "UObject/NoExportTypes.h"
 
 #include "BaseGameInstance.generated.h"
 
@@ -14,7 +16,7 @@
 #define SETTING_SERVER_IS_PROTECTED FName(TEXT("SERVERSERVERISPASSWORDPROTECTEDKEY"))
 #define SETTING_SERVER_PROTECT_PASSWORD FName(TEXT("SERVERPROTECTPASSWORDKEY"))
 
-// class FUniqueNetId : public TSharedFromThis< FUniqueNetId >
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FIPDelegate, FString, IP);
 
 // A custom struct to be able to access the Session results in blueprint
 USTRUCT(BlueprintType)
@@ -106,6 +108,8 @@ struct FSteamFriendInfo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Steam Friend Info")
 		FBPUniqueNetId PlayerUniqueNetID;
 };
+
+class FHttpModule;
 
 /**
  * 
@@ -360,7 +364,19 @@ private:
 	* @param	ErrorString			if there is any errors
 	*/
 	void OnReadFriendsListCompleted(int32 LocalUserNum, bool bWasSuccessful, const FString& ListName, const FString& ErrorString);
-	
+
+	FHttpModule* _fHttpModule;
+
+	FString	_IPAddress;
+
+	FString _APIUrl;
+
+	FString _JSONKey;
+
+	void DoRequest();
+
+	void OnResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful);
+
 public:
 
 	// ****************************************************************************************************************************************
@@ -574,11 +590,23 @@ public:
 
 	///////////////////////////////////////////////
 
+	/*
+	*	Main function to call in order to get your public IP.
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Network | Session")
+		void GetMyPublicIP();
+
 	/**
-	 *	Returns an FString of the server's IP address
+	 *	Returns an FString of the server's IP address.
 	 */
-	UFUNCTION(BlueprintPure, meta = (WorldContext = "WorldContextObject"))
-		static const FString GetNetworkURL(UObject* WorldContextObject);
+	UFUNCTION(BlueprintCallable, Category = "Network | Session")
+		FString GetCachedIP() const { return _IPAddress; }
+
+	/*
+	*	Subscribe to this event and get your IP address safely.
+	*/
+	UPROPERTY(BlueprintAssignable, Category = "Network | Session")
+		FIPDelegate OnIPAddressReceived;
 
 	///////////////////////////////////////////////
 

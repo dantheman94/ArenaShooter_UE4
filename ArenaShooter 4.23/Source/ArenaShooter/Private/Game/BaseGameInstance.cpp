@@ -3,6 +3,9 @@
 #include "BaseGameInstance.h"
 #include "Engine/Engine.h"
 #include "Kismet/GameplayStatics.h"
+#include <JsonObject.h>
+#include <JsonReader.h>
+#include <JsonSerializer.h>
 
 // Startup ********************************************************************************************************************************
 
@@ -31,6 +34,9 @@ UBaseGameInstance::UBaseGameInstance(const FObjectInitializer& ObjectInitializer
 	/** Bind the function for completing the friend list request*/
 	FriendListReadCompleteDelegate = FOnReadFriendsListComplete::CreateUObject(this, &UBaseGameInstance::OnReadFriendsListCompleted);
 
+	_IPAddress = TEXT("");
+	_APIUrl = TEXT("https://api.ipify.org/?format=json");
+	_JSONKey = TEXT("api");
 }
 
 ///////////////////////////////////////////////
@@ -811,20 +817,38 @@ void UBaseGameInstance::GetSteamFriendsList(APlayerController *PlayerController)
 
 ///////////////////////////////////////////////
 
-/**
- *	Returns an FString of the server's IP address
- */
-const FString UBaseGameInstance::GetNetworkURL(UObject* WorldContextObject)
+void UBaseGameInstance::GetMyPublicIP()
 {
-	if (WorldContextObject != NULL)
+	_IPAddress = TEXT("");
+	_fHttpModule = &FHttpModule::Get();
+
+	if (!_fHttpModule) { return; }
+
+	DoRequest();
+}
+
+void UBaseGameInstance::DoRequest()
+{
+	TSharedRef< IHttpRequest > request = _fHttpModule->CreateRequest();
+	request->OnProcessRequestComplete().BindUObject(this, &UBaseGameInstance::OnResponseReceived);
+	request->SetURL(_APIUrl);
+	request->SetVerb("GET");
+	request->SetHeader(TEXT("User-Agent"), "X-UnrealEngine-Agent");
+	request->SetHeader("Content-Type", TEXT("application/json"));
+	request->ProcessRequest();
+}
+
+void UBaseGameInstance::OnResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
+{
+	if (bWasSuccessful)
 	{
-		if (UWorld* world = WorldContextObject->GetWorld())
-		{
-			// Get IP
-			return world->GetAddressURL();
-		}
+		TSharedPtr< FJsonObject > JsonObject;
+		TSharedRef< TJsonReader<> > Reader = TJsonReaderFactory<>::Create(Response->GetContentAsString());
+
+		if (FJsonSerializer::Deserialize(Reader, JsonObject)) { _IPAddress = JsonObject->GetStringField("ip"); }
 	}
-	return "";
+
+	OnIPAddressReceived.Broadcast(GetCachedIP());
 }
 
 ///////////////////////////////////////////////
@@ -849,7 +873,7 @@ void UBaseGameInstance::ServerToGameplay()
 
 	FURL url;
 	url.Map = mapName;
-	url.AddOption("?listen");
+	///url.AddOption("?listen");
 
 	FString error = "";
 
