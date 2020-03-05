@@ -31,6 +31,8 @@ class ARENASHOOTER_API ABaseGameMode : public AGameModeBase
 
 public:
 
+	ABaseGameMode();
+
 protected:
 
 	// Startup ********************************************************************************************************************************

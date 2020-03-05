@@ -15,7 +15,15 @@ UCLASS()
 class ARENASHOOTER_API ABasePlayerState : public APlayerState
 {
 	GENERATED_BODY()
-	
+
+public:
+
+	// ****************************************************************************************************************************************
+	// ************************************ FUNCTIONS *****************************************************************************************
+	// ****************************************************************************************************************************************
+
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const;
+
 protected:
 
 	// ****************************************************************************************************************************************
@@ -24,7 +32,7 @@ protected:
 
 	// Player Info ****************************************************************************************************************************
 	
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Replicated)
 		FPlayerInfo _PlayerInfo;
 
 public:
@@ -56,6 +64,14 @@ public:
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetHost(bool Hosting);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_SetOwningPlayerController(ABasePlayerController* PlayerController);
 
 	///////////////////////////////////////////////
 

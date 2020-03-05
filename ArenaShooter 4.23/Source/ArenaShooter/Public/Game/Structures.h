@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "BasePlayerController.h"
 #include "Structures.generated.h"
 
 USTRUCT(BlueprintType)
@@ -153,10 +154,15 @@ public:
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 		bool _bIsHost = false;
 
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
+		ABasePlayerController* _PlayerController = NULL;
+
 	FString GetPlayerName() { return _PlayerName; }
 
 	FString GetPlayerTag() { return _PlayerTag; }
 
 	bool IsHost() { return _bIsHost; }
+
+	ABasePlayerController* GetPlayerController() { return _PlayerController; }
 
 };

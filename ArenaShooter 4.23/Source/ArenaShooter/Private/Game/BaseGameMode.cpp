@@ -7,6 +7,11 @@
 #include "BasePlayerController.h"
 #include "BasePlayerState.h"
 
+ABaseGameMode::ABaseGameMode()
+{
+	bUseSeamlessTravel = true;
+}
+
 void ABaseGameMode::BeginPlay()
 {
 	ABaseGameState* gameState = Cast<ABaseGameState>(GameState);
@@ -33,6 +38,7 @@ void ABaseGameMode::PostLogin(APlayerController* NewPlayer)
 			playerState->Server_Reliable_GenerateRandomPlayerName();
 			playerState->Server_Reliable_GenerateRandomPlayerTag();
 			playerState->Server_Reliable_SetHost(_ConnectedBasePlayerControllers.Num() == 0);
+			playerState->Server_Reliable_SetOwningPlayerController(joiningPlayer);
 		}
 
 		_ConnectedBasePlayerControllers.Add(joiningPlayer);

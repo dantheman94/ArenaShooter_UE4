@@ -44,4 +44,19 @@ public:
 	UFUNCTION()
 		void SetMaxLobbySize(int Size);
 
+	///////////////////////////////////////////////
+
+	UFUNCTION(BlueprintPure)
+		TArray<FPlayerInfo> GetPlayerInfos() { return _PlayerInfos; }
+
+	///////////////////////////////////////////////
+
+	UFUNCTION(BlueprintPure)
+		int GetMaxLobbySize() { return _iMaxLobbySize; }
+
+	///////////////////////////////////////////////
+
+	UFUNCTION(BlueprintCallable)
+		void DisconnectClientFromLobby();
+
 };

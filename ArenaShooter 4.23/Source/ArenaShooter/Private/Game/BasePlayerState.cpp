@@ -5,12 +5,16 @@
 
 #include "BaseGameInstance.h"
 #include "BaseGameState.h"
+#include "UnrealNetwork.h"
 
-// ****************************************************************************************************************************************
-// ************************************ FUNCTIONS *****************************************************************************************
-// ****************************************************************************************************************************************
+void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-// Player Info ****************************************************************************************************************************
+	DOREPLIFETIME(ABasePlayerState, _PlayerInfo);
+}
+
+///////////////////////////////////////////////
 
 /*
 *
@@ -63,10 +67,23 @@ void ABasePlayerState::Server_Reliable_GenerateRandomPlayerTag_Implementation()
 /*
 *
 */
+bool ABasePlayerState::Server_Reliable_SetHost_Validate(bool Hosting)
+{ return true; }
+
 void ABasePlayerState::Server_Reliable_SetHost_Implementation(bool Hosting)
 {
 	_PlayerInfo._bIsHost = Hosting;
 }
 
-bool ABasePlayerState::Server_Reliable_SetHost_Validate(bool Hosting)
+///////////////////////////////////////////////
+
+/*
+*
+*/
+bool ABasePlayerState::Server_Reliable_SetOwningPlayerController_Validate(ABasePlayerController* PlayerController)
 { return true; }
+
+void ABasePlayerState::Server_Reliable_SetOwningPlayerController_Implementation(ABasePlayerController* PlayerController)
+{
+	_PlayerInfo._PlayerController = PlayerController;
+}
