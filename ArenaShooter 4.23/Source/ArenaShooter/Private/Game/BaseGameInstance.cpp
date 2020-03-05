@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "BaseGameInstance.h"
+#include "Engine/Engine.h"
 #include "Kismet/GameplayStatics.h"
 
 // Startup ********************************************************************************************************************************
@@ -168,6 +169,8 @@ bool UBaseGameInstance::HostSession(FUniqueNetIdRepl UserId, FName SessionName, 
 	return false;
 }
 
+///////////////////////////////////////////////
+
 /**
 *  Function fired when a session create request has completed
 *
@@ -200,6 +203,8 @@ void UBaseGameInstance::OnCreateSessionComplete(FName SessionName, bool bWasSucc
 	}
 }
 
+///////////////////////////////////////////////
+
 /**
 *  Function fired when a session start request has completed
 *
@@ -222,6 +227,8 @@ void UBaseGameInstance::OnStartOnlineGameComplete(FName SessionName, bool bWasSu
 	// If the start was successful, we can open a NewMap if we want. Make sure to use "listen" as a parameter!
 	if (bWasSuccessful) { UGameplayStatics::OpenLevel(GetWorld(), _LobbyMapName, true, "listen"); }
 }
+
+///////////////////////////////////////////////
 
 /**
 *  Find an online session
@@ -264,6 +271,8 @@ void UBaseGameInstance::FindSessions(FUniqueNetIdRepl UserId, FName SessionName,
 	// If something goes wrong, just call the Delegate Function directly with "false".
 	else { OnFindSessionsComplete(false); }
 }
+
+///////////////////////////////////////////////
 
 /**
 *  Delegate fired when a session search query has completed
@@ -333,6 +342,8 @@ void UBaseGameInstance::OnFindSessionsComplete(bool bWasSuccessful)
 	}
 }
 
+///////////////////////////////////////////////
+
 /**
 *  Joins a session via a search result
 *
@@ -365,6 +376,8 @@ bool UBaseGameInstance::JoinASession(FUniqueNetIdRepl UserId, FName SessionName,
 	return bSuccessful;
 }
 
+///////////////////////////////////////////////
+
 /**
 *  Joins a session via a search result
 *
@@ -396,6 +409,8 @@ bool UBaseGameInstance::JoinASession(int32 LocalUserNum, FName SessionName, cons
 
 	return bSuccessful;
 }
+
+///////////////////////////////////////////////
 
 /**
 *  Delegate fired when a session join request has completed
@@ -433,6 +448,8 @@ void UBaseGameInstance::OnJoinSessionComplete(FName SessionName, EOnJoinSessionC
 	}
 }
 
+///////////////////////////////////////////////
+
 /**
 *  Delegate fired when a destroying an online session has completed
 *
@@ -460,6 +477,8 @@ void UBaseGameInstance::OnDestroySessionComplete(FName SessionName, bool bWasSuc
 	}
 }
 
+///////////////////////////////////////////////
+
 /**
 * Delegate function fired when a session invite is accepted to join the session
 *
@@ -475,6 +494,8 @@ void UBaseGameInstance::OnSessionUserInviteAccepted(bool bWasSuccessful, int32 L
 		if (TheSessionInvitedTo.IsValid()) { JoinASession(LocalUserNum, GameSessionName, TheSessionInvitedTo); }
 	}
 }
+
+///////////////////////////////////////////////
 
 /**
 * Delegate fired when the friend list request has been processed
@@ -528,6 +549,8 @@ void UBaseGameInstance::OnReadFriendsListCompleted(int32 LocalUserNum, bool bWas
 	else { ShowErrorMessageUMG(FText::FromString(ErrorString)); }
 }
 
+///////////////////////////////////////////////
+
 /**
  *	Called from blueprints to host a session and start game
  *
@@ -547,6 +570,8 @@ void UBaseGameInstance::StartOnlineGame(FString ServerName, int32 MaxNumPlayers,
 	HostSession(Player->GetPreferredUniqueNetId(), GameSessionName, ServerName, bIsLAN, bIsPresence, MaxNumPlayers, bIsPasswordProtected, SessionPassword);
 }
 
+///////////////////////////////////////////////
+
 /**
  *	Called from blueprints to find sessions then call and event to return the session results
  *
@@ -558,6 +583,8 @@ void UBaseGameInstance::FindOnlineGames(bool bIsLAN, bool bIsPresence)
 	ULocalPlayer* const Player = GetFirstGamePlayer();
 	FindSessions(Player->GetPreferredUniqueNetId(), GameSessionName, bIsLAN, bIsPresence);
 }
+
+///////////////////////////////////////////////
 
 /**
  *	Called from blueprints to join a session based on it's index in the returned session array
@@ -576,6 +603,8 @@ void UBaseGameInstance::JoinOnlineGame(int32 SessionIndex)
 	JoinASession(Player->GetPreferredUniqueNetId(), GameSessionName, SearchResult);
 }
 
+///////////////////////////////////////////////
+
 /**
  *	Called from blueprints to destroy the session and leave game to main menu
  */
@@ -592,6 +621,8 @@ void UBaseGameInstance::DestroySessionAndLeaveGame()
 		}
 	}
 }
+
+///////////////////////////////////////////////
 
 /**
  *	Called when the session search is complete to show the results in UMG
@@ -616,6 +647,8 @@ void UBaseGameInstance::SendSessionInviteToFriend(APlayerController* InvitingPla
 	}
 }
 
+///////////////////////////////////////////////
+
 /**
 *	Called to show an error message in UMG
 *	@Param	ErrorMessage The Error message you want to show
@@ -625,6 +658,8 @@ void UBaseGameInstance::ShowErrorMessage(const FText & ErrorMessage)
 	//Show the message on UMG through blueprints
 	ShowErrorMessageUMG(ErrorMessage);
 }
+
+///////////////////////////////////////////////
 
 /**
 *	Check if steam is running
@@ -638,6 +673,8 @@ bool UBaseGameInstance::IsOnlineSubsystemSteam() const
 	if (OnlineSub) { return true; }
 	else { return false; }
 }
+
+///////////////////////////////////////////////
 
 /**
  *	Called from the player state to get the player name
@@ -653,6 +690,8 @@ FString UBaseGameInstance::GetPlayerName() const
 	else { return _LanPlayerName; }
 }
 
+///////////////////////////////////////////////
+
 /**
  *	Gets the current session
  */
@@ -664,6 +703,8 @@ IOnlineSessionPtr UBaseGameInstance::GetSession() const
 	if (OnlineSub) { return OnlineSub->GetSessionInterface(); }
 	else { return nullptr; }
 }
+
+///////////////////////////////////////////////
 
 /**
  *	Gets the steam avatar of a player based on his UniqueNetId
@@ -729,6 +770,8 @@ UTexture2D* UBaseGameInstance::GetSteamAvatar(const FBPUniqueNetId UniqueNetId)
 	return nullptr;
 }
 
+///////////////////////////////////////////////
+
 /**
  *	Called to get the list of steam friends a player has
  *
@@ -764,4 +807,55 @@ void UBaseGameInstance::GetSteamFriendsList(APlayerController *PlayerController)
 			}
 		}
 	}
+}
+
+///////////////////////////////////////////////
+
+/**
+ *	Returns an FString of the server's IP address
+ */
+const FString UBaseGameInstance::GetNetworkURL(UObject* WorldContextObject)
+{
+	if (WorldContextObject != NULL)
+	{
+		if (UWorld* world = WorldContextObject->GetWorld())
+		{
+			// Get IP
+			return world->GetAddressURL();
+		}
+	}
+	return "";
+}
+
+///////////////////////////////////////////////
+
+void UBaseGameInstance::ServerTravel()
+{
+	// Setup URL
+	FString mapPath = "/Game/Levels/Debug/";
+	FString mapName = "DebugTest";
+	FString parameters = "?listen";
+
+	// Perform travel
+	GetWorld()->ServerTravel(mapPath + mapName + parameters, true);
+}
+
+void UBaseGameInstance::ServerToGameplay()
+{
+	// Setup URL
+	FString mapPath = "/Game/Levels/Debug/";
+	FString mapName = "DebugTest";
+	FString parameters = "?listen";
+
+	FURL url;
+	url.Map = mapName;
+	url.AddOption("?listen");
+
+	FString error = "";
+
+	// Non-seamless travel to map
+	FWorldContext context;
+	context.SetCurrentWorld(GetWorld());	
+
+	///UEngine::Browse(context, url, error);
 }

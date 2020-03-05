@@ -9,7 +9,7 @@
 
 ABaseGameMode::ABaseGameMode()
 {
-	bUseSeamlessTravel = true;
+	bUseSeamlessTravel = false;
 }
 
 void ABaseGameMode::BeginPlay()

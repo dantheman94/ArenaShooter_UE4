@@ -434,6 +434,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Lan")
 		FString _LanPlayerName;
 
+	///////////////////////////////////////////////
+
 	/**
 	 *	Called from blueprints to host a session and start game
 	 *	
@@ -447,6 +449,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Network | Sessions")
 		void StartOnlineGame(FString ServerName, int32 MaxNumPlayers, bool bIsLAN, bool bIsPresence = true, bool bIsPasswordProtected = false, FString SessionPassword = "");
 
+	///////////////////////////////////////////////
+
 	/**
 	 *	Called from blueprints to find sessions then call and event to return the session results
 	 *	
@@ -456,6 +460,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Network | Sessions")
 		void FindOnlineGames(bool bIsLAN, bool bIsPresence);
 
+	///////////////////////////////////////////////
+
 	/**
 	 *	Called from blueprints to join a session based on it's index in the returned session array
 	 *	
@@ -464,14 +470,20 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Network | Sessions")
 		void JoinOnlineGame(int32 SessionIndex);
 
+	///////////////////////////////////////////////
+
 	/**
 	 *	Called from blueprints to destroy the session and leave game to main menu
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Network | Sessions")
 		void DestroySessionAndLeaveGame();
-	
+
+	///////////////////////////////////////////////
+
 	UFUNCTION(BlueprintCallable, Category = "Network | Friends")
 		void SendSessionInviteToFriend(APlayerController* InvitingPlayer, const FBPUniqueNetId & Friend);
+
+	///////////////////////////////////////////////
 
 	/**
 	 *	Called when the session search is complete to show the results in UMG
@@ -479,27 +491,35 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Network | Sessions")
 		void OnFoundSessionsCompleteUMG(const TArray<FCustomBlueprintSessionResult>& CustomSessionResults);
 
+	///////////////////////////////////////////////
+
 	/**
 	*	Called to show an error message in UMG
 	*	@Param	ErrorMessage The Error message you want to show
 	*/
 	UFUNCTION(BlueprintCallable, Category = "Network | Errors")
 		void ShowErrorMessage(const FText & ErrorMessage);
-	
+
+	///////////////////////////////////////////////
+
 	/**
 	*	called to show an error message in UMG
 	*	@Param	ErrorMessage The Error message you want to show
 	*/
 	UFUNCTION(BlueprintImplementableEvent, Category = "Network | Errors")
 		void ShowErrorMessageUMG(const FText & ErrorMessage);
-	
+
+	///////////////////////////////////////////////
+
 	/**
 	*	Check if steam is running
 	*	@return		Whether the current online subsystem is steam or no
 	*/
 	UFUNCTION(BlueprintPure, Category = "Network | Friends")
 		bool IsOnlineSubsystemSteam() const;
-	
+
+	///////////////////////////////////////////////
+
 	/**
 	 *	Called from the player state to get the player name
 	 * 
@@ -507,10 +527,14 @@ public:
 	 */
 	FString GetPlayerName() const;
 
+	///////////////////////////////////////////////
+
 	/**
 	 *	Gets the current session
 	 */
 	IOnlineSessionPtr GetSession() const;
+
+	///////////////////////////////////////////////
 
 	/**
 	 *	Gets the max number of players in the session
@@ -519,13 +543,17 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "Network | Sessions")
 		FORCEINLINE int32 GetSessionMaxPlayers() const { return _iMaxSessionPlayers; }
-	
+
+	///////////////////////////////////////////////
+
 	/**
 	 *	Gets the steam avatar of a player based on his UniqueNetId
 	 * 
 	 *	@Param		UniqueNetId		The UniqueNetId of the player you want to get his avatar
 	 */
 	UTexture2D* GetSteamAvatar(const FBPUniqueNetId UniqueNetId);
+
+	///////////////////////////////////////////////
 
 	/**
 	 *	Called to get the list of steam friends a player has
@@ -536,10 +564,28 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Network | Friends")
 		void GetSteamFriendsList(APlayerController *PlayerController);
 
+	///////////////////////////////////////////////
+
 	/**
 	 *	Called from the delegate when getting the friend list request in completed
 	 */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Network | Friends")
 		void OnGetSteamFriendRequestCompleteUMG(const TArray<FSteamFriendInfo>& BPFriendsLists);
+
+	///////////////////////////////////////////////
+
+	/**
+	 *	Returns an FString of the server's IP address
+	 */
+	UFUNCTION(BlueprintPure, meta = (WorldContext = "WorldContextObject"))
+		static const FString GetNetworkURL(UObject* WorldContextObject);
+
+	///////////////////////////////////////////////
+
+	UFUNCTION(BlueprintCallable, Category = "Network | Travelling")
+		void ServerTravel();
+
+	UFUNCTION(BlueprintCallable, Category = "Network | Travelling")
+		void ServerToGameplay();
 
 };
