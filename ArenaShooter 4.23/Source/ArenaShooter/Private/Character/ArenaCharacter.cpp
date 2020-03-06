@@ -2,9 +2,11 @@
 
 #include "ArenaCharacter.h"
 
+#include "Components/CapsuleComponent.h"
 #include "FireMode.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
+#include "GameFramework/SpringArmComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Stamina.h"
 #include "UnrealNetwork.h"
@@ -25,6 +27,15 @@ AArenaCharacter::AArenaCharacter()
 	// Actor replicates
 	bReplicates = true;
 	bReplicateMovement = true;
+
+	// Get default variable values
+	_fCameraRotationLagSpeed = _FirstPerson_SpringArm->CameraRotationLagSpeed;
+	_fCapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+
+	GetCharacterMovement()->AirControl = _fDefaultAirControl;
+	GetCharacterMovement()->GravityScale = _fDefaultGravityScale;
+
+	///GEngine->AddOnScreenDebugMessage(30, 5.0f, FColor::Orange, FString::SanitizeFloat(GetCharacterMovement()->GravityScale));
 }
 
 ///////////////////////////////////////////////
@@ -139,6 +150,12 @@ void AArenaCharacter::OnGroundChecks()
 			{ Server_Reliable_SetDoubleJumping(false); }
 		}
 		if (_bDoubleJumpEnabled) { _bCanDoubleJump = true; }
+
+		// Set gravity scale to default
+		if (Role == ROLE_Authority)
+		{ Multicast_Reliable_SetGravityScale(_fDefaultGravityScale); } 
+		else
+		{ Server_Reliable_SetGravityScale(_fDefaultGravityScale); }
 
 		// Reset falling/hover
 		_bCanHover = true;
@@ -610,9 +627,9 @@ void AArenaCharacter::HoverExit()
 
 		// Reset gravity back to default
 		if (Role == ROLE_Authority) 
-		{ Multicast_Reliable_SetGravityScale(_fBaseGravityScale); }
+		{ Multicast_Reliable_SetGravityScale(_fDefaultGravityScale); }
 		else
-		{ Server_Reliable_SetGravityScale(_fBaseGravityScale); }
+		{ Server_Reliable_SetGravityScale(_fDefaultGravityScale); }
 
 		// Stop hovering
 		if (Role == ROLE_Authority)
@@ -627,7 +644,7 @@ void AArenaCharacter::HoverExit()
 		}
 
 		// Reset air control maneuverabilities
-		GetCharacterMovement()->AirControl = _fBaseAirControl;
+		GetCharacterMovement()->AirControl = _fDefaultAirControl;
 	}
 }
 

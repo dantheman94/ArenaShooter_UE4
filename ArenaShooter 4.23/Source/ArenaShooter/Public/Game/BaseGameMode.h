@@ -5,24 +5,16 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Structures.h"
+#include "TeamComponent.h"
 
 #include "BaseGameMode.generated.h"
-
-// *** ENUMS
-
-UENUM(BlueprintType)
-enum class E_TeamNames : uint8
-{
-	eTN_Alpha UMETA(DisplayName = "Alpha"),
-	eTN_Bravo UMETA(DisplayName = "Bravo"),
-	eTN_Charlie UMETA(DisplayName = "Charlie"),
-	eTN_Delta UMETA(DisplayName = "Delta")
-};
 
 // *** CLASSES
 
 class ABasePlayerController;
 class ABaseGameState;
+class AGameStateBase;
+class ABasePlayerState;
 
 UCLASS()
 class ARENASHOOTER_API ABaseGameMode : public AGameModeBase
@@ -35,11 +27,11 @@ public:
 
 protected:
 
-	// Startup ********************************************************************************************************************************
-
 	// ****************************************************************************************************************************************
 	// ************************************ FUNCTIONS *****************************************************************************************
 	// ****************************************************************************************************************************************
+
+	// Startup ********************************************************************************************************************************
 
 	/**
 	* @summary:	Called when the game starts or when spawned.
@@ -48,25 +40,120 @@ protected:
 	*/
 	virtual void BeginPlay() override;
 
-	TArray<ABasePlayerController*> _ConnectedBasePlayerControllers;
+	// ****************************************************************************************************************************************
+	// ************************************ VARIABLES *****************************************************************************************
+	// ****************************************************************************************************************************************
 
+	// Lobby Properties ***********************************************************************************************************************
+
+	/*
+	*
+	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Lobby Properties")
 		int _iMaxLobbySize = 10;
 
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Match Properties")
+		bool _bTeamBased = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Lobby")
+		TSubclassOf<class UTeamComponent> _TeamComponentClass;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Lobby")
+		TArray<class UTeamComponent*> _Teams;
+
+	/*
+	*
+	*/
+	ABaseGameState* _GameState = NULL;
+
+	// Players ********************************************************************************************************************************
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Lobby")
+		TArray<ABasePlayerController*> _ConnectedBasePlayerControllers;
+	
 public:
 
+	// ****************************************************************************************************************************************
+	// ************************************ FUNCTIONS *****************************************************************************************
+	// ****************************************************************************************************************************************
+
+	// Players ********************************************************************************************************************************
+
+	/*
+	*
+	*/
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
 	///////////////////////////////////////////////
 
+	/*
+	*
+	*/
 	virtual void Logout(AController* ExitingController) override;
 
 	///////////////////////////////////////////////
 
+	/*
+	*
+	*/
 	TArray<ABasePlayerController*>GetConnectedPlayerControllers() { return _ConnectedBasePlayerControllers; }
+
+	// Lobby Properties ***********************************************************************************************************************
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		int GetMaxLobbySize() { return _iMaxLobbySize; }
 
 	///////////////////////////////////////////////
 
-	int GetMaxLobbySize() { return _iMaxLobbySize; }
+	/*
+	*
+	*/
+	ABaseGameState* GetGameState();
 
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void AddPlayerToTeam(ABasePlayerController* PlayerController, E_TeamNames Team);
+
+	// Prematch Setup *************************************************************************************************************************
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void GenerateRandomGamemodeToPlay(FPlaylistInfo Playlist);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void GenerateRandomMapToPlay(FPlaylistInfo Playlist);
+
+	// Match Properties ***********************************************************************************************************************
+
+	/*
+	*
+	*/
+	bool CheckForGameOver();
+	
 };

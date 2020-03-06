@@ -40,7 +40,7 @@ ABaseCharacter::ABaseCharacter()
 	// Actor replicates
 	bReplicates = true;
 	bReplicateMovement = true;
-	SetRemoteRoleForBackwardsCompat(ROLE_AutonomousProxy);
+	///SetRemoteRoleForBackwardsCompat(ROLE_AutonomousProxy);
 
 	// Bind damage events
 	OnTakeAnyDamage.AddDynamic(this, &ABaseCharacter::OnAnyDamage);
@@ -204,8 +204,9 @@ ABaseCharacter::ABaseCharacter()
 	// Get default variable values
 	_fCameraRotationLagSpeed = _FirstPerson_SpringArm->CameraRotationLagSpeed;
 	_fCapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-	_fBaseGravityScale = GetCharacterMovement()->GravityScale;
-	_fBaseAirControl = GetCharacterMovement()->AirControl;
+
+	GetCharacterMovement()->AirControl = _fDefaultAirControl;
+	GetCharacterMovement()->GravityScale = _fDefaultGravityScale;
 }
 
 ///////////////////////////////////////////////
@@ -357,6 +358,9 @@ void ABaseCharacter::OnGroundChecks()
 		float shakeScale = UKismetMathLibrary::NormalizeToRange(_fFallingVelocity *= -1, 0.0f, 2000.0f);
 		shakeScale *= 2;
 		OwningClient_PlayCameraShake(_CameraShakeJumpLand, shakeScale);
+
+		// Set gravity scale to default
+		GetCharacterMovement()->GravityScale = _fDefaultGravityScale;
 
 		_bIsPerformingGroundChecks = false;
 	}

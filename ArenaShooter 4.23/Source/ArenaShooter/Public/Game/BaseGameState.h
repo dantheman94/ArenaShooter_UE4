@@ -59,4 +59,19 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void DisconnectClientFromLobby();
 
+	///////////////////////////////////////////////
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_CheckForGameOver();
+
+	///////////////////////////////////////////////
+
+	UFUNCTION(NetMulticast, Reliable, WithValidation)
+		void Multicast_Reliable_SetGameMode(FGameTypeInfo GameTypeInfo);
+
+	///////////////////////////////////////////////
+
+	UFUNCTION(NetMulticast, Reliable, WithValidation)
+		void Multicast_Reliable_SetMap(FMapInfo MapInfo);
+
 };

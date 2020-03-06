@@ -6,6 +6,7 @@
 #include "Engine/GameInstance.h"
 #include "Online.h"
 #include "Runtime/Online/HTTP/Public/Http.h"
+#include "Structures.h"
 #include "UnrealNetwork.h"
 #include "UObject/CoreOnline.h"
 #include "UObject/NoExportTypes.h"
@@ -24,7 +25,7 @@ struct FCustomBlueprintSessionResult
 {
 	GENERATED_USTRUCT_BODY()
 
-		UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Custom Blueprint Session Result")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Custom Blueprint Session Result")
 		FString _SessionName;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Custom Blueprint Session Result")
@@ -109,6 +110,8 @@ struct FSteamFriendInfo
 		FBPUniqueNetId PlayerUniqueNetID;
 };
 
+// *** CLASSES
+
 class FHttpModule;
 
 /**
@@ -190,7 +193,7 @@ protected:
 		UUserWidget* _UI_LoadingServer_Instance = NULL;
 
 	// Sessions *******************************************************************************************************************************
-	
+
 	/* Delegate called when session created */
 	FOnCreateSessionCompleteDelegate OnCreateSessionCompleteDelegate;
 
@@ -246,18 +249,56 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Maps")
 		FName _MainMenuMap;
 
+	// Matchmaking *****************************************************************************************************************************
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Matchmaking")
+		UDataTable* _PlaylistDataTable;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Matchmaking")
+		UDataTable* _GametypeDataTable;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Matchmaking")
+		UDataTable* _MapDataTable;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Matchmaking")
+		FPlaylistInfo _PlaylistInfo;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Matchmaking")
+		FGameTypeInfo _GametypeInfo;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Matchmaking")
+		FMapInfo _MapInfo;
+
 	// Random Names ****************************************************************************************************************************
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Random Generator | Player Names")
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Random Generator")
 		TArray<FString> _RandPlayerNameList;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Random Generator | Player Names")
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Random Generator")
 		TArray<FString> _RandPlayerTagList;
 	
 private:
@@ -615,5 +656,28 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Network | Travelling")
 		void ServerToGameplay();
+
+	// Matchmaking *****************************************************************************************************************************
+
+	UFUNCTION()
+		UDataTable* GetPlaylistDataTable() { return _PlaylistDataTable; }
+
+	UFUNCTION()
+		UDataTable* GetGameTypeDataTable() { return _GametypeDataTable; }
+
+	UFUNCTION()
+		UDataTable* GetMapDataTable() { return _MapDataTable; }
+
+	UFUNCTION()
+		void SetGameTypeInfo(FGameTypeInfo GameTypeInfo) { _GametypeInfo = GameTypeInfo; }
+
+	UFUNCTION()
+		void SetMapInfo(FMapInfo MapInfo) { _MapInfo = MapInfo; }
+
+	UFUNCTION(BlueprintCallable)
+		void GenerateRandomGamemode();
+
+	UFUNCTION(BlueprintCallable)
+		void GenerateRandomMap();
 
 };

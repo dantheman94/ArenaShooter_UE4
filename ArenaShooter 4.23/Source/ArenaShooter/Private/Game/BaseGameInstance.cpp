@@ -1,6 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "BaseGameInstance.h"
+
+#include "BaseGameMode.h"
 #include "Engine/Engine.h"
 #include "Kismet/GameplayStatics.h"
 #include <JsonObject.h>
@@ -827,6 +829,8 @@ void UBaseGameInstance::GetMyPublicIP()
 	DoRequest();
 }
 
+///////////////////////////////////////////////
+
 void UBaseGameInstance::DoRequest()
 {
 	TSharedRef< IHttpRequest > request = _fHttpModule->CreateRequest();
@@ -837,6 +841,8 @@ void UBaseGameInstance::DoRequest()
 	request->SetHeader("Content-Type", TEXT("application/json"));
 	request->ProcessRequest();
 }
+
+///////////////////////////////////////////////
 
 void UBaseGameInstance::OnResponseReceived(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
 {
@@ -882,4 +888,40 @@ void UBaseGameInstance::ServerToGameplay()
 	context.SetCurrentWorld(GetWorld());	
 
 	///UEngine::Browse(context, url, error);
+}
+
+void UBaseGameInstance::GenerateRandomGamemode()
+{
+	// Get gamemode
+	AGameModeBase* gm = GetWorld()->GetAuthGameMode();
+	if (gm != NULL)
+	{
+		// Get debugger playlist from the database
+		if (_PlaylistDataTable == NULL) { return; }
+
+		FPlaylistInfo* playlist = _PlaylistDataTable->FindRow<FPlaylistInfo>(TEXT("Debug"), "", true);
+		if (playlist != NULL) 
+		{ 
+			ABaseGameMode* baseGameMode = Cast<ABaseGameMode>(gm);
+			if (baseGameMode != NULL) { baseGameMode->GenerateRandomGamemodeToPlay(*playlist); }
+		}
+	}
+}
+
+void UBaseGameInstance::GenerateRandomMap()
+{
+	// Get gamemode
+	AGameModeBase* gm = GetWorld()->GetAuthGameMode();
+	if (gm != NULL)
+	{
+		// Get debugger playlist from the database
+		if (_PlaylistDataTable == NULL) { return; }
+		FPlaylistInfo* playlist = _PlaylistDataTable->FindRow<FPlaylistInfo>(TEXT("Debug"), "", true);
+		if (playlist == NULL) { return; }
+
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("Bepis"));
+
+		ABaseGameMode* baseGameMode = Cast<ABaseGameMode>(gm);
+		if (baseGameMode != NULL) { baseGameMode->GenerateRandomMapToPlay(*playlist); }
+	}
 }

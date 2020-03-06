@@ -158,16 +158,25 @@ protected:
 
 	// Startup ********************************************************************************************************************************
 
-	float _fDefaultAirControl = 0.0f;
 	float _fCapsuleHalfHeight = 0.0f;
+	float _fCameraRotationLagSpeed = 0.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Default Settings")
+	float _fDefaultGravityScale = 0.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Default Settings")
+		float _fDefaultAirControl = 0.0f;
 
 	// Current Frame **************************************************************************************************************************
 
 	bool _bIsPerformingGroundChecks = false;
 	float _fFallingVelocity = 0.0f;
-	float _fCameraRotationLagSpeed = 0.0f;
-	float _fBaseGravityScale = 0.0f;
-	float _fBaseAirControl = 0.0f;
 
 	// Animation ******************************************************************************************************************************
 

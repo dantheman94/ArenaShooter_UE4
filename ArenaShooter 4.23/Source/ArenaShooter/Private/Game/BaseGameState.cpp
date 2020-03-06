@@ -3,11 +3,11 @@
 
 #include "BaseGameState.h"
 
+#include "BaseGameInstance.h"
 #include "BaseGameMode.h"
 #include "BasePlayerController.h"
 #include "BasePlayerState.h"
 #include "UnrealNetwork.h"
-
 
 void ABaseGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const
 {
@@ -50,7 +50,7 @@ void ABaseGameState::UpdatePlayerList()
 		_OnPlayerInfoRefresh.Broadcast();
 	}
 
-	// Future-proofing (client authority will run this)
+	// Future-proofing if any extra server code needs to go underneath this (client-authority will hit this instead)
 	else { return; }
 }
 
@@ -69,4 +69,46 @@ void ABaseGameState::SetMaxLobbySize(int Size)
 void ABaseGameState::DisconnectClientFromLobby()
 {
 
+}
+
+///////////////////////////////////////////////
+
+bool ABaseGameState::Server_Reliable_CheckForGameOver_Validate()
+{ return true; }
+
+void ABaseGameState::Server_Reliable_CheckForGameOver_Implementation()
+{
+
+}
+
+///////////////////////////////////////////////
+
+bool ABaseGameState::Multicast_Reliable_SetGameMode_Validate(FGameTypeInfo GameTypeInfo)
+{ return true; }
+
+void ABaseGameState::Multicast_Reliable_SetGameMode_Implementation(FGameTypeInfo GameTypeInfo)
+{
+	// Get reference to game instance
+	UGameInstance* gi = GetWorld()->GetGameInstance();
+	UBaseGameInstance* baseGameInstance = Cast<UBaseGameInstance>(gi);
+	if (baseGameInstance == NULL) { return; }
+
+	// Set gametype info in game instance
+	baseGameInstance->SetGameTypeInfo(GameTypeInfo);
+}
+
+///////////////////////////////////////////////
+
+bool ABaseGameState::Multicast_Reliable_SetMap_Validate(FMapInfo MapInfo)
+{ return true; }
+
+void ABaseGameState::Multicast_Reliable_SetMap_Implementation(FMapInfo MapInfo)
+{
+	// Get reference to game instance
+	UGameInstance* gi = GetWorld()->GetGameInstance();
+	UBaseGameInstance* baseGameInstance = Cast<UBaseGameInstance>(gi);
+	if (baseGameInstance == NULL) { return; }
+
+	// Set map info in game instance
+	baseGameInstance->SetMapInfo(MapInfo);
 }
