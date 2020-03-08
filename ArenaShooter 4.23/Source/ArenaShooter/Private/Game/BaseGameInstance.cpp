@@ -919,8 +919,6 @@ void UBaseGameInstance::GenerateRandomMap()
 		FPlaylistInfo* playlist = _PlaylistDataTable->FindRow<FPlaylistInfo>(TEXT("Debug"), "", true);
 		if (playlist == NULL) { return; }
 
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("Bepis"));
-
 		ABaseGameMode* baseGameMode = Cast<ABaseGameMode>(gm);
 		if (baseGameMode != NULL) { baseGameMode->GenerateRandomMapToPlay(*playlist); }
 	}
