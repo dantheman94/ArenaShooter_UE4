@@ -29,6 +29,9 @@ public:
 		UMaterialInstance* _mImpactDecal = NULL;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		TArray<UMaterialInstance*> _mImpactDecals;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		USoundBase* _sImpactSound = NULL;
 
 	UPhysicalMaterial* GetPhysicsMaterial()
@@ -39,6 +42,9 @@ public:
 
 	UMaterialInstance* GetDecal()
 	{ return _mImpactDecal; }
+
+	UMaterialInstance* GetDecals()
+	{ return _mImpactDecals; }
 
 	USoundBase* GetSound()
 	{ return _sImpactSound; }
