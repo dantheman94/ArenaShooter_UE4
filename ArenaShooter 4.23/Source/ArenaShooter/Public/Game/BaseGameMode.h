@@ -133,6 +133,14 @@ public:
 	UFUNCTION()
 		void AddPlayerToTeam(ABasePlayerController* PlayerController, E_TeamNames Team);
 
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable)
+		void ServerTravel();
+
 	// Prematch Setup *************************************************************************************************************************
 
 	/*

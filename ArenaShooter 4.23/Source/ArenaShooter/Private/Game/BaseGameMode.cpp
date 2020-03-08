@@ -131,6 +131,21 @@ void ABaseGameMode::AddPlayerToTeam(ABasePlayerController* PlayerController, E_T
 	team->AddPlayerToTeam(PlayerController);
 }
 
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseGameMode::ServerTravel()
+{
+	// Get reference to game instance
+	UGameInstance* gi = GetWorld()->GetGameInstance();
+	UBaseGameInstance* baseGameInstance = Cast<UBaseGameInstance>(gi);
+	if (baseGameInstance == NULL) { return; }
+
+	baseGameInstance->ServerTravel();
+}
+
 // Prematch Setup *************************************************************************************************************************
 
 /*
@@ -210,7 +225,7 @@ void ABaseGameMode::GenerateRandomMapToPlay(FPlaylistInfo Playlist)
 	int rand = FMath::RandRange(0, mapCount - 1);
 
 	// Get map from database based on random integer
-	UDataTable* dataBase = baseGameInstance->GetGameTypeDataTable();
+	UDataTable* dataBase = baseGameInstance->GetMapDataTable();
 	if (dataBase == NULL) { return; }
 	FMapInfo* item = dataBase->FindRow<FMapInfo>(FName(*FString::FromInt(rand)), "", true);
 	if (item != NULL)
