@@ -11,6 +11,7 @@
 // *** EVENT DISPATCHERS / DELEGATES
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerInfoRefresh);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMatchCountdown);
 
 // *** CLASSES
 
@@ -30,6 +31,9 @@ protected:
 
 	UPROPERTY(BlueprintAssignable)
 		FOnPlayerInfoRefresh _OnPlayerInfoRefresh;
+
+	UPROPERTY(BlueprintAssignable)
+		FOnMatchCountdown _OnMatchCountdown;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Replicated)
 		int _iMaxLobbySize = 0;
@@ -73,5 +77,13 @@ public:
 
 	UFUNCTION(NetMulticast, Reliable, WithValidation)
 		void Multicast_Reliable_SetMap(FMapInfo MapInfo);
+
+	///////////////////////////////////////////////
+
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable)
+		void Server_Reliable_HostHasStartedMatchCountdown();
+
+	UFUNCTION(NetMulticast, Reliable, WithValidation)
+		void Multicast_Reliable_HostHasStartedMatchCountdown();
 
 };

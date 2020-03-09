@@ -112,3 +112,21 @@ void ABaseGameState::Multicast_Reliable_SetMap_Implementation(FMapInfo MapInfo)
 	// Set map info in game instance
 	baseGameInstance->SetMapInfo(MapInfo);
 }
+
+///////////////////////////////////////////////
+
+bool ABaseGameState::Server_Reliable_HostHasStartedMatchCountdown_Validate()
+{ return true; }
+
+void ABaseGameState::Server_Reliable_HostHasStartedMatchCountdown_Implementation()
+{
+	Multicast_Reliable_HostHasStartedMatchCountdown();
+}
+
+bool ABaseGameState::Multicast_Reliable_HostHasStartedMatchCountdown_Validate()
+{ return true; }
+
+void ABaseGameState::Multicast_Reliable_HostHasStartedMatchCountdown_Implementation()
+{
+	_OnMatchCountdown.Broadcast();
+}
