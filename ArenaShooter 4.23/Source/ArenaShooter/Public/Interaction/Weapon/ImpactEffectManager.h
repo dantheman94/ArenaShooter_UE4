@@ -43,7 +43,7 @@ public:
 	UMaterialInstance* GetDecal()
 	{ return _mImpactDecal; }
 
-	UMaterialInstance* GetDecals()
+	TArray<UMaterialInstance*> GetDecals()
 	{ return _mImpactDecals; }
 
 	USoundBase* GetSound()
