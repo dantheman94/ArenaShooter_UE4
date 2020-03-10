@@ -141,6 +141,30 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void ServerTravel();
 
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		TArray<class UTeamComponent*>GetTeamTemplates() { return _Teams; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void RandomizeTeamPlayers();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void SetNewLobbyHost(FPlayerInfo NewHostInfo);
+
 	// Prematch Setup *************************************************************************************************************************
 
 	/*

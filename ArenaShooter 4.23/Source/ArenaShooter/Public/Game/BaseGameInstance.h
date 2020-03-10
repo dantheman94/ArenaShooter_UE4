@@ -287,6 +287,12 @@ protected:
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Matchmaking")
 		FMapInfo _MapInfo;
 
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Matchmaking")
+		bool _bTeamBasedLobby = false;
+
 	// Random Names ****************************************************************************************************************************
 
 	/*
@@ -450,7 +456,23 @@ public:
 	*
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void HideUI_HostLobby();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_ClientLobby(int ZOrder);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void HideUI_ClientLobby();
 
 	///////////////////////////////////////////////
 
@@ -484,7 +506,6 @@ public:
 	UFUNCTION()
 		TArray<FString> GetRandPlayerTagList() { return _RandPlayerTagList; }
 
-	
 	// Sessions *******************************************************************************************************************************
 	
 	// LAN player name to not use the Computer Name
@@ -673,6 +694,12 @@ public:
 
 	UFUNCTION()
 		void SetMapInfo(FMapInfo MapInfo) { _MapInfo = MapInfo; }
+
+	UFUNCTION(BlueprintPure)
+		bool GetTeamBased() { return _bTeamBasedLobby; }
+
+	UFUNCTION(BlueprintCallable)
+		void SetTeamBased(bool TeamBased);
 
 	UFUNCTION(BlueprintCallable)
 		void GenerateRandomGamemode();

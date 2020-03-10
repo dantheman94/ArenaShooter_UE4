@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Engine/Texture2D.h"
+
 #include "TeamComponent.generated.h"
 
 // *** ENUMS
@@ -74,6 +76,12 @@ protected:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		FLinearColor _cTeamColour = FLinearColor::White;
 
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		UTexture2D* _TeamLogo = NULL;
+
 	// Team Players ***************************************************************************************************************************
 
 	/*
@@ -129,6 +137,14 @@ public:
 	UFUNCTION(BlueprintPure)
 		FLinearColor GetTeamColour() { return _cTeamColour; }
 
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		UTexture2D* GetTeamLogo() { return _TeamLogo; }
+
 	// Team Players ***************************************************************************************************************************
 
 	/*
@@ -144,6 +160,14 @@ public:
 	*/
 	UFUNCTION(BlueprintPure)
 		TArray<ABasePlayerController*> GetPlayers() { return _TeamPlayers; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		int GetMaxTeamSize();
 
 	///////////////////////////////////////////////
 

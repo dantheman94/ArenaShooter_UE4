@@ -25,13 +25,18 @@ public:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const;
 
 protected:
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Replicated)
+		TArray<class UTeamComponent*> _Teams;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Replicated)
 		TArray<FPlayerInfo> _PlayerInfos;
 
 	UPROPERTY(BlueprintAssignable)
 		FOnPlayerInfoRefresh _OnPlayerInfoRefresh;
-
+		
 	UPROPERTY(BlueprintAssignable)
 		FOnMatchCountdown _OnMatchCountdown;
 
@@ -42,6 +47,11 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 		void UpdatePlayerList();
+
+	///////////////////////////////////////////////
+
+	UFUNCTION(BlueprintCallable)
+		void UpdateTeamList();
 
 	///////////////////////////////////////////////
 
@@ -85,5 +95,20 @@ public:
 
 	UFUNCTION(NetMulticast, Reliable, WithValidation)
 		void Multicast_Reliable_HostHasStartedMatchCountdown();
+
+	///////////////////////////////////////////////
+
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable)
+		void Server_Reliable_PromoteToLeader(FPlayerInfo PlayerData);
+
+	// Main Menu ******************************************************************************************************************************
+
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable)
+		void Server_Reliable_ShowPreMatchLobby();
+
+	UFUNCTION(NetMulticast, Reliable, WithValidation)
+		void Multicast_Reliable_ShowPreMatchLobby();
+
+	///////////////////////////////////////////////
 
 };

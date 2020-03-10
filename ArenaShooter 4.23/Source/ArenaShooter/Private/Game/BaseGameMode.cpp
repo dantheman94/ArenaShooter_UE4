@@ -58,6 +58,25 @@ void ABaseGameMode::PostLogin(APlayerController* NewPlayer)
 		}
 
 		_ConnectedBasePlayerControllers.Add(joiningPlayer);
+
+		// Add them to a team if needed
+		UGameInstance* gs = GetGameInstance();
+		UBaseGameInstance* gameInstance = Cast<UBaseGameInstance>(gs);
+		if (gameInstance == NULL) { return; }
+		if (gameInstance->GetTeamBased())
+		{
+			// Find first available space in any team
+			for (int i = 0; i < _Teams.Num(); i++)
+			{
+				if (_Teams[i]->GetPlayers().Num() < _Teams[i]->GetMaxTeamSize())
+				{
+					// Add player to team
+					E_TeamNames team = _Teams[i]->GetName();
+					AddPlayerToTeam(joiningPlayer, team);
+					break;
+				}
+			}
+		}
 	}
 }
 
@@ -144,6 +163,71 @@ void ABaseGameMode::ServerTravel()
 	if (baseGameInstance == NULL) { return; }
 
 	baseGameInstance->ServerTravel();
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseGameMode::RandomizeTeamPlayers()
+{
+	// For all connected players
+	for (int i = 0; i < _ConnectedBasePlayerControllers.Num(); i++)
+	{
+		// Find first available space in any team
+		for (int j = 0; j < _Teams.Num(); j++)
+		{
+			if (_Teams[j]->GetPlayers().Num() < _Teams[j]->GetMaxTeamSize())
+			{
+				// Add player to team
+				E_TeamNames team = _Teams[i]->GetName();
+				AddPlayerToTeam(_ConnectedBasePlayerControllers[i], team);
+				break;
+			}
+		}
+	}
+
+	if (GetGameState() != NULL) { GetGameState()->UpdatePlayerList(); }
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseGameMode::SetNewLobbyHost(FPlayerInfo NewHostInfo)
+{
+	// Clear current host
+	for (int i = 0; i < _ConnectedBasePlayerControllers.Num(); i++)
+	{
+		ABasePlayerState* playerState = Cast<ABasePlayerState>(_ConnectedBasePlayerControllers[i]->PlayerState);
+		if (playerState == NULL) { continue; }
+
+		FPlayerInfo playerInfo = playerState->GetPlayerInfo();
+		if (playerInfo.IsHost())
+		{
+			// Found current host so remove host privileges 
+			playerState->Server_Reliable_SetHost(false);
+		}
+	}
+
+	// Set new host
+	for (int i = 0; i < _ConnectedBasePlayerControllers.Num(); i++)
+	{
+		ABasePlayerState* playerState = Cast<ABasePlayerState>(_ConnectedBasePlayerControllers[i]->PlayerState);
+		if (playerState == NULL) { continue; }
+
+		FPlayerInfo playerInfo = playerState->GetPlayerInfo();
+		if (playerInfo._PlayerController == NewHostInfo.GetPlayerController())
+		{
+			// Controllers match so set new host privileges
+			playerState->Server_Reliable_SetHost(true);
+		}
+	}
+
+	// Update roster list and update main menus if needed
+	if (GetGameState() != NULL) { GetGameState()->UpdatePlayerList(); }
 }
 
 // Prematch Setup *************************************************************************************************************************

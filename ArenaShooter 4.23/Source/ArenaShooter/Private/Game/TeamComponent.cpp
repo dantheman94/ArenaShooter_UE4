@@ -1,10 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "TeamComponent.h"
+
+#include "BaseGameMode.h"
 #include "BaseGameState.h"
 #include "BasePlayerController.h"
-
 #include "UnrealNetwork.h"
 
 // Startup ********************************************************************************************************************************
@@ -71,6 +71,25 @@ void UTeamComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorC
 /*
 *
 */
+int UTeamComponent::GetMaxTeamSize()
+{
+	int ret = 0;
+
+	// Gamemode only exists on server, so this will only return a valid value if server authority called this
+	ABaseGameMode* gameMode = Cast<ABaseGameMode>(GetWorld()->GetAuthGameMode());
+	if (gameMode != NULL)
+	{
+		ret = gameMode->GetMaxLobbySize();
+	}
+
+	return ret;
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
 void UTeamComponent::AddPlayerToTeam(ABasePlayerController* PlayerController)
 {
 	// Get attach parent
@@ -113,7 +132,7 @@ void UTeamComponent::AddToTeamScore(int Additive)
 		ABaseGameState* gameState = Cast<ABaseGameState>(gs);
 		if (gameState != NULL)
 		{
-			// Check for gameover
+			// Check for game over
 			gameState->Server_Reliable_CheckForGameOver();
  		}
 	}

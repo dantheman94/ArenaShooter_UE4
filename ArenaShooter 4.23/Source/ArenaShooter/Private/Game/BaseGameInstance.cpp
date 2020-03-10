@@ -80,7 +80,21 @@ void UBaseGameInstance::ShowUI_HostLobby_Implementation(int ZOrder = 0) {}
 /*
 *
 */
+void UBaseGameInstance::HideUI_HostLobby_Implementation() {}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
 void UBaseGameInstance::ShowUI_ClientLobby_Implementation(int ZOrder) {}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void UBaseGameInstance::HideUI_ClientLobby_Implementation() {}
 
 ///////////////////////////////////////////////
 
@@ -888,6 +902,20 @@ void UBaseGameInstance::ServerToGameplay()
 	context.SetCurrentWorld(GetWorld());	
 
 	///UEngine::Browse(context, url, error);
+}
+
+void UBaseGameInstance::SetTeamBased(bool TeamBased)
+{
+	_bTeamBasedLobby = TeamBased;
+	if (_bTeamBasedLobby)
+	{
+		// Get gamemode (will only return a valid pointer if called by server authority)
+		AGameModeBase* gm = GetWorld()->GetAuthGameMode();
+		if (gm == NULL) { return; }
+		
+		ABaseGameMode* baseGameMode = Cast<ABaseGameMode>(gm);
+		if (baseGameMode != NULL) { baseGameMode->RandomizeTeamPlayers(); }
+	}
 }
 
 void UBaseGameInstance::GenerateRandomGamemode()
