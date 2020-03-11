@@ -12,6 +12,7 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnPlayerInfoRefresh);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMatchCountdown);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMatchCountdownCancel);
 
 // *** CLASSES
 
@@ -25,6 +26,7 @@ public:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const;
 
 protected:
+
 	/*
 	*
 	*/
@@ -36,12 +38,21 @@ protected:
 
 	UPROPERTY(BlueprintAssignable)
 		FOnPlayerInfoRefresh _OnPlayerInfoRefresh;
-		
+
 	UPROPERTY(BlueprintAssignable)
 		FOnMatchCountdown _OnMatchCountdown;
 
+	UPROPERTY(BlueprintAssignable)
+		FOnMatchCountdownCancel _OnMatchCountdownCancel;
+
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Replicated)
 		int _iMaxLobbySize = 0;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Lobby Properties")
+		int _iLobbyTeamCap = 2;
 
 public:
 
@@ -99,16 +110,36 @@ public:
 	///////////////////////////////////////////////
 
 	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable)
-		void Server_Reliable_PromoteToLeader(FPlayerInfo PlayerData);
-
-	// Main Menu ******************************************************************************************************************************
-
-	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable)
-		void Server_Reliable_ShowPreMatchLobby();
+		void Server_Reliable_HostHasCancelledMatchCountdown();
 
 	UFUNCTION(NetMulticast, Reliable, WithValidation)
-		void Multicast_Reliable_ShowPreMatchLobby();
+		void Multicast_Reliable_HostHasCancelledMatchCountdown();
 
 	///////////////////////////////////////////////
+
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable)
+		void Server_Reliable_PromoteToLeader(FPlayerInfo PlayerData);
+
+	// Prematch Setup *************************************************************************************************************************
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable)
+		void Server_Reliable_GenerateRandomGamemodeToPlay();
+
+	UFUNCTION(BlueprintCallable)
+		void GenerateRandomGamemodeToPlay();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable)
+		void Server_Reliable_GenerateRandomMapToPlay(FPlaylistInfo Playlist);
+
+	UFUNCTION(Client, Unreliable)
+		void sendmessage();
 
 };

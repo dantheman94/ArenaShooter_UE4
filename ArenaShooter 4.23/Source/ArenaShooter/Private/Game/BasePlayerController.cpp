@@ -2,6 +2,7 @@
 
 #include "BasePlayerController.h"
 
+#include "BaseGameInstance.h"
 #include "Character/ArenaCharacter.h"
 #include "CoreUObject/Public/UObject/UObjectGlobals.h"
 #include "GameFramework/PlayerInput.h"

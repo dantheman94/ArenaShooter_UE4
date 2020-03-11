@@ -10,6 +10,7 @@
 
 class ABaseGameMode;
 class ABasePlayerController;
+class ABasePlayerState;
 
 // *** ENUMS
 
@@ -100,6 +101,9 @@ public:
 		bool _bIsHost = false;
 
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
+		ABasePlayerState* _PlayerState = NULL;
+
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 		ABasePlayerController* _PlayerController = NULL;
 
 	FString GetPlayerName() { return _PlayerName; }
@@ -107,6 +111,8 @@ public:
 	FString GetPlayerTag() { return _PlayerTag; }
 
 	bool IsHost() { return _bIsHost; }
+
+	ABasePlayerState* GetPlayerState() { return _PlayerState; }
 
 	ABasePlayerController* GetPlayerController() { return _PlayerController; }
 

@@ -3,6 +3,7 @@
 #include "BaseGameInstance.h"
 
 #include "BaseGameMode.h"
+#include "BaseGameState.h"
 #include "Engine/Engine.h"
 #include "Kismet/GameplayStatics.h"
 #include <JsonObject.h>
@@ -920,9 +921,9 @@ void UBaseGameInstance::SetTeamBased(bool TeamBased)
 
 void UBaseGameInstance::GenerateRandomGamemode()
 {
-	// Get gamemode
-	AGameModeBase* gm = GetWorld()->GetAuthGameMode();
-	if (gm != NULL)
+	// Get gamestate
+	AGameStateBase* gs = GetWorld()->GetGameState();
+	if (gs != NULL)
 	{
 		// Get debugger playlist from the database
 		if (_PlaylistDataTable == NULL) { return; }
@@ -930,24 +931,25 @@ void UBaseGameInstance::GenerateRandomGamemode()
 		FPlaylistInfo* playlist = _PlaylistDataTable->FindRow<FPlaylistInfo>(TEXT("Debug"), "", true);
 		if (playlist != NULL) 
 		{ 
-			ABaseGameMode* baseGameMode = Cast<ABaseGameMode>(gm);
-			if (baseGameMode != NULL) { baseGameMode->GenerateRandomGamemodeToPlay(*playlist); }
+			ABaseGameState* gameState = Cast<ABaseGameState>(gs);
+			///if (gameState != NULL) { gameState->Server_Reliable_GenerateRandomGamemodeToPlay(*playlist); }
 		}
 	}
 }
 
 void UBaseGameInstance::GenerateRandomMap()
 {
-	// Get gamemode
-	AGameModeBase* gm = GetWorld()->GetAuthGameMode();
-	if (gm != NULL)
+	// Get gamestate
+	AGameStateBase* gs = GetWorld()->GetGameState();
+	if (gs != NULL)
 	{
 		// Get debugger playlist from the database
 		if (_PlaylistDataTable == NULL) { return; }
+
 		FPlaylistInfo* playlist = _PlaylistDataTable->FindRow<FPlaylistInfo>(TEXT("Debug"), "", true);
 		if (playlist == NULL) { return; }
 
-		ABaseGameMode* baseGameMode = Cast<ABaseGameMode>(gm);
-		if (baseGameMode != NULL) { baseGameMode->GenerateRandomMapToPlay(*playlist); }
+		ABaseGameState* gameState = Cast<ABaseGameState>(gs);
+		if (gameState != NULL) { gameState->Server_Reliable_GenerateRandomMapToPlay(*playlist); }
 	}
 }

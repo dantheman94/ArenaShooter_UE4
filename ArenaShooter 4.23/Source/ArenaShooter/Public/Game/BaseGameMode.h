@@ -157,30 +157,6 @@ public:
 	UFUNCTION()
 		void RandomizeTeamPlayers();
 
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION()
-		void SetNewLobbyHost(FPlayerInfo NewHostInfo);
-
-	// Prematch Setup *************************************************************************************************************************
-
-	/*
-	*
-	*/
-	UFUNCTION()
-		void GenerateRandomGamemodeToPlay(FPlaylistInfo Playlist);
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION()
-		void GenerateRandomMapToPlay(FPlaylistInfo Playlist);
-
 	// Match Properties ***********************************************************************************************************************
 
 	/*

@@ -1,11 +1,12 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "BasePlayerState.h"
 
 #include "BaseGameInstance.h"
 #include "BaseGameState.h"
+#include "BasePlayerController.h"
 #include "UnrealNetwork.h"
+#include "HUDMainMenu.h"
 
 void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const
 {
@@ -73,6 +74,7 @@ bool ABasePlayerState::Server_Reliable_SetHost_Validate(bool Hosting)
 void ABasePlayerState::Server_Reliable_SetHost_Implementation(bool Hosting)
 {
 	_PlayerInfo._bIsHost = Hosting;
+	OwningClient_Reliable_ShowPreMatchLobby(Hosting);
 }
 
 ///////////////////////////////////////////////
@@ -86,4 +88,61 @@ bool ABasePlayerState::Server_Reliable_SetOwningPlayerController_Validate(ABaseP
 void ABasePlayerState::Server_Reliable_SetOwningPlayerController_Implementation(ABasePlayerController* PlayerController)
 {
 	_PlayerInfo._PlayerController = PlayerController;
+	_PlayerInfo._PlayerState = this;
+}
+
+// Main Menu ******************************************************************************************************************************
+
+bool ABasePlayerState::OwningClient_Reliable_ShowUI_HostLobby_Validate(int ZOrder)
+{ return true; }
+
+void ABasePlayerState::OwningClient_Reliable_ShowUI_HostLobby_Implementation(int ZOrder)
+{
+	///UGameInstance* gs = GetGameInstance();
+	///UBaseGameInstance* gameInstance = Cast<UBaseGameInstance>(gs);
+	///if (gameInstance == NULL) { return; }
+	///
+	///gameInstance->HideUI_ClientLobby();
+	///gameInstance->ShowUI_HostLobby(ZOrder);
+	///gameInstance->ShowUI_LobbyRoster(ZOrder);
+}
+
+///////////////////////////////////////////////
+
+bool ABasePlayerState::OwningClient_Reliable_ShowUI_ClientLobby_Validate(int ZOrder)
+{ return true; }
+
+void ABasePlayerState::OwningClient_Reliable_ShowUI_ClientLobby_Implementation(int ZOrder)
+{
+	///UGameInstance* gs = GetGameInstance();
+	///UBaseGameInstance* gameInstance = Cast<UBaseGameInstance>(gs);
+	///if (gameInstance == NULL) { return; }
+	///
+	///gameInstance->HideUI_HostLobby();
+	///gameInstance->ShowUI_ClientLobby(ZOrder);
+	///gameInstance->ShowUI_LobbyRoster(ZOrder);
+}
+
+///////////////////////////////////////////////
+
+bool ABasePlayerState::OwningClient_Reliable_ShowPreMatchLobby_Validate(bool Hosting)
+{ return true; }
+
+void ABasePlayerState::OwningClient_Reliable_ShowPreMatchLobby_Implementation(bool Hosting)
+{
+	ABasePlayerController* controller = _PlayerInfo.GetPlayerController();
+	if (controller == NULL) {
+
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("controller is NULL"));
+		return; 
+	}
+
+	AHUDMainMenu* hud = Cast<AHUDMainMenu>(controller->GetHUD());
+	if (hud == NULL) { 
+
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("HUD is NULL"));
+		return; 
+	}
+
+	hud->ShowUI_PreMatchLobby(Hosting, 0);
 }

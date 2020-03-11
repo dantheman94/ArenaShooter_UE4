@@ -78,4 +78,19 @@ public:
 	UFUNCTION()
 		FPlayerInfo GetPlayerInfo() { return _PlayerInfo; }
 
+	// Main Menu ******************************************************************************************************************************
+
+	UFUNCTION(Client, Reliable, WithValidation, BlueprintCallable)
+		void OwningClient_Reliable_ShowUI_HostLobby(int ZOrder);
+
+	///////////////////////////////////////////////
+
+	UFUNCTION(Client, Reliable, WithValidation, BlueprintCallable)
+		void OwningClient_Reliable_ShowUI_ClientLobby(int ZOrder);
+
+	///////////////////////////////////////////////
+
+	UFUNCTION(Client, Reliable, WithValidation, BlueprintCallable)
+		void OwningClient_Reliable_ShowPreMatchLobby(bool Hosting);
+
 };

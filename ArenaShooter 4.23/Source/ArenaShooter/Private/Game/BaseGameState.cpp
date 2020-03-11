@@ -41,7 +41,7 @@ void ABaseGameState::UpdatePlayerList()
 				info._PlayerName = playerState->GetPlayerInfo().GetPlayerName();
 				info._PlayerTag = playerState->GetPlayerInfo().GetPlayerTag();
 				info._bIsHost = playerState->GetPlayerInfo().IsHost();
-				info._PlayerController = playerState->GetPlayerInfo().GetPlayerController();
+				info._PlayerState = playerState->GetPlayerInfo().GetPlayerState();
 			}
 			_PlayerInfos.Add(info);
 		}
@@ -71,12 +71,15 @@ void ABaseGameState::UpdateTeamList()
 	if (gameMode != NULL)
 	{
 		// Clear the list, then re-populate it
-		_Teams.Empty();
-
-		for (int i = 0; i < gameMode->GetTeamTemplates().Num(); i++)
-		{
-			_Teams.Add(gameMode->GetTeamTemplates()[i]);
-		}
+		///_Teams.Empty();
+		///
+		///for (int i = 0; i < _iLobbyTeamCap; i++)
+		///{
+		///	if (gameMode->GetTeamTemplates().Num() >= i)
+		///	{
+		///		_Teams.Add(gameMode->GetTeamTemplates()[i]);
+		///	}			
+		///}
 
 		// Update player list on all clients connected
 		_OnPlayerInfoRefresh.Broadcast();
@@ -165,47 +168,178 @@ void ABaseGameState::Multicast_Reliable_HostHasStartedMatchCountdown_Implementat
 
 ///////////////////////////////////////////////
 
-bool ABaseGameState::Server_Reliable_PromoteToLeader_Validate(FPlayerInfo PlayerData)
+bool ABaseGameState::Server_Reliable_HostHasCancelledMatchCountdown_Validate()
 { return true; }
 
-void ABaseGameState::Server_Reliable_PromoteToLeader_Implementation(FPlayerInfo PlayerData)
+void ABaseGameState::Server_Reliable_HostHasCancelledMatchCountdown_Implementation()
 {
-	// Remove the current host in the gamemode
-	ABaseGameMode* gameMode = Cast<ABaseGameMode>(GetWorld()->GetAuthGameMode());
-	if (gameMode != NULL)
-	{
-		gameMode->SetNewLobbyHost(PlayerData);
-	}
+	Multicast_Reliable_HostHasCancelledMatchCountdown();
 }
 
 ///////////////////////////////////////////////
 
-bool ABaseGameState::Server_Reliable_ShowPreMatchLobby_Validate()
+bool ABaseGameState::Multicast_Reliable_HostHasCancelledMatchCountdown_Validate()
 { return true; }
 
-void ABaseGameState::Server_Reliable_ShowPreMatchLobby_Implementation()
+void ABaseGameState::Multicast_Reliable_HostHasCancelledMatchCountdown_Implementation()
 {
-	Multicast_Reliable_ShowPreMatchLobby();
+	_OnMatchCountdownCancel.Broadcast();
 }
 
-bool ABaseGameState::Multicast_Reliable_ShowPreMatchLobby_Validate()
+///////////////////////////////////////////////
+
+bool ABaseGameState::Server_Reliable_PromoteToLeader_Validate(FPlayerInfo NewHostPlayerInfo)
 { return true; }
 
-void ABaseGameState::Multicast_Reliable_ShowPreMatchLobby_Implementation()
+void ABaseGameState::Server_Reliable_PromoteToLeader_Implementation(FPlayerInfo NewHostPlayerInfo)
 {
-	UGameInstance* gs = GetGameInstance();
-	UBaseGameInstance* gameInstance = Cast<UBaseGameInstance>(gs);
-	if (gameInstance == NULL) { return; }
+	// Clear current host
+	for (int i = 0; i < _PlayerInfos.Num(); i++)
+	{
+		ABasePlayerState* playerState = Cast<ABasePlayerState>(_PlayerInfos[i].GetPlayerState());
+		if (playerState == NULL) { continue; }
 
+		FPlayerInfo playerInfo = playerState->GetPlayerInfo();
+		if (playerInfo.IsHost())
+		{
+			// Found current host so remove host privileges 
+			playerState->Server_Reliable_SetHost(false);
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Orange, playerInfo.GetPlayerName() + TEXT(" is no longer the host."));
+		}
+	}
+
+	// Set new host
+	for (int i = 0; i < _PlayerInfos.Num(); i++)
+	{
+		ABasePlayerState* playerState = Cast<ABasePlayerState>(_PlayerInfos[i].GetPlayerState());
+		if (playerState == NULL) { continue; }
+
+		FPlayerInfo playerInfo = playerState->GetPlayerInfo();
+		if (playerInfo._PlayerState == NewHostPlayerInfo.GetPlayerState())
+		{
+			// Player states match so set new host privileges
+			playerState->Server_Reliable_SetHost(true);
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, playerInfo.GetPlayerName() + TEXT(" is the new host."));
+		}
+	}
+
+	// Update roster list
+	UpdatePlayerList();
+}
+
+// Prematch Setup *************************************************************************************************************************
+
+/*
+*
+*/
+bool ABaseGameState::Server_Reliable_GenerateRandomGamemodeToPlay_Validate()
+{ return true; }
+
+void ABaseGameState::Server_Reliable_GenerateRandomGamemodeToPlay_Implementation()
+{
+	GenerateRandomGamemodeToPlay();
+}
+
+void ABaseGameState::GenerateRandomGamemodeToPlay()
+{
 	if (Role == ROLE_Authority)
 	{
-		gameInstance->ShowUI_HostLobby(0);
-	} 
+		// Get reference to game instance
+		UGameInstance* gi = GetWorld()->GetGameInstance();
+		UBaseGameInstance* baseGameInstance = Cast<UBaseGameInstance>(gi);
+		if (baseGameInstance == NULL) { return; }
+
+		// Get playlist
+		UDataTable* playlistTable = baseGameInstance->GetPlaylistDataTable();
+		FPlaylistInfo* playlist = playlistTable->FindRow<FPlaylistInfo>(TEXT("Debug"), "", true);
+
+		if (playlist != NULL)
+		{
+			// Get randomized base gamemode from playlist information
+			int gameModeCount = playlist->PlaylistGameTypes.Num();
+			int randG = FMath::RandRange(0, gameModeCount - 1);
+			E_GameTypes gameMode = playlist->PlaylistGameTypes[randG];
+
+			UDataTable* gametypeTable = baseGameInstance->GetGameTypeDataTable();
+			if (gametypeTable == NULL) { return; }
+
+			// Cross reference variant from base gamemode, from playlist
+			TArray<TSubclassOf<ABaseGameMode>> variants;
+			FGameTypeInfo* gameModeInfo = NULL;
+			int size = gametypeTable->GetRowNames().Num();
+			for (int i = 0; i < size; i++)
+			{
+				// Iterate through all known gamemodes
+				gameModeInfo = gametypeTable->FindRow<FGameTypeInfo>(FName(*FString::FromInt(i)), "", true);
+				if (gameModeInfo != NULL)
+				{
+					// Matching base gamemode to the random one specified earlier
+					if (gameModeInfo->GameType == gameMode)
+					{
+						// Add variant to the temporary string array
+						variants.Add(gameModeInfo->GameMode);
+					} else { continue; }
+				}
+			}
+
+			if (variants.Num() > 0)
+			{
+				// Now get a random variant from the temporary variants array
+				int randV = FMath::RandRange(0, variants.Num() - 1);
+				TSubclassOf<ABaseGameMode> variant = variants[randV];
+
+				// Inform all players of new gamemode
+				if (variant != NULL)
+				{
+					FGameTypeInfo gameType;
+					gameType.GameType = gameMode;
+					gameType.GameMode = variant;
+					gameType.GameTypeName = gameModeInfo->GameTypeName;
+					gameType.GameTypeDescription = gameModeInfo->GameTypeDescription;
+					gameType.GametypeThumbnail = gameModeInfo->GametypeThumbnail;
+
+					Multicast_Reliable_SetGameMode(gameType);
+				}
+			}
+		}
+	}
 	else
 	{
-		gameInstance->ShowUI_ClientLobby(0);
+		Server_Reliable_GenerateRandomGamemodeToPlay();
 	}
-	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Bepis"));
 }
 
 ///////////////////////////////////////////////
+
+/*
+*
+*/
+bool ABaseGameState::Server_Reliable_GenerateRandomMapToPlay_Validate(FPlaylistInfo Playlist)
+{ return true; }
+
+void ABaseGameState::Server_Reliable_GenerateRandomMapToPlay_Implementation(FPlaylistInfo Playlist)
+{
+	// Get reference to game instance
+	UGameInstance* gi = GetWorld()->GetGameInstance();
+	UBaseGameInstance* baseGameInstance = Cast<UBaseGameInstance>(gi);
+	if (baseGameInstance == NULL) { return; }
+
+	// Get randomized map from playlist information
+	int mapCount = Playlist.PlaylistMaps.Num();
+	int rand = FMath::RandRange(0, mapCount - 1);
+
+	// Get map from database based on random integer
+	UDataTable* dataBase = baseGameInstance->GetMapDataTable();
+	if (dataBase == NULL) { return; }
+	FMapInfo* item = dataBase->FindRow<FMapInfo>(FName(*FString::FromInt(rand)), "", true);
+	if (item != NULL)
+	{
+		// Inform all players of new map
+		Multicast_Reliable_SetMap(*item);
+	} else { return; }
+}
+
+void ABaseGameState::sendmessage_Implementation()
+{
+	GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("bepis"));
+}
