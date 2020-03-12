@@ -434,62 +434,6 @@ public:
 
 	virtual void Init() override;
 
-	// Main Menu ******************************************************************************************************************************
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-		void ShowUI_MainMenu();
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-		void ShowUI_HostLobby(int ZOrder);
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-		void HideUI_HostLobby();
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-		void ShowUI_ClientLobby(int ZOrder);
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-		void HideUI_ClientLobby();
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-		void ShowUI_LobbyRoster(int ZOrder);
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-		void ShowUI_LoadingServer(int ZOrder);
-
 	// Random Names ****************************************************************************************************************************
 
 	/*

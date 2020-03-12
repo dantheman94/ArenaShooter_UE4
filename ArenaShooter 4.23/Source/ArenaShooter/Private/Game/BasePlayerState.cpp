@@ -131,18 +131,10 @@ bool ABasePlayerState::OwningClient_Reliable_ShowPreMatchLobby_Validate(bool Hos
 void ABasePlayerState::OwningClient_Reliable_ShowPreMatchLobby_Implementation(bool Hosting)
 {
 	ABasePlayerController* controller = _PlayerInfo.GetPlayerController();
-	if (controller == NULL) {
-
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("controller is NULL"));
-		return; 
-	}
+	if (controller == NULL) { return; }
 
 	AHUDMainMenu* hud = Cast<AHUDMainMenu>(controller->GetHUD());
-	if (hud == NULL) { 
-
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("HUD is NULL"));
-		return; 
-	}
+	if (hud == NULL) { return; }
 
 	hud->ShowUI_PreMatchLobby(Hosting, 0);
 }

@@ -5,7 +5,18 @@
 #include "CoreMinimal.h"
 #include "Containers/UnrealString.h"
 #include "GameFramework/HUD.h"
+
 #include "HUDMainMenu.generated.h"
+
+UENUM(BlueprintType)
+enum class E_MainMenu : uint8
+{
+	eGT_Splash UMETA(DisplayName = "Splash Screen"),
+	eGT_Loading UMETA(DisplayName = "Loading Screen"),
+	eGT_MainMenu UMETA(DisplayName = "Main Menu"),
+	eGT_CreateMatch UMETA(DisplayName = "Host Match"),
+	eGT_NotHosting UMETA(DisplayName = "Non-host Screen")
+};
 
 /**
  * 
@@ -22,6 +33,24 @@ protected:
 	// ****************************************************************************************************************************************
 
 	// Main Menu ******************************************************************************************************************************
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+		E_MainMenu _CurrentMenuState = E_MainMenu::eGT_Splash;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+		E_MainMenu _PreviousMenuState = E_MainMenu::eGT_Splash;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Main Menu")
+		TSubclassOf<class UUserWidget> _UI_SplashScreen_Class;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
+		UUserWidget* _UI_SplashScreen_Instance = NULL;
 
 	/*
 	*
@@ -83,6 +112,8 @@ protected:
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
 		UUserWidget* _UI_LoadingServer_Instance = NULL;
 
+	void Transtion();
+
 public:
 
 	// Main Menu ******************************************************************************************************************************
@@ -91,7 +122,15 @@ public:
 	*
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-		void ShowUI_MainMenu();
+		void ShowUI_Splash();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void ShowUI_MainMenu(int ZOrder);
 
 	///////////////////////////////////////////////
 
