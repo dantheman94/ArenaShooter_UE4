@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/HUD.h"
+#include "HUDMainMenu.h"
 #include "BaseHUD.generated.h"
 
 // *** CLASSES
@@ -16,7 +16,7 @@ class UFireMode;
 class UUserWidget;
 
 UCLASS()
-class ARENASHOOTER_API ABaseHUD : public AHUD
+class ARENASHOOTER_API ABaseHUD : public AHUDMainMenu
 {
 	GENERATED_BODY()
 

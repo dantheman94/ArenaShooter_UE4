@@ -91,6 +91,9 @@ public:
 	///////////////////////////////////////////////
 
 	UFUNCTION(Client, Reliable, WithValidation, BlueprintCallable)
-		void OwningClient_Reliable_ShowPreMatchLobby(bool Hosting);
+		void OwningClient_Reliable_ShowLobbyPreMatch(bool Hosting);
+
+	UFUNCTION(Client, Reliable, WithValidation, BlueprintCallable)
+		void OwningClient_Reliable_ShowLobbyMainMenu(bool Hosting);
 
 };

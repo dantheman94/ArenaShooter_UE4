@@ -74,7 +74,34 @@ bool ABasePlayerState::Server_Reliable_SetHost_Validate(bool Hosting)
 void ABasePlayerState::Server_Reliable_SetHost_Implementation(bool Hosting)
 {
 	_PlayerInfo._bIsHost = Hosting;
-	OwningClient_Reliable_ShowPreMatchLobby(Hosting);
+
+	// Get mainmenu hud and show correct menu screen
+	if (_PlayerInfo.GetPlayerController() != NULL)
+	{
+		AHUDMainMenu* hud = Cast<AHUDMainMenu>(_PlayerInfo.GetPlayerController()->GetHUD());
+		if (hud == NULL) { return; }
+
+		E_MainMenu menuState = hud->GetCurrentMainMenuState();
+		switch (menuState)
+		{
+		case E_MainMenu::eGT_Splash:
+		{
+			OwningClient_Reliable_ShowLobbyMainMenu(Hosting);
+			break;
+		}
+		case E_MainMenu::eGT_MainMenu:
+		{
+			OwningClient_Reliable_ShowLobbyMainMenu(Hosting);
+			break;
+		}
+		case E_MainMenu::eGT_CreateMatch:
+		{
+			OwningClient_Reliable_ShowLobbyPreMatch(Hosting);
+			break;
+		}
+		default: break;		
+		}
+	}
 }
 
 ///////////////////////////////////////////////
@@ -125,10 +152,10 @@ void ABasePlayerState::OwningClient_Reliable_ShowUI_ClientLobby_Implementation(i
 
 ///////////////////////////////////////////////
 
-bool ABasePlayerState::OwningClient_Reliable_ShowPreMatchLobby_Validate(bool Hosting)
+bool ABasePlayerState::OwningClient_Reliable_ShowLobbyPreMatch_Validate(bool Hosting)
 { return true; }
 
-void ABasePlayerState::OwningClient_Reliable_ShowPreMatchLobby_Implementation(bool Hosting)
+void ABasePlayerState::OwningClient_Reliable_ShowLobbyPreMatch_Implementation(bool Hosting)
 {
 	ABasePlayerController* controller = _PlayerInfo.GetPlayerController();
 	if (controller == NULL) { return; }
@@ -136,5 +163,21 @@ void ABasePlayerState::OwningClient_Reliable_ShowPreMatchLobby_Implementation(bo
 	AHUDMainMenu* hud = Cast<AHUDMainMenu>(controller->GetHUD());
 	if (hud == NULL) { return; }
 
-	hud->ShowUI_PreMatchLobby(Hosting, 0);
+	hud->ShowUI_LobbyPrematch(Hosting, 0);
+}
+
+///////////////////////////////////////////////
+
+bool ABasePlayerState::OwningClient_Reliable_ShowLobbyMainMenu_Validate(bool Hosting)
+{ return true; }
+
+void ABasePlayerState::OwningClient_Reliable_ShowLobbyMainMenu_Implementation(bool Hosting)
+{
+	ABasePlayerController* controller = _PlayerInfo.GetPlayerController();
+	if (controller == NULL) { return; }
+
+	AHUDMainMenu* hud = Cast<AHUDMainMenu>(controller->GetHUD());
+	if (hud == NULL) { return; }
+	
+	hud->ShowUI_LobbyMainMenu(Hosting, 0);
 }

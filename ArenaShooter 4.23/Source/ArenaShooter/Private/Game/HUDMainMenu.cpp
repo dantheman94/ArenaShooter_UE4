@@ -41,6 +41,8 @@ void AHUDMainMenu::Transtion()
 	}
 }
 
+///////////////////////////////////////////////
+
 /*
 *
 */
@@ -50,6 +52,8 @@ void AHUDMainMenu::ShowUI_Splash_Implementation()
 	_CurrentMenuState = E_MainMenu::eGT_Splash;
 }
 
+///////////////////////////////////////////////
+
 /*
 *
 */
@@ -57,6 +61,17 @@ void AHUDMainMenu::ShowUI_MainMenu_Implementation(int ZOrder)
 {
 	Transtion();
 	_CurrentMenuState = E_MainMenu::eGT_MainMenu;
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void AHUDMainMenu::HideUI_MainMenu()
+{
+	// Hide main menu UMG if it exists
+	if (_UI_MainMenu_Instance != NULL) { _UI_MainMenu_Instance->RemoveFromParent(); }
 }
 
 ///////////////////////////////////////////////

@@ -36,10 +36,7 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 		E_MainMenu _CurrentMenuState = E_MainMenu::eGT_Splash;
-
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
-		E_MainMenu _PreviousMenuState = E_MainMenu::eGT_Splash;
-
+	
 	/*
 	*
 	*/
@@ -112,11 +109,25 @@ protected:
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
 		UUserWidget* _UI_LoadingServer_Instance = NULL;
 
-	void Transtion();
-
 public:
 
 	// Main Menu ******************************************************************************************************************************
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable)
+		void Transtion();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintGetter)
+		E_MainMenu GetCurrentMainMenuState() { return _CurrentMenuState; }
+
+	///////////////////////////////////////////////
 
 	/*
 	*
@@ -137,8 +148,16 @@ public:
 	/*
 	*
 	*/
+	UFUNCTION(BlueprintCallable)
+		void HideUI_MainMenu();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
 	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent)
-		void ShowUI_PreMatchLobby(bool Hosting, int ZOrder);
+		void ShowUI_LobbyPrematch(bool Hosting, int ZOrder);
 
 	///////////////////////////////////////////////
 
@@ -171,6 +190,14 @@ public:
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void HideUI_ClientLobby();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent)
+		void ShowUI_LobbyMainMenu(bool Hosting, int ZOrder);
 
 	///////////////////////////////////////////////
 
