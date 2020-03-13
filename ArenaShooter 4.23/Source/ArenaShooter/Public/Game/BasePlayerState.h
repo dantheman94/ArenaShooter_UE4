@@ -70,8 +70,14 @@ public:
 	/*
 	*
 	*/
+	UFUNCTION()
+		void SetPlayerController(ABasePlayerController* PlayerController);
+
+	/*
+	*
+	*/
 	UFUNCTION(Server, Reliable, WithValidation)
-		void Server_Reliable_SetOwningPlayerController(ABasePlayerController* PlayerController);
+		void Server_Reliable_SetPlayerController(ABasePlayerController* PlayerController);
 
 	///////////////////////////////////////////////
 

@@ -20,6 +20,16 @@ enum class E_GameTypes : uint8
 	eGT_TDM UMETA(DisplayName = "Team Deathmatch")
 };
 
+UENUM(BlueprintType)
+enum class E_MainMenu : uint8
+{
+	eGT_Splash UMETA(DisplayName = "Splash Screen"),
+	eGT_Loading UMETA(DisplayName = "Loading Screen"),
+	eGT_MainMenu UMETA(DisplayName = "Main Menu"),
+	eGT_CreateMatch UMETA(DisplayName = "Host Match"),
+	eGT_NotHosting UMETA(DisplayName = "Non-host Screen")
+};
+
 // *** STRUCTS
 
 USTRUCT(BlueprintType)

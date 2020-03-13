@@ -15,7 +15,7 @@ void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & Ou
 	DOREPLIFETIME(ABasePlayerState, _PlayerInfo);
 }
 
-///////////////////////////////////////////////
+// Player Info ****************************************************************************************************************************
 
 /*
 *
@@ -78,10 +78,10 @@ void ABasePlayerState::Server_Reliable_SetHost_Implementation(bool Hosting)
 	// Get mainmenu hud and show correct menu screen
 	if (_PlayerInfo.GetPlayerController() != NULL)
 	{
-		AHUDMainMenu* hud = Cast<AHUDMainMenu>(_PlayerInfo.GetPlayerController()->GetHUD());
-		if (hud == NULL) { return; }
+		UGameInstance* gi = GetWorld()->GetGameInstance();
+		UBaseGameInstance* gameInstance = Cast<UBaseGameInstance>(gi);
 
-		E_MainMenu menuState = hud->GetCurrentMainMenuState();
+		E_MainMenu menuState = gameInstance->GetMenuState();
 		switch (menuState)
 		{
 		case E_MainMenu::eGT_Splash:
@@ -99,7 +99,11 @@ void ABasePlayerState::Server_Reliable_SetHost_Implementation(bool Hosting)
 			OwningClient_Reliable_ShowLobbyPreMatch(Hosting);
 			break;
 		}
-		default: break;		
+		default: 
+		{
+			OwningClient_Reliable_ShowLobbyMainMenu(Hosting);
+			break;
+		}
 		}
 	}
 }
@@ -109,10 +113,15 @@ void ABasePlayerState::Server_Reliable_SetHost_Implementation(bool Hosting)
 /*
 *
 */
-bool ABasePlayerState::Server_Reliable_SetOwningPlayerController_Validate(ABasePlayerController* PlayerController)
+bool ABasePlayerState::Server_Reliable_SetPlayerController_Validate(ABasePlayerController* PlayerController)
 { return true; }
 
-void ABasePlayerState::Server_Reliable_SetOwningPlayerController_Implementation(ABasePlayerController* PlayerController)
+void ABasePlayerState::Server_Reliable_SetPlayerController_Implementation(ABasePlayerController* PlayerController)
+{
+	SetPlayerController(PlayerController);
+}
+
+void ABasePlayerState::SetPlayerController(ABasePlayerController* PlayerController)
 {
 	_PlayerInfo._PlayerController = PlayerController;
 	_PlayerInfo._PlayerState = this;

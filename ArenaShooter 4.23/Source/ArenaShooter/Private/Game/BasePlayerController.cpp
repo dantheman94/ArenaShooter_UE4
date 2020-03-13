@@ -3,6 +3,7 @@
 #include "BasePlayerController.h"
 
 #include "BaseGameInstance.h"
+#include "BasePlayerState.h"
 #include "Character/ArenaCharacter.h"
 #include "CoreUObject/Public/UObject/UObjectGlobals.h"
 #include "GameFramework/PlayerInput.h"
@@ -524,6 +525,28 @@ void ABasePlayerController::Vault()
 {
 	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
 	if (pawn) { pawn->InputVault(); }
+}
+
+// Current Frame **************************************************************************************************************************
+
+/**
+* @summary:	Called every frame.
+*
+* @param:	float DeltaTime
+*
+* @return:	virtual void
+*/
+void ABasePlayerController::Tick(float DeltaTime)
+{
+	ABasePlayerState* playerState = Cast<ABasePlayerState>(PlayerState);
+	if (playerState != NULL)
+	{
+		if (playerState->GetPlayerInfo().GetPlayerController() == NULL)
+		{
+			playerState->SetPlayerController(this);
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Bepis"));
+		}		
+	}
 }
 
 // Controller *****************************************************************************************************************************

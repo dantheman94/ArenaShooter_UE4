@@ -132,65 +132,8 @@ protected:
 
 	// Main Menu ******************************************************************************************************************************
 
-	/*
-	*
-	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Main Menu")
-		TSubclassOf<class UUserWidget> _UI_MainMenu_Class;
-
-	/*
-	*
-	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
-		UUserWidget* _UI_MainMenu_Instance = NULL;
-
-	/*
-	*
-	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Main Menu")
-		TSubclassOf<class UUserWidget> _UI_HostLobby_Class;
-
-	/*
-	*
-	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
-		UUserWidget* _UI_HostLobby_Instance = NULL;
-
-	/*
-	*
-	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Main Menu")
-		TSubclassOf<class UUserWidget> _UI_ClientLobby_Class;
-
-	/*
-	*
-	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
-		UUserWidget* _UI_ClientLobby_Instance = NULL;
-
-	/*
-	*
-	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Main Menu")
-		TSubclassOf<class UUserWidget> _UI_LobbyRoster_Class;
-
-	/*
-	*
-	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
-		UUserWidget* _UI_LobbyRoster_Instance = NULL;
-
-	/*
-	*
-	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Main Menu")
-		TSubclassOf<class UUserWidget> _UI_LoadingServer_Class;
-
-	/*
-	*
-	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
-		UUserWidget* _UI_LoadingServer_Instance = NULL;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+		E_MainMenu _MenuState = E_MainMenu::eGT_Splash;
 
 	// Sessions *******************************************************************************************************************************
 
@@ -622,31 +565,59 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Network | Travelling")
 		void ServerToGameplay();
 
+	// Main Menu ******************************************************************************************************************************
+
+	UFUNCTION()
+		void SetMenuState(E_MainMenu State) { _MenuState = State; }
+
+	///////////////////////////////////////////////
+
+	UFUNCTION(BlueprintPure)
+		E_MainMenu GetMenuState() { return _MenuState; }
+
 	// Matchmaking *****************************************************************************************************************************
+
+	///////////////////////////////////////////////
 
 	UFUNCTION()
 		UDataTable* GetPlaylistDataTable() { return _PlaylistDataTable; }
 
+	///////////////////////////////////////////////
+
 	UFUNCTION()
 		UDataTable* GetGameTypeDataTable() { return _GametypeDataTable; }
+
+	///////////////////////////////////////////////
 
 	UFUNCTION()
 		UDataTable* GetMapDataTable() { return _MapDataTable; }
 
+	///////////////////////////////////////////////
+
 	UFUNCTION()
 		void SetGameTypeInfo(FGameTypeInfo GameTypeInfo) { _GametypeInfo = GameTypeInfo; }
+
+	///////////////////////////////////////////////
 
 	UFUNCTION()
 		void SetMapInfo(FMapInfo MapInfo) { _MapInfo = MapInfo; }
 
+	///////////////////////////////////////////////
+
 	UFUNCTION(BlueprintPure)
 		bool GetTeamBased() { return _bTeamBasedLobby; }
+
+	///////////////////////////////////////////////
 
 	UFUNCTION(BlueprintCallable)
 		void SetTeamBased(bool TeamBased);
 
+	///////////////////////////////////////////////
+
 	UFUNCTION(BlueprintCallable)
 		void GenerateRandomGamemode();
+
+	///////////////////////////////////////////////
 
 	UFUNCTION(BlueprintCallable)
 		void GenerateRandomMap();

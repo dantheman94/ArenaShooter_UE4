@@ -53,12 +53,7 @@ void ABaseGameMode::PostLogin(APlayerController* NewPlayer)
 		{
 			playerState->Server_Reliable_GenerateRandomPlayerName();
 			playerState->Server_Reliable_GenerateRandomPlayerTag();
-			playerState->Server_Reliable_SetOwningPlayerController(joiningPlayer);
-
-			///ABaseGameState* gameState = Cast<ABaseGameState>(GameState);
-			///if (_ConnectedBasePlayerControllers.Num() == 0 && gameState != NULL) { gameState->Server_Reliable_PromoteToLeader(playerState->GetPlayerInfo()); }
-			///else { playerState->Server_Reliable_SetHost(false); }
-
+			playerState->Server_Reliable_SetPlayerController(joiningPlayer);
 			playerState->Server_Reliable_SetHost(_ConnectedBasePlayerControllers.Num() == 0);
 		}
 

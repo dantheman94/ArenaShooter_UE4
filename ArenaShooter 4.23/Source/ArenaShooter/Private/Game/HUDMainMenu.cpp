@@ -1,6 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "HUDMainMenu.h"
+
+#include "BaseGameInstance.h"
 #include "UserWidget.h"
 
 // Main Menu ******************************************************************************************************************************
@@ -50,6 +52,10 @@ void AHUDMainMenu::ShowUI_Splash_Implementation()
 {
 	Transtion();
 	_CurrentMenuState = E_MainMenu::eGT_Splash;
+	
+	UGameInstance* gi = GetWorld()->GetGameInstance();
+	UBaseGameInstance* gameInstance = Cast<UBaseGameInstance>(gi);
+	gameInstance->SetMenuState(_CurrentMenuState);
 }
 
 ///////////////////////////////////////////////
@@ -61,6 +67,10 @@ void AHUDMainMenu::ShowUI_MainMenu_Implementation(int ZOrder)
 {
 	Transtion();
 	_CurrentMenuState = E_MainMenu::eGT_MainMenu;
+
+	UGameInstance* gi = GetWorld()->GetGameInstance();
+	UBaseGameInstance* gameInstance = Cast<UBaseGameInstance>(gi);
+	gameInstance->SetMenuState(_CurrentMenuState);
 }
 
 ///////////////////////////////////////////////
@@ -83,6 +93,10 @@ void AHUDMainMenu::ShowUI_HostLobby_Implementation(int ZOrder)
 {
 	Transtion();
 	_CurrentMenuState = E_MainMenu::eGT_CreateMatch;
+
+	UGameInstance* gi = GetWorld()->GetGameInstance();
+	UBaseGameInstance* gameInstance = Cast<UBaseGameInstance>(gi);
+	gameInstance->SetMenuState(_CurrentMenuState);
 }
 
 ///////////////////////////////////////////////
@@ -104,6 +118,10 @@ void AHUDMainMenu::ShowUI_ClientLobby_Implementation(int ZOrder)
 {
 	Transtion();
 	_CurrentMenuState = E_MainMenu::eGT_NotHosting;
+
+	UGameInstance* gi = GetWorld()->GetGameInstance();
+	UBaseGameInstance* gameInstance = Cast<UBaseGameInstance>(gi);
+	gameInstance->SetMenuState(_CurrentMenuState);
 }
 
 ///////////////////////////////////////////////
