@@ -27,7 +27,10 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 		E_MainMenu _CurrentMenuState = E_MainMenu::eGT_Splash;
-	
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+		E_MainMenu _PreviousMenuState = E_MainMenu::eGT_Splash;
+
 	/*
 	*
 	*/
@@ -51,6 +54,18 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
 		UUserWidget* _UI_MainMenu_Instance = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Main Menu")
+		TSubclassOf<class UUserWidget> _UI_Matchmaking_Class;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
+		UUserWidget* _UI_Matchmaking_Instance = NULL;
 
 	/*
 	*
@@ -100,6 +115,102 @@ protected:
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
 		UUserWidget* _UI_LoadingServer_Instance = NULL;
 
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Main Menu")
+		TSubclassOf<class UUserWidget> _UI_GameModeList_Class;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
+		UUserWidget* _UI_GameModeList_Instance = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Main Menu")
+		TSubclassOf<class UUserWidget> _UI_MapList_Class;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
+		UUserWidget* _UI_MapList_Instance = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Barracks")
+		TSubclassOf<class UUserWidget> _UI_BarracksHome_Class;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Settings")
+		UUserWidget* _UI_BarracksHome_Instance = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Settings")
+		TSubclassOf<class UUserWidget> _UI_SettingsHome_Class;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Settings")
+		UUserWidget* _UI_SettingsHome_Instance = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Settings")
+		TSubclassOf<class UUserWidget> _UI_SettingsGamepad_Class;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Settings")
+		UUserWidget* _UI_SettingsGamepad_Instance = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Settings")
+		TSubclassOf<class UUserWidget> _UI_SettingsKeyBindings_Class;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Settings")
+		UUserWidget* _UI_SettingsKeyBindings_Instance = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Settings")
+		TSubclassOf<class UUserWidget> _UI_SettingsDisplay_Class;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Settings")
+		UUserWidget* _UI_SettingsDisplay_Instance = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Settings")
+		TSubclassOf<class UUserWidget> _UI_SettingsAudio_Class;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Settings")
+		UUserWidget* _UI_SettingsAudio_Instance = NULL;
+
 public:
 
 	// Main Menu ******************************************************************************************************************************
@@ -124,6 +235,14 @@ public:
 	*
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void ShowUI_GoBack();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_Splash();
 
 	///////////////////////////////////////////////
@@ -141,6 +260,14 @@ public:
 	*/
 	UFUNCTION(BlueprintCallable)
 		void HideUI_MainMenu();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void ShowUI_Matchmaking(int ZOrder);
 
 	///////////////////////////////////////////////
 
@@ -205,5 +332,69 @@ public:
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, meta = (AutoCreateRefTerm = "TextVarName"))
 		void ShowUI_LoadingServer(const FText& Message, int ZOrder);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void ShowUI_GameModeList(int ZOrder);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void ShowUI_MapList(int ZOrder);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void ShowUI_BarracksHome(int ZOrder);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void ShowUI_SettingsHome(int ZOrder);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void ShowUI_SettingsGamepad(int ZOrder);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void ShowUI_SettingsKeyBindings(int ZOrder);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void ShowUI_SettingsDisplay(int ZOrder);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void ShowUI_SettingsAudio(int ZOrder);
 
 };

@@ -26,8 +26,15 @@ enum class E_MainMenu : uint8
 	eGT_Splash UMETA(DisplayName = "Splash Screen"),
 	eGT_Loading UMETA(DisplayName = "Loading Screen"),
 	eGT_MainMenu UMETA(DisplayName = "Main Menu"),
+	eGT_Matchmaking UMETA(DisplayName = "Matchmaking"),
 	eGT_CreateMatch UMETA(DisplayName = "Host Match"),
-	eGT_NotHosting UMETA(DisplayName = "Non-host Screen")
+	eGT_NotHosting UMETA(DisplayName = "Non-host Screen"),
+	eGT_BarracksHome UMETA(DisplayName = "Barracks Home"),
+	eGT_SettingsHome UMETA(DisplayName = "Settings Home"),
+	eGT_SettingsGamepad UMETA(DisplayName = "Settings Gamepad"),
+	eGT_SettingsKeyBindings UMETA(DisplayName = "Settings Key Bindings"),
+	eGT_SettingsDisplay UMETA(DisplayName = "Settings Display"),
+	eGT_SettingsAudio UMETA(DisplayName = "Settings Audio")
 };
 
 // *** STRUCTS
