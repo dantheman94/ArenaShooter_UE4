@@ -32,10 +32,10 @@ AArenaCharacter::AArenaCharacter()
 	_fCameraRotationLagSpeed = _FirstPerson_SpringArm->CameraRotationLagSpeed;
 	_fCapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 
-	GetCharacterMovement()->AirControl = _fDefaultAirControl;
-	GetCharacterMovement()->GravityScale = _fDefaultGravityScale;
+	_fDefaultAirControl = GetCharacterMovement()->AirControl;
+	_fDefaultGravityScale = GetCharacterMovement()->GravityScale;
 
-	///GEngine->AddOnScreenDebugMessage(30, 5.0f, FColor::Orange, FString::SanitizeFloat(GetCharacterMovement()->GravityScale));
+	///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Orange, FString::SanitizeFloat(_fDefaultGravityScale));
 }
 
 ///////////////////////////////////////////////
@@ -687,7 +687,10 @@ void AArenaCharacter::Multicast_Reliable_ChangeHoverState_Implementation(bool Is
 
 		// Falling or jumping
 		if (moveComp->IsFalling())
-		{ Server_Reliable_SetMovementMode(MOVE_Falling); }
+		{ Server_Reliable_SetMovementMode(MOVE_Falling); 
+		
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("BEPIS"));
+		}
 
 		// Not falling
 		else

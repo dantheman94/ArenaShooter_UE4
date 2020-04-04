@@ -205,8 +205,8 @@ ABaseCharacter::ABaseCharacter()
 	_fCameraRotationLagSpeed = _FirstPerson_SpringArm->CameraRotationLagSpeed;
 	_fCapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 
-	GetCharacterMovement()->AirControl = _fDefaultAirControl;
-	GetCharacterMovement()->GravityScale = _fDefaultGravityScale;
+	_fDefaultAirControl = GetCharacterMovement()->AirControl;
+	_fDefaultGravityScale = GetCharacterMovement()->GravityScale;
 }
 
 ///////////////////////////////////////////////
@@ -1406,11 +1406,11 @@ void ABaseCharacter::OwningClient_PlayPrimaryWeaponFPAnimation_Implementation(fl
 	if (PlayGunAnimation)
 	{
 		UAnimMontage* gunMontage = _PrimaryWeapon->GetGunAnimation((E_GunAnimation)GunAnimation);
-		UAnimInstance* handAnimInstance = _FirstPerson_Arms->GetAnimInstance();
-		if (gunMontage != NULL && handAnimInstance != NULL)
+		UAnimInstance* weaponAnimInstance = _FirstPerson_PrimaryWeapon_SkeletalMesh->GetAnimInstance();
+		if (gunMontage != NULL && weaponAnimInstance != NULL)
 		{
 			// Play gun montage
-			handAnimInstance->Montage_Play(gunMontage, PlayRate, EMontagePlayReturnType::MontageLength, GunAnimationStartingFrame, true);
+			weaponAnimInstance->Montage_Play(gunMontage, PlayRate, EMontagePlayReturnType::MontageLength, GunAnimationStartingFrame, true);
 			if (FreezeMontageAtLastFrame)
 			{
 				// Start delay timer then freeze anim
