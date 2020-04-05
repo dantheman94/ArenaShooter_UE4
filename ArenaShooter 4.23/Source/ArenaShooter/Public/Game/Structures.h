@@ -37,6 +37,13 @@ enum class E_MainMenu : uint8
 	eGT_SettingsAudio UMETA(DisplayName = "Settings Audio")
 };
 
+UENUM(BlueprintType)
+enum class E_CinematicType : uint8
+{
+	eGT_Opening UMETA(DisplayName = "Opening Cinematic"),
+	eGT_Closing UMETA(DisplayName = "Closing Cinematic")
+};
+
 // *** STRUCTS
 
 USTRUCT(BlueprintType)
