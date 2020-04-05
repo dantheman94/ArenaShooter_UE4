@@ -551,24 +551,36 @@ void UFireMode::Fire(FHitResult HitResult, FVector CameraRotationXVector, USkele
 			// Empty mag
 			else
 			{
-				// Auto reload weapon?
-				if (_pAmmoPool->GetReserveAmmo() > 0 && _bAutomaticallyReloadOnEmptyMagazine)
+				// Round in chamber?
+				if (_pAmmoPool->IsRoundInChamber())
 				{
-					// Primary or secondary weapon?
-					if (_WeaponParentAttached->IsOwnersPrimaryWeapon())
+					// Fire projectile (per spread)
+					for (int i = 0; i < _iShotsFiredPerSpread; i++)
+					{ FireProjectile(HitResult, CameraRotationXVector, SkCharWepMeshFirstP, SkCharWepMeshThirdP); }
+				} 
+				
+				// Round isnt in chamber
+				else
+				{
+					// Auto reload weapon?
+					if (_pAmmoPool->GetReserveAmmo() > 0 && _bAutomaticallyReloadOnEmptyMagazine)
 					{
-						// Try to reload primary weapon
-						ABaseCharacter* baseChar = Cast<ABaseCharacter>(_WeaponParentAttached->GetOwner());
-						baseChar->InputReloadPrimaryWeapon();
-					}
-					if (_WeaponParentAttached->IsOwnersSecondaryWeapon())
-					{
-						// Try to reload secondary weapon
-						ABaseCharacter* baseChar = Cast<ABaseCharacter>(_WeaponParentAttached->GetOwner());
-						baseChar->InputReloadSecondaryWeapon();					
-					}
+						// Primary or secondary weapon?
+						if (_WeaponParentAttached->IsOwnersPrimaryWeapon())
+						{
+							// Try to reload primary weapon
+							ABaseCharacter* baseChar = Cast<ABaseCharacter>(_WeaponParentAttached->GetOwner());
+							baseChar->InputReloadPrimaryWeapon();
+						}
+						if (_WeaponParentAttached->IsOwnersSecondaryWeapon())
+						{
+							// Try to reload secondary weapon
+							ABaseCharacter* baseChar = Cast<ABaseCharacter>(_WeaponParentAttached->GetOwner());
+							baseChar->InputReloadSecondaryWeapon();
+						}
 
-					shouldReturn = true;
+						shouldReturn = true;
+					}
 				}
 			}
 
