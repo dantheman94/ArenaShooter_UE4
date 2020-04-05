@@ -27,15 +27,6 @@ AArenaCharacter::AArenaCharacter()
 	// Actor replicates
 	bReplicates = true;
 	bReplicateMovement = true;
-
-	// Get default variable values
-	_fCameraRotationLagSpeed = _FirstPerson_SpringArm->CameraRotationLagSpeed;
-	_fCapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-
-	_fDefaultAirControl = GetCharacterMovement()->AirControl;
-	_fDefaultGravityScale = GetCharacterMovement()->GravityScale;
-
-	///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Orange, FString::SanitizeFloat(_fDefaultGravityScale));
 }
 
 ///////////////////////////////////////////////
@@ -71,6 +62,14 @@ void AArenaCharacter::BeginPlay()
 
 	// Get all firing mode components as reference
 	this->GetComponents<UStamina>(_uStaminaComponents);
+
+	// Get default variable values
+	_fCameraRotationLagSpeed = _FirstPerson_SpringArm->CameraRotationLagSpeed;
+	_fCapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	_fDefaultAirControl = GetCharacterMovement()->AirControl;
+	_fDefaultGravityScale = GetCharacterMovement()->GravityScale;
+
+	///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Orange, FString::SanitizeFloat(_fDefaultGravityScale));
 }
 
 // Inventory | Weapon | Primary ***********************************************************************************************************
