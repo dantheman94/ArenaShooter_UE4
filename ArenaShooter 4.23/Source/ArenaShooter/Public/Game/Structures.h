@@ -5,14 +5,14 @@
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
 #include "Engine/Texture2D.h"
+#include "GameFramework/PlayerInput.h"
+#include "InputCoreTypes.h"
 
 #include "Structures.generated.h"
 
 class ABaseGameMode;
 class ABasePlayerController;
 class ABasePlayerState;
-
-// *** ENUMS
 
 UENUM(BlueprintType)
 enum class E_GameTypes : uint8
@@ -44,7 +44,31 @@ enum class E_CinematicType : uint8
 	eGT_Closing UMETA(DisplayName = "Closing Cinematic")
 };
 
-// *** STRUCTS
+UENUM(BlueprintType)
+enum class E_LoadoutType : uint8
+{
+	eLT_Primary UMETA(DisplayName = "Primary Weapon"),
+	eLT_Reserve UMETA(DisplayName = "Reserve Weapon"),
+	eLT_Grenade UMETA(DisplayName = "Grenades"),
+	eLT_Equipment UMETA(DisplayName = "Equipment"),
+};
+
+UENUM(BlueprintType)
+enum class E_ActionBinding : uint8
+{
+	eAB_ThrustAbility UMETA(DisplayName = "Thruster Ability"),
+	eAB_CrouchSlide UMETA(DisplayName = "Crouch / Slide"),
+	eAB_Jump UMETA(DisplayName = "Jump"),
+	eAB_ClamberVault UMETA(DisplayName = "Clamber / Vault"),
+	eAB_AimPrimary UMETA(DisplayName = "Aim Primary Weapon"),
+	eAB_FirePrimary UMETA(DisplayName = "Fire Primary Weapon"),
+	eAB_FireSecondary UMETA(DisplayName = "Fire Secondary Weapon"),
+	eAB_ReloadPrimary UMETA(DisplayName = "Reload Primary Weapon"),
+	eAB_ReloadSeccondary UMETA(DisplayName = "Reload Secondary Weapon"),
+	eAB_TabWeapons UMETA(DisplayName = "Tab Inventory Weapons"),
+	eAB_Grenade UMETA(DisplayName = "Grenade"),
+	eAB_Interact UMETA(DisplayName = "Interact")
+};
 
 USTRUCT(BlueprintType)
 struct FMapInfo : public FTableRowBase

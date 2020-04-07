@@ -314,8 +314,44 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Slide", Replicated)
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		bool _bCanSlide = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide", Replicated)
 		bool _bIsSliding = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		float _fSlideForce = 300.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		bool _fSlideLaunchXYOverride = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		bool _fSlideLaunchZOverride = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		float _fSlideBreakingFrictionFactor = 0.5f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		float _fSlideBrakingDeceleration = 600.0f;
 
 public:
 
@@ -544,5 +580,57 @@ public:
 	*/
 	UFUNCTION(NetMulticast, Reliable, WithValidation)
 		void Multicast_Reliable_LaunchCharacter(FVector LaunchVelocity, bool XYOverride, bool ZOverride);
+
+	// Movement | Slide ***********************************************************************************************************************
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		virtual void InputSlideEnter();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		virtual void InputSlideExit();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_SetIsSliding(bool Sliding);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_InitiateSlide();
+
+	/*
+	*
+	*/
+	UFUNCTION(NetMulticast, Reliable, WithValidation)
+		void Multicast_Reliable_InitiateSlide();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_StopSlide();
+
+	/*
+	*
+	*/
+	UFUNCTION(NetMulticast, Reliable, WithValidation)
+		void Multicast_Reliable_StopSlide();
 
 };

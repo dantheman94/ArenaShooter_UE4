@@ -502,5 +502,37 @@ public:
 	*/
 	UFUNCTION(BlueprintPure)
 		FTransform GetOriginHands() { return _tOriginHands; }
-	
+
+	// Attachments | Scope ********************************************************************************************************************
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintGetter)
+		bool IsScopeAttachmentEnabled() { return _bScopeEnabled; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintGetter)
+		UStaticMesh* GetSightMesh() { return _uScopeMesh; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintGetter)
+		FName GetSightAttachmentName() { return _ScopeAttachmentSocket; }
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintGetter)
+		FName GetFlashlightAttachmentName() { return _FlashlightAttachmentSocket; }
+
 };

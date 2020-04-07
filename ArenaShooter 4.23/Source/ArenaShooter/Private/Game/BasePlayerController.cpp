@@ -461,12 +461,24 @@ void ABasePlayerController::Clamber()
 
 void ABasePlayerController::CrouchHoldEnter()
 {
+	// BaseCharacter crouch
+	auto basecharacter = Cast<ABaseCharacter>(this->GetPawn());
+	if (basecharacter) { basecharacter->EnterCrouch(); }
 
+	// ArenaCharacte slide
+	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
+	if (pawn) { pawn->InputSlideEnter(); }
 }
 
 void ABasePlayerController::CrouchHoldExit()
 {
+	// BaseCharacter crouch
+	auto basecharacter = Cast<ABaseCharacter>(this->GetPawn());
+	if (basecharacter) { basecharacter->ExitCrouch(); }
 
+	// ArenaCharacte slide
+	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
+	if (pawn) { pawn->InputSlideExit(); }
 }
 
 void ABasePlayerController::CrouchToggle()

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/InputSettings.h"
+#include "Structures.h"
 #include "BasePlayerController.generated.h"
 
 // *** ENUMERATORS

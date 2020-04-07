@@ -449,14 +449,14 @@ E_Direction AArenaCharacter::GetDirectionFromInput()
 	auto ctrl = Cast<APlayerController>(this->GetController());
 	
 	// Forward
-	if (ctrl->IsInputKeyDown(EKeys::W))
+	if (ctrl->IsInputKeyDown(EKeys::W) || ctrl->IsInputKeyDown(EKeys::Gamepad_LeftStick_Up))
 	{	
 		// Left
-		if (ctrl->IsInputKeyDown(EKeys::A))
+		if (ctrl->IsInputKeyDown(EKeys::A) || ctrl->IsInputKeyDown(EKeys::Gamepad_LeftStick_Left))
 		{ dir = E_Direction::eGA_FwdL; }
 
 		// Right
-		else if (ctrl->IsInputKeyDown(EKeys::D))
+		else if (ctrl->IsInputKeyDown(EKeys::D) || ctrl->IsInputKeyDown(EKeys::Gamepad_LeftStick_Right))
 		{ dir = E_Direction::eGA_FwdR; }
 
 		// Center
@@ -468,14 +468,14 @@ E_Direction AArenaCharacter::GetDirectionFromInput()
 	else 
 	{
 		// Backward
-		if (ctrl->IsInputKeyDown(EKeys::S))
+		if (ctrl->IsInputKeyDown(EKeys::S) || ctrl->IsInputKeyDown(EKeys::Gamepad_LeftStick_Down))
 		{
 			// Left
-			if (ctrl->IsInputKeyDown(EKeys::A))
+			if (ctrl->IsInputKeyDown(EKeys::A) || ctrl->IsInputKeyDown(EKeys::Gamepad_LeftStick_Left))
 			{ dir = E_Direction::eGA_BwdL; }
 
 			// Right
-			else if (ctrl->IsInputKeyDown(EKeys::D))
+			else if (ctrl->IsInputKeyDown(EKeys::D) || ctrl->IsInputKeyDown(EKeys::Gamepad_LeftStick_Right))
 			{ dir = E_Direction::eGA_BwdR; }
 
 			// Center
@@ -488,11 +488,11 @@ E_Direction AArenaCharacter::GetDirectionFromInput()
 		else
 		{
 			// Left
-			if (ctrl->IsInputKeyDown(EKeys::A))
+			if (ctrl->IsInputKeyDown(EKeys::A) || ctrl->IsInputKeyDown(EKeys::Gamepad_LeftStick_Left))
 			{ dir = E_Direction::eGA_Left; }
 
 			// Right
-			if (ctrl->IsInputKeyDown(EKeys::D))
+			if (ctrl->IsInputKeyDown(EKeys::D) || ctrl->IsInputKeyDown(EKeys::Gamepad_LeftStick_Right))
 			{ dir = E_Direction::eGA_Right; }
 		}
 	}
@@ -879,3 +879,128 @@ void AArenaCharacter::Server_Reliable_SetDoubleJumping_Implementation(bool Doubl
 }
 
 #pragma endregion
+
+// Movement | Slide ***********************************************************************************************************************
+
+/*
+*
+*/
+void AArenaCharacter::InputSlideEnter()
+{
+	if (_bCanSlide)
+	{
+		// If we're not currently sliding
+		if (!_bIsSliding)
+		{
+			// Set _bSliding to TRUE
+			bool slide = true;
+			if (Role == ROLE_Authority) { _bIsSliding = slide; } else { Server_Reliable_SetIsSliding(slide); }
+
+			// Initiate sliding
+			if (Role != ROLE_Authority) { Multicast_Reliable_InitiateSlide(); } else { Server_Reliable_InitiateSlide(); }
+		}
+
+
+
+	}
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void AArenaCharacter::InputSlideExit()
+{
+	// Stop sliding
+	if (_bIsSliding)
+	{
+		// Set _bSliding to FALSE
+		bool slide = false;
+		if (Role == ROLE_Authority) { _bIsSliding = slide; } else { Server_Reliable_SetIsSliding(slide); }
+
+		// Stop slide
+		if (Role != ROLE_Authority) { Multicast_Reliable_StopSlide(); } else { Server_Reliable_StopSlide(); }
+	}
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+bool AArenaCharacter::Server_Reliable_SetIsSliding_Validate(bool Sliding)
+{ return true; }
+
+void AArenaCharacter::Server_Reliable_SetIsSliding_Implementation(bool Sliding)
+{
+	_bIsSliding = Sliding;
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+bool AArenaCharacter::Server_Reliable_InitiateSlide_Validate()
+{ return true; }
+
+void AArenaCharacter::Server_Reliable_InitiateSlide_Implementation()
+{
+	Multicast_Reliable_InitiateSlide();
+}
+
+/*
+*
+*/
+bool AArenaCharacter::Multicast_Reliable_InitiateSlide_Validate()
+{ return true; }
+
+void AArenaCharacter::Multicast_Reliable_InitiateSlide_Implementation()
+{
+	// Get movement component
+	UCharacterMovementComponent* movement = GetCharacterMovement();
+	if (movement == NULL) { return; }
+
+	// Set slide values
+	movement->GroundFriction = 0.0f;
+	movement->BrakingFrictionFactor = _fSlideBreakingFrictionFactor;
+	movement->BrakingDecelerationWalking = _fSlideBrakingDeceleration;
+
+	// Launch the character
+	FVector forwardForce = GetActorForwardVector() * _fSlideForce;
+	FVector downForce = GetActorUpVector() * (_fSlideForce * -1.0f);
+	FVector launchForce = forwardForce + downForce;
+	this->LaunchCharacter(launchForce, _fSlideLaunchXYOverride, _fSlideLaunchZOverride);
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+bool AArenaCharacter::Server_Reliable_StopSlide_Validate()
+{ return true; }
+
+void AArenaCharacter::Server_Reliable_StopSlide_Implementation()
+{
+	Multicast_Reliable_StopSlide();
+}
+
+/*
+*
+*/
+bool AArenaCharacter::Multicast_Reliable_StopSlide_Validate()
+{ return true; }
+
+void AArenaCharacter::Multicast_Reliable_StopSlide_Implementation()
+{
+	// Get movement component
+	UCharacterMovementComponent* movement = GetCharacterMovement();
+	if (movement == NULL) { return; }
+
+	// Set slide value back to default
+	movement->GroundFriction = _fDefaultGroundFriction;
+	movement->BrakingFrictionFactor = _fDefaultBrakingFrictionFactor;
+	movement->BrakingDecelerationWalking = _fDefaultBrakingDecelerationWalking;
+}

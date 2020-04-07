@@ -75,6 +75,14 @@ ABaseCharacter::ABaseCharacter()
 	_FirstPerson_PrimaryWeapon_SkeletalMesh->bSelfShadowOnly = true;
 	_FirstPerson_PrimaryWeapon_SkeletalMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
+	// First person primary attachments
+	FName sightAttachmentPoint = _PrimaryWeapon != NULL ? _PrimaryWeapon->GetSightAttachmentName() : "SightAttachmentPoint";
+	_FirstPerson_PrimaryWeapon_Sight_StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("FirstPersonPrimaryWeaponSightMesh"));
+	_FirstPerson_PrimaryWeapon_Sight_StaticMesh->SetupAttachment(_FirstPerson_PrimaryWeapon_SkeletalMesh, sightAttachmentPoint);
+	_FirstPerson_PrimaryWeapon_Sight_StaticMesh->SetOnlyOwnerSee(true);
+	_FirstPerson_PrimaryWeapon_Sight_StaticMesh->bSelfShadowOnly = true;
+	_FirstPerson_PrimaryWeapon_Sight_StaticMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 	// First person secondary weapon mesh
 	_FirstPerson_SecondaryWeapon_SkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FirstPersonSecondaryWeaponMesh"));
 	_FirstPerson_SecondaryWeapon_SkeletalMesh->SetupAttachment(_FirstPerson_Arms, "hand_l");
@@ -207,6 +215,9 @@ ABaseCharacter::ABaseCharacter()
 
 	_fDefaultAirControl = GetCharacterMovement()->AirControl;
 	_fDefaultGravityScale = GetCharacterMovement()->GravityScale;
+	_fDefaultGroundFriction = GetCharacterMovement()->GroundFriction;
+	_fDefaultBrakingFrictionFactor = GetCharacterMovement()->BrakingFrictionFactor;
+	_fDefaultBrakingDecelerationWalking = GetCharacterMovement()->BrakingDecelerationWalking;	
 }
 
 ///////////////////////////////////////////////
@@ -338,6 +349,40 @@ void ABaseCharacter::Tick(float DeltaTime)
 
 	// Reloading weapons
 	if (_bIsReloadingPrimaryWeapon) { UpdateReloadingPrimary(); }
+
+	// Crouch camera lerping
+	if (_bLerpCrouchCamera)
+	{
+		if (_PrimaryWeapon == NULL) { return; }
+
+		// Add to lerp time
+		if (_fCrouchLerpTime < _fCrouchLerpingDuration)
+		{
+			_fCrouchLerpTime += DeltaTime;
+			
+			// Determine origin transform
+			bool ads = _PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled();
+			FTransform adsOrigin = _PrimaryWeapon->GetCurrentFireMode()->GetOriginADS();
+			FTransform hipOrigin = _PrimaryWeapon->GetTransformOriginHands();
+			FTransform originTransform = UKismetMathLibrary::SelectTransform(adsOrigin, hipOrigin, _bIsAiming && ads);
+
+			// Get crouch/uncrouch origins
+			FTransform crouchTransform = UKismetMathLibrary::SelectTransform(_tCrouchWeaponOrigin, originTransform, _bIsCrouching);
+			FTransform uncrouchTransform = UKismetMathLibrary::SelectTransform(originTransform, _tCrouchWeaponOrigin, _bIsCrouching);
+
+			// Current lerp transition origin between crouch/uncrouch
+			FTransform enter = UKismetMathLibrary::SelectTransform(crouchTransform, uncrouchTransform, _bCrouchEnter);
+			FTransform exit = UKismetMathLibrary::SelectTransform(uncrouchTransform, crouchTransform, !_bCrouchEnter);
+			FTransform lerpTransform = UKismetMathLibrary::TLerp(uncrouchTransform, crouchTransform, _fCrouchLerpTime / _fCrouchLerpingDuration);
+
+			// Set lerp transform to first person arms
+			_FirstPerson_Arms->SetRelativeTransform(lerpTransform);
+		}
+
+		// Stop lerping
+		else
+		{ _bLerpCrouchCamera = false; }
+	}
 }
 
 ///////////////////////////////////////////////
@@ -1079,8 +1124,6 @@ void ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Implementat
 			_FirstPerson_Arms->SetAnimInstanceClass(Weapon->GetAnimInstanceFirstPersonHands());
 			_FirstPerson_PrimaryWeapon_SkeletalMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
 			_FirstPerson_PrimaryWeapon_SkeletalMesh->SetAnimInstanceClass(Weapon->GetAnimInstanceFirstPersonGun());
-
-			///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("UPDATING PRIMARY FIRST PERSON ORIGIN"));
 		}
 
 		// Play animation
@@ -1101,6 +1144,31 @@ void ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Implementat
 		// Weapon == NULL
 		_FirstPerson_PrimaryWeapon_SkeletalMesh->SetAnimInstanceClass(NULL);
 		_FirstPerson_PrimaryWeapon_SkeletalMesh->SetSkeletalMesh(NULL);
+	}
+
+	// Updating attachments for the weapon
+	UpdateFirstPersonPrimaryScopeAttachment(Weapon);
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseCharacter::UpdateFirstPersonPrimaryScopeAttachment(AWeapon* Weapon)
+{
+	// Either update the mesh with the mesh referenced from the weapon, otherwise clear the mesh on the character
+	if (Weapon != NULL && Weapon->IsScopeAttachmentEnabled())
+	{
+		_FirstPerson_PrimaryWeapon_Sight_StaticMesh->SetStaticMesh(Weapon->GetSightMesh());
+
+		// Ensure the scope is at the right attachment point
+		FName sightAttachmentPoint = _PrimaryWeapon != NULL ? _PrimaryWeapon->GetSightAttachmentName() : "SightAttachmentPoint";
+	}
+	else
+	{
+		// Weapon == NULL
+		_FirstPerson_PrimaryWeapon_Sight_StaticMesh->SetStaticMesh(NULL);
 	}
 }
 
@@ -1855,18 +1923,16 @@ void ABaseCharacter::EnterCrouch()
 	if (_PrimaryWeapon != NULL)
 	{
 		if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled())
-		{ _bLerpCrouchCamera = !IsAiming(); } else
+		{ _bLerpCrouchCamera = !IsAiming(); } 
+		else
 		{ _bLerpCrouchCamera = true; }
 	}
 
 	// _PrimaryWeapon == NULL
-	else
-	{ _bLerpCrouchCamera = true; }
+	else { _bLerpCrouchCamera = true; }
 
 	// Set _bIsCrouching = TRUE
-	if (Role == ROLE_Authority)
-	{ _bIsCrouching = true; } else
-	{ Server_Reliable_SetIsCrouching(true); }
+	if (Role == ROLE_Authority) { _bIsCrouching = true; } else { Server_Reliable_SetIsCrouching(true); }
 }
 
 ///////////////////////////////////////////////
@@ -1877,9 +1943,19 @@ void ABaseCharacter::ExitCrouch()
 	if (_bIsCrouching)
 	{
 		// Set _bIsCrouching = FALSE
-		if (Role == ROLE_Authority)
-		{ _bIsCrouching = false; } else
-		{ Server_Reliable_SetIsCrouching(false); }
+		if (Role == ROLE_Authority) { _bIsCrouching = false; } else { Server_Reliable_SetIsCrouching(false); }
+
+		// Lerp camera transform?
+		if (_PrimaryWeapon != NULL)
+		{
+			if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled())
+			{ _bLerpCrouchCamera = !IsAiming(); } 
+			else 
+			{ _bLerpCrouchCamera = true; }
+		}
+
+		// _PrimaryWeapon == NULL
+		else { _bLerpCrouchCamera = true; }
 	}
 }
 

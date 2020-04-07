@@ -87,6 +87,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 		USkeletalMeshComponent* _FirstPerson_SecondaryWeapon_SkeletalMesh = NULL;
 
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
+		UStaticMeshComponent* _FirstPerson_PrimaryWeapon_Sight_StaticMesh = NULL;
+
 	// Character | ThirdPerson ****************************************************************************************************************
 
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
@@ -140,19 +143,6 @@ public:
 protected:
 
 	// ****************************************************************************************************************************************
-	// ************************************ FUNCTIONS *****************************************************************************************
-	// ****************************************************************************************************************************************
-
-	// Startup ********************************************************************************************************************************
-
-	/**
-	* @summary:	Called when the game starts or when spawned.
-	*
-	* @return:	virtual void
-	*/
-	virtual void BeginPlay() override;
-
-	// ****************************************************************************************************************************************
 	// ************************************ VARIABLES *****************************************************************************************
 	// ****************************************************************************************************************************************
 
@@ -165,13 +155,31 @@ protected:
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Default Settings")
-	float _fDefaultGravityScale = 0.0f;
+		float _fDefaultGravityScale = 0.0f;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Default Settings")
 		float _fDefaultAirControl = 0.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Default Settings")
+		float _fDefaultGroundFriction = 0.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Default Settings")
+		float _fDefaultBrakingFrictionFactor = 0.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Default Settings")
+		float _fDefaultBrakingDecelerationWalking = 0.0f;
 
 	// Current Frame **************************************************************************************************************************
 
@@ -561,13 +569,40 @@ protected:
 	// Movement | Crouching *******************************************************************************************************************
 
 	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Crouch")
+		float _fCrouchLerpingDuration = 0.35f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Crouch")
+		float _fCrouchLerpTime = 0.0f;
+
+	/*
 	*	Returns whether the character is currently in a crouching state or not (REPLICATED).
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Crouch", Replicated)
 		bool _bIsCrouching = false;
 
+	/*
+	*
+	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Crouch")
 		bool _bLerpCrouchCamera = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Crouch")
+		bool _bCrouchEnter = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Crouch")
+		FTransform _tCrouchWeaponOrigin;
 
 	// Movement | Jog *************************************************************************************************************************
 
@@ -862,6 +897,19 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault")
 		int32 _NextUUID = 0;
+
+	// ****************************************************************************************************************************************
+	// ************************************ FUNCTIONS *****************************************************************************************
+	// ****************************************************************************************************************************************
+
+	// Startup ********************************************************************************************************************************
+
+	/**
+	* @summary:	Called when the game starts or when spawned.
+	*
+	* @return:	virtual void
+	*/
+	virtual void BeginPlay() override;
 
 public:
 
@@ -1348,6 +1396,14 @@ public:
 	*/
 	UFUNCTION(Client, Unreliable, WithValidation, Category = "Inventory | Weapon | Primary")
 		void OwningClient_UpdateFirstPersonPrimaryWeaponMesh(AWeapon* Weapon, bool FirstPickup);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCosmetic, Category = "Inventory | Weapon | Primary")
+		void UpdateFirstPersonPrimaryScopeAttachment(AWeapon* Weapon);
 
 	///////////////////////////////////////////////
 
