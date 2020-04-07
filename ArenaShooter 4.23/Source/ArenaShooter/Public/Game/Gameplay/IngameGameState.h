@@ -29,6 +29,24 @@ protected:
 	/*
 	*
 	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Cinematics")
+		bool _bPlayOpeningCinematic = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Cinematics")
+		bool _bPlayClosingCinematic = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Cinematics")
+		bool _bShowBuyMenu = true;
+
+	/*
+	*
+	*/
 	UPROPERTY(BlueprintReadOnly, Category = "Cinematics", Replicated)
 		TArray<ACameraCinematic*> _tOpeningCinematics;
 
@@ -55,5 +73,19 @@ public:
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_AddCinematicToArray(ACameraCinematic* Cinematic);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable)
+		void Server_Reliable_StartOpeningCinematicAllPlayers();
 	
+	/*
+	*
+	*/
+	UFUNCTION(NetMulticast, Reliable, WithValidation)
+		void Multicast_Reliable_StartOpeningCinematicAllPlayers();
+
 };

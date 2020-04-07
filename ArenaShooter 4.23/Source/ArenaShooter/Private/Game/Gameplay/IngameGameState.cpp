@@ -54,3 +54,27 @@ void AIngameGameState::Server_Reliable_AddCinematicToArray_Implementation(ACamer
 	default: break;
 	}
 }
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+bool AIngameGameState::Server_Reliable_StartOpeningCinematicAllPlayers_Validate()
+{ return true; }
+
+void AIngameGameState::Server_Reliable_StartOpeningCinematicAllPlayers_Implementation()
+{
+	Multicast_Reliable_StartOpeningCinematicAllPlayers();
+}
+
+bool AIngameGameState::Multicast_Reliable_StartOpeningCinematicAllPlayers_Validate()
+{ return true; }
+
+void AIngameGameState::Multicast_Reliable_StartOpeningCinematicAllPlayers_Implementation()
+{
+	for (int i = 0; i < _tOpeningCinematics.Num(); i++)
+	{
+		_tOpeningCinematics[i]->StartCinematic();
+	}
+}

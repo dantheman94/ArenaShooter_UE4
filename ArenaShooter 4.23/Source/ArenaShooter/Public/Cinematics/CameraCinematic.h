@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Camera/CameraActor.h"
 #include "GameFramework/Actor.h"
 #include "Structures.h"
 #include "CameraCinematic.generated.h"
@@ -10,9 +11,13 @@
 // *** EVENT DISPATCHERS / DELEGATES
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCinematicStart);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCinematicComplete);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FHeadZoom);
+
 // *** CLASSES
 
 class AIngameGameState;
+class ACameraSpline;
 
 UCLASS()
 class ARENASHOOTER_API ACameraCinematic : public AActor
@@ -51,22 +56,108 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(EditAnywhere, Category = "References")
-		AActor* _ViewCameraActor = NULL;
+	UPROPERTY(BlueprintReadOnly, EditInstanceOnly, Category = "References")
+		ACameraActor* _ViewCameraActor = NULL;
+	
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditInstanceOnly, Category = "References")
+		TArray<ACameraSpline*> _tCameraSplines;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, Category = "References")
+		ACameraSpline* _CameraSpline = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, Category = "References")
+		int _iCurrentSpline = 0;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, Category = "References")
+		int _iCurrentSplinePoint = 0;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, Category = "References")
+		float _fLerpTime = 0.0f;
 
 	// Cinematic Properties *******************************************************************************************************************
 
 	/*
 	*
 	*/
-	UPROPERTY(EditDefaultsOnly, Category = "Cinematic Properties")
+	UPROPERTY(BlueprintReadOnly, EditInstanceOnly, Category = "Cinematic Properties")
 		E_CinematicType _eCinematicType = E_CinematicType::eGT_Opening;
-	
+
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintAssignable, Category = "Cinematic Properties")
 		FOnCinematicStart _OnCinematicStart;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category = "Cinematic Properties")
+		FOnCinematicStart _OnCinematicComplete;
+
+	// Head Zoom ******************************************************************************************************************************
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, Category = "Head Zoom")
+		FVector _HeadLocation = FVector::ZeroVector;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, Category = "Head Zoom")
+		FVector _ZoomStartLocation = FVector::ZeroVector;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, Category = "Head Zoom")
+		FRotator _HeadRotation = FRotator::ZeroRotator;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, Category = "Head Zoom")
+		FRotator _ZoomStartRotation = FRotator::ZeroRotator;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditInstanceOnly, Category = "Head Zoom")
+		bool _bZoomIntoHead = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Head Zoom")
+		float _fZoomDuration = 0.25f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Head Zoom")
+		float _fZoomFadeThresholdPercent = 0.5f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintAssignable, Category = "Head Zoom")
+		FHeadZoom _OnHeadZoomThreshold;
 
 	// ****************************************************************************************************************************************
 	// ************************************ FUNCTIONS *****************************************************************************************
@@ -85,7 +176,7 @@ protected:
 
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const;
 
-public:	
+public:
 
 	// ****************************************************************************************************************************************
 	// ************************************ FUNCTIONS *****************************************************************************************

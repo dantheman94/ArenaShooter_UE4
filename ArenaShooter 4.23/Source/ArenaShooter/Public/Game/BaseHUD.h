@@ -31,61 +31,61 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Display")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Widgets | Display")
 		bool _bDisplayHUD = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Display")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Widgets | Display")
 		bool _bDisplayHealthBars = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Display")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Widgets | Display")
 		bool _bDisplayStaminabar = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Display")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Widgets | Display")
 		bool _bDisplayStatsPrimaryWeapon = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Display")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Widgets | Display")
 		bool _bDisplayStatsSecondaryWeapon = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Display")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Widgets | Display")
 		bool _bDisplayStatsReserveWeapon = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Display")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Widgets | Display")
 		bool _bDisplayGrenadeInventory = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Display")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Widgets | Display")
 		bool _bDisplayVisorOverlay = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Display")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Widgets | Display")
 		bool _bDisplayCrosshairPrimaryWeapon = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Display")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Widgets | Display")
 		bool _bDisplayCrosshairSecondaryWeapon = true;
 
 	// ArenaCharacter HUD *********************************************************************************************************************
