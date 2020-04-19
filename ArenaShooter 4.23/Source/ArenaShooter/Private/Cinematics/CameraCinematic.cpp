@@ -5,6 +5,7 @@
 
 #include "BaseCharacter.h"
 #include "BasePlayerController.h"
+#include "BasePlayerState.h"
 #include "CameraSpline.h"
 #include "Components/ArrowComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -201,6 +202,13 @@ void ACameraCinematic::StartCinematic()
 	APlayerController* playerController = GetWorld()->GetFirstPlayerController();
 	if (playerController != NULL && _tCameraSplines.Num() > 0)
 	{
+		// Only proceed if the team assigned to this cinematic matches the local player state's team
+		ABasePlayerState* playerState = Cast<ABasePlayerState>(playerController->PlayerState);
+		if (playerState != NULL)
+		{
+			if (_eTeam != playerState->GetAssignedTeam()) { return; }
+		}
+
 		// Attach view to camera actor
 		playerController->SetViewTarget(_ViewCameraActor);
 
