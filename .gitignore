@@ -33,3 +33,8 @@ ArenaShooter/ArenaShooter.png
 # *.ini
 ArenaShooter 4.23/Content/Blueprints/Environmental/Planet/
 Data/
+ArenaShooter 4.23/Content/PN_FoliageCollection/
+ArenaShooter 4.23/Content/PN_OpenWorldFoliage/
+ArenaShooter 4.23/Content/ModularCliffs/Meshes/SM_cliff_01_green.uasset
+ArenaShooter 4.23/Content/ModularCliffs/
+ArenaShooter 4.23/Content/Brushify/
