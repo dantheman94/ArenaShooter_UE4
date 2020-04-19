@@ -35,6 +35,9 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Replicated)
 		FPlayerInfo _PlayerInfo;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Replicated)
+		E_TeamNames _eAssignedTeam = E_TeamNames::eTN_Alpha;
+
 public:
 
 	// ****************************************************************************************************************************************
@@ -81,8 +84,16 @@ public:
 
 	///////////////////////////////////////////////
 
+	/*
+	*
+	*/
 	UFUNCTION()
 		FPlayerInfo GetPlayerInfo() { return _PlayerInfo; }
+
+	///////////////////////////////////////////////
+
+	UFUNCTION(BlueprintPure)
+		E_TeamNames GetAssignedTeam() { return _eAssignedTeam; }
 
 	// Main Menu ******************************************************************************************************************************
 
