@@ -211,16 +211,17 @@ ABaseCharacter::ABaseCharacter()
 
 	// Get default variable values
 	_fCameraRotationLagSpeed = _FirstPerson_SpringArm->CameraRotationLagSpeed;
-	_fCapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	_fDefaultCapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	///GEngine->AddOnScreenDebugMessage(10, 5.0f, FColor::Orange, TEXT("" + FString::SanitizeFloat(_fDefaultCapsuleHalfHeight)));
+	///GEngine->AddOnScreenDebugMessage(11, 5.0f, FColor::Green, TEXT("" + FString::SanitizeFloat(GetCharacterMovement()->CrouchedHalfHeight)));
 
+	// Get default movement values
 	_fDefaultAirControl = GetCharacterMovement()->AirControl;
 	_fDefaultGravityScale = GetCharacterMovement()->GravityScale;
 	_fDefaultGroundFriction = GetCharacterMovement()->GroundFriction;
 	_fDefaultBrakingFrictionFactor = GetCharacterMovement()->BrakingFrictionFactor;
-	_fDefaultBrakingDecelerationWalking = GetCharacterMovement()->BrakingDecelerationWalking;	
+	_fDefaultBrakingDecelerationWalking = GetCharacterMovement()->BrakingDecelerationWalking;
 }
-
-///////////////////////////////////////////////
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -245,8 +246,6 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ABaseCharacter, _ReserveWeapon);
 	DOREPLIFETIME(ABaseCharacter, _SecondaryWeapon);
 }
-
-///////////////////////////////////////////////
 
 /**
 * @summary:	Called when the game starts or when spawned.
@@ -290,6 +289,10 @@ void ABaseCharacter::FreezeAnimation(UAnimMontage* MontageToFreeze, float EndFra
 void ABaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// If we're currently in the air and not doing any checks for landing on the ground, then start doing those checks
+	if (GetCharacterMovement()->IsFalling() && !_bIsPerformingGroundChecks) { _bIsPerformingGroundChecks; }
+	if (_bIsPerformingGroundChecks) { OnGroundChecks(); }
 
 	// Recharging shields
 	if (_bRechargeShields && _fShield < _MAX_SHIELD && Role == ROLE_Authority)
@@ -356,9 +359,9 @@ void ABaseCharacter::Tick(float DeltaTime)
 		if (_PrimaryWeapon == NULL) { return; }
 
 		// Add to lerp time
-		if (_fCrouchLerpTime < _fCrouchLerpingDuration)
+		if (_fCrouchCameraLerpTime < _fCrouchLerpingDuration)
 		{
-			_fCrouchLerpTime += DeltaTime;
+			_fCrouchCameraLerpTime += DeltaTime;
 			
 			// Determine origin transform
 			bool ads = _PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled();
@@ -372,8 +375,8 @@ void ABaseCharacter::Tick(float DeltaTime)
 
 			// Current lerp transition origin between crouch/uncrouch
 			FTransform enter = UKismetMathLibrary::SelectTransform(crouchTransform, uncrouchTransform, _bCrouchEnter);
-			FTransform exit = UKismetMathLibrary::SelectTransform(uncrouchTransform, crouchTransform, !_bCrouchEnter);
-			FTransform lerpTransform = UKismetMathLibrary::TLerp(uncrouchTransform, crouchTransform, _fCrouchLerpTime / _fCrouchLerpingDuration);
+			FTransform exit = UKismetMathLibrary::SelectTransform(crouchTransform, uncrouchTransform, !_bCrouchEnter);
+			FTransform lerpTransform = UKismetMathLibrary::TLerp(uncrouchTransform, crouchTransform, _fCrouchCameraLerpTime / _fCrouchLerpingDuration);
 
 			// Set lerp transform to first person arms
 			_FirstPerson_Arms->SetRelativeTransform(lerpTransform);
@@ -383,9 +386,27 @@ void ABaseCharacter::Tick(float DeltaTime)
 		else
 		{ _bLerpCrouchCamera = false; }
 	}
-}
 
-///////////////////////////////////////////////
+	// Crouch movement capsule lerping
+	if (_bLerpCrouchCapsule)
+	{
+		// Add to lerp time
+		if (_fCrouchCapsuleLerpTime < _fCrouchLerpingDuration)
+		{
+			_fCrouchCapsuleLerpTime += DeltaTime;
+
+			// Get capsule height values
+			float lerpA = UKismetMathLibrary::SelectFloat(_fDefaultCapsuleHalfHeight, GetCharacterMovement()->CrouchedHalfHeight, _bIsCrouching);
+			float lerpB = UKismetMathLibrary::SelectFloat(_fDefaultCapsuleHalfHeight, GetCharacterMovement()->CrouchedHalfHeight, !_bIsCrouching);
+
+			// Lerp between values over time
+			float currentLerpHeight = UKismetMathLibrary::Lerp(lerpA, lerpB, _fCrouchCapsuleLerpTime / _fCrouchLerpingDuration);
+			UCapsuleComponent* movementCapsule = GetCapsuleComponent();
+			if (movementCapsule == NULL) { return; }
+			movementCapsule->SetCapsuleHalfHeight(currentLerpHeight, true);
+		}
+	}
+}
 
 /*
 *
@@ -413,8 +434,6 @@ void ABaseCharacter::OnGroundChecks()
 	// Character is falling
 	else { _fFallingVelocity = GetVelocity().Z; }
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -471,7 +490,7 @@ bool ABaseCharacter::OwningClient_PlayCameraShake_Validate(TSubclassOf<class UCa
 void ABaseCharacter::OwningClient_PlayCameraShake_Implementation(TSubclassOf<class UCameraShake> ShakeClass, float Scale)
 {
 	APlayerController* playerController = Cast<APlayerController>(GetController());
-	if (playerController != NULL)
+	if (playerController != NULL && ShakeClass != NULL)
 	{
 		playerController->PlayerCameraManager->PlayCameraShake(ShakeClass, Scale, ECameraAnimPlaySpace::CameraLocal, FRotator::ZeroRotator);
 	}
@@ -509,8 +528,6 @@ void ABaseCharacter::Server_SetUseControllerRotationYaw_Implementation(bool useC
 	if (HasAuthority()) { bUseControllerRotationYaw = useControllerRotationYaw; }
 }
 
-///////////////////////////////////////////////
-
 void ABaseCharacter::SetForwardInputScale(float ForwardInputScale)
 {
 	if (Role == ROLE_Authority) 
@@ -535,8 +552,6 @@ void ABaseCharacter::Server_SetForwardInputScale_Implementation(float ForwardInp
 {
 	SetForwardInputScale(ForwardInputScale);
 }
-
-///////////////////////////////////////////////
 
 void ABaseCharacter::SetRightInputScale(float RightInputScale)
 {
@@ -564,8 +579,6 @@ void ABaseCharacter::Server_SetRightInputScale_Implementation(float RightInputSc
 }
 
 // First Person | Animation ***************************************************************************************************************
-
-///////////////////////////////////////////////
 
 /**
 * @summary:	Plays the specific animation on the client's first person perspective
@@ -657,14 +670,10 @@ void ABaseCharacter::Server_Reliable_OnAnyDamage_Implementation(AActor* Actor, f
 	OnAnyDamage(Actor, Damage, DamageType, InstigatedBy, DamageCauser);
 }
 
-///////////////////////////////////////////////
-
 void ABaseCharacter::OnPointDamage(float Damage)
 {
 
 }
-
-///////////////////////////////////////////////
 
 void ABaseCharacter::OnRadialDamage(float Damage)
 {
@@ -748,8 +757,6 @@ bool ABaseCharacter::Server_Reliable_ResetShield_Validate()
 void ABaseCharacter::Server_Reliable_ResetShield_Implementation()
 { _fShield = _MAX_SHIELD; }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -764,8 +771,6 @@ void ABaseCharacter::ResetShieldRecharge()
 	rechargeDelegate.BindUFunction(this, FName("StartRechargingShields"));
 	GetWorld()->GetTimerManager().SetTimer(_fShieldRechargeDelayHandle, rechargeDelegate, 1.0f, false, _fShieldRechargeDelay);
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -836,8 +841,6 @@ void ABaseCharacter::FireTraceFullAuto()
 
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -883,8 +886,6 @@ void ABaseCharacter::InputToggleWeapon()
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -900,8 +901,6 @@ void ABaseCharacter::Server_Reliable_SetupToggleWeapon_Implementation()
 	_OldReserveWeapon = _ReserveWeapon;
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -914,8 +913,6 @@ void ABaseCharacter::Server_Reliable_ToggleWeapon_Implementation()
 	Server_Reliable_SetPrimaryWeapon(_OldReserveWeapon, false);
 	Server_Reliable_SetReserveWeapon(_OldPrimaryWeapon);
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -951,8 +948,6 @@ void ABaseCharacter::Server_Reliable_SetIsAiming_Implementation(bool aiming)
 {
 	if (HasAuthority()) { _bIsAiming = aiming; }
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -996,8 +991,6 @@ void ABaseCharacter::AimWeaponEnter()
 	// Transform origin lerping
 	if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled()) { _fAdsAnimationEvent.Broadcast(true); }
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -1063,8 +1056,6 @@ void ABaseCharacter::Server_Reliable_SetPrimaryWeapon_Implementation(AWeapon* We
 	if (Role == ROLE_Authority) { OnRep_PrimaryWeapon(); }
 }
 
-///////////////////////////////////////////////
-
 bool ABaseCharacter::Multicast_UpdateThirdPersonPrimaryWeaponMesh_Validate(AWeapon* Weapon)
 { return true; }
 
@@ -1083,8 +1074,6 @@ void ABaseCharacter::Multicast_UpdateThirdPersonPrimaryWeaponMesh_Implementation
 	// Weapon == NULL
 	else { _ThirdPerson_PrimaryWeapon_SkeletalMesh->SetSkeletalMesh(NULL); }
 }
-
-///////////////////////////////////////////////
 
 bool ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Validate(AWeapon* Weapon, bool FirstPickup)
 { return true; }
@@ -1150,8 +1139,6 @@ void ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Implementat
 	UpdateFirstPersonPrimaryScopeAttachment(Weapon);
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -1171,8 +1158,6 @@ void ABaseCharacter::UpdateFirstPersonPrimaryScopeAttachment(AWeapon* Weapon)
 		_FirstPerson_PrimaryWeapon_Sight_StaticMesh->SetStaticMesh(NULL);
 	}
 }
-
-///////////////////////////////////////////////
 
 void ABaseCharacter::InitFirePrimaryWeapon()
 {
@@ -1202,8 +1187,6 @@ void ABaseCharacter::InitFirePrimaryWeapon()
 		}
 	}
 }
-
-///////////////////////////////////////////////
 
 bool ABaseCharacter::OwningClient_Reliable_PrimaryWeaponCameraTrace_Validate()
 { return true; }
@@ -1240,8 +1223,6 @@ void ABaseCharacter::OwningClient_Reliable_PrimaryWeaponCameraTrace_Implementati
 
 	Server_Reliable_PrimaryWeaponCameraTrace(hitResult);
 }
-
-///////////////////////////////////////////////
 
 bool ABaseCharacter::Server_Reliable_PrimaryWeaponCameraTrace_Validate(FHitResult ClientHitResult)
 { return true; }
@@ -1287,8 +1268,6 @@ void ABaseCharacter::Server_Reliable_PrimaryWeaponCameraTrace_Implementation(FHi
 		_PrimaryWeapon->GetCurrentFireMode()->Fire(ClientHitResult, cameraForwardXVector, _FirstPerson_PrimaryWeapon_SkeletalMesh, _ThirdPerson_PrimaryWeapon_SkeletalMesh);
 	}
 }
-
-///////////////////////////////////////////////
 
 /**
 * @summary:	Checks and initiates a reload of the character's primary weapon.
@@ -1388,8 +1367,6 @@ void ABaseCharacter::InputReloadPrimaryWeapon()
 
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -1399,8 +1376,6 @@ void ABaseCharacter::OnRep_PrimaryWeapon()
 	OwningClient_UpdateFirstPersonPrimaryWeaponMesh(_PrimaryWeapon, false);
 	Multicast_UpdateThirdPersonPrimaryWeaponMesh(_PrimaryWeapon);
 }
-
-///////////////////////////////////////////////
 
 void ABaseCharacter::InputPrimaryFirePress()
 {
@@ -1416,8 +1391,6 @@ void ABaseCharacter::InputPrimaryFirePress()
 	{ _bIsTryingToFirePrimary = false; }
 }
 
-///////////////////////////////////////////////
-
 void ABaseCharacter::InputPrimaryFireRelease()
 {
 	// Sanity check
@@ -1431,8 +1404,6 @@ void ABaseCharacter::InputPrimaryFireRelease()
 	else
 	{ _bIsTryingToFirePrimary = false; }
 }
-
-///////////////////////////////////////////////
 
 bool ABaseCharacter::OwningClient_PlayPrimaryWeaponFPAnimation_Validate(float PlayRate, bool FreezeMontageAtLastFrame,
 	bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame,
@@ -1491,8 +1462,6 @@ void ABaseCharacter::OwningClient_PlayPrimaryWeaponFPAnimation_Implementation(fl
 	}
 }
 
-///////////////////////////////////////////////
-
 bool ABaseCharacter::Server_Reliable_SetIsReloadingPrimaryWeapon_Validate(bool ReloadingPrimary)
 { return true; }
 
@@ -1520,8 +1489,6 @@ void ABaseCharacter::Server_Reliable_SetSecondaryWeapon_Implementation(AWeapon* 
 	_SecondaryWeapon = Weapon;
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -1529,8 +1496,6 @@ void ABaseCharacter::InputFireSecondaryWeapon()
 {
 
 }
-
-///////////////////////////////////////////////
 
 /**
 * @summary:	Checks and initiates a reload of the character's secondary weapon.
@@ -1606,8 +1571,6 @@ AInteractable* ABaseCharacter::CalculateFocusInteractable()
 	return _FocusInteractable;
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -1616,8 +1579,6 @@ void ABaseCharacter::AddToInteractablesArray(AInteractable* Interactable)
 	_Interactables.Add(Interactable);
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -1625,8 +1586,6 @@ void ABaseCharacter::RemoveFromInteractablesArray(AInteractable* Interactable)
 {
 	if (_Interactables.Contains(Interactable)) { _Interactables.Remove(Interactable); }
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -1642,8 +1601,6 @@ void ABaseCharacter::InteractPrimary()
 	GetWorld()->GetTimerManager().SetTimer(_fInteractionHandle, interactionDelegate, 1.0f, false, _fInteractionThresholdTime);
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -1651,8 +1608,6 @@ void ABaseCharacter::InteractSecondary()
 {
 
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -1662,8 +1617,6 @@ void ABaseCharacter::CancelInteraction()
 	// Cancel interaction timer
 	GetWorld()->GetTimerManager().ClearTimer(_fInteractionHandle);
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -1698,8 +1651,6 @@ void ABaseCharacter::Interact(bool IsSecondary)
 	_FocusInteractable->Server_Reliable_OnInteract(this);
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -1728,8 +1679,6 @@ void ABaseCharacter::Server_Reliable_DropWeapon_Implementation(AWeapon* WeaponIn
 	DrawDebugLine(GetWorld(), eyeLocation, eyeLocation + forwardVector, FColor::Red, true, 20.0f);
 	AActor* droppedActor = GetWorld()->SpawnActor<AActor>(actorClass, eyeLocation + forwardVector, GetActorRotation(), spawnInfo);
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -1813,8 +1762,6 @@ void ABaseCharacter::MoveForward(float Value)
 	}
 }
 
-///////////////////////////////////////////////
-
 /**
 * @summary:	Moves the character on the horizontal axis (left/right)
 *
@@ -1855,8 +1802,6 @@ void ABaseCharacter::MoveRight(float Value)
 	}
 }
 
-///////////////////////////////////////////////
-
 bool ABaseCharacter::Server_SetMovementMode_Validate(EMovementMode MovementMode)
 { return true; }
 
@@ -1873,15 +1818,11 @@ void ABaseCharacter::Multicast_SetMovementMode_Implementation(EMovementMode Move
 	GetCharacterMovement()->SetMovementMode(MovementMode);
 }
 
-///////////////////////////////////////////////
-
 bool ABaseCharacter::Server_Reliable_SetMovingSpeed_Validate(float Speed)
 { return GetCharacterMovement() != NULL; }
 
 void ABaseCharacter::Server_Reliable_SetMovingSpeed_Implementation(float Speed)
 { Multicast_Reliable_SetMovingSpeed(Speed); }
-
-///////////////////////////////////////////////
 
 bool ABaseCharacter::Multicast_Reliable_SetMovingSpeed_Validate(float Speed)
 { return GetCharacterMovement() != NULL; }
@@ -1912,54 +1853,68 @@ void ABaseCharacter::CrouchToggle(bool Crouch)
 	{ ExitCrouch(); }
 }
 
-///////////////////////////////////////////////
-
 void ABaseCharacter::EnterCrouch()
 {
-	// Cannot crouch when airborne
-	if (!GetCharacterMovement()->IsMovingOnGround()) { return; }
-
-	// Lerp camera transform?
-	if (_PrimaryWeapon != NULL)
-	{
-		if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled())
-		{ _bLerpCrouchCamera = !IsAiming(); } 
-		else
-		{ _bLerpCrouchCamera = true; }
-	}
-
-	// _PrimaryWeapon == NULL
-	else { _bLerpCrouchCamera = true; }
-
-	// Set _bIsCrouching = TRUE
-	if (Role == ROLE_Authority) { _bIsCrouching = true; } else { Server_Reliable_SetIsCrouching(true); }
-}
-
-///////////////////////////////////////////////
-
-void ABaseCharacter::ExitCrouch()
-{
-	// Can only stop crouching if we we're previously crouching TRUE????
-	if (_bIsCrouching)
-	{
-		// Set _bIsCrouching = FALSE
-		if (Role == ROLE_Authority) { _bIsCrouching = false; } else { Server_Reliable_SetIsCrouching(false); }
+	/*
+		// Cannot crouch when airborne
+		if (!GetCharacterMovement()->IsMovingOnGround()) { return; }
 
 		// Lerp camera transform?
+		_bCrouchEnter = true;
+		if (_fCrouchCameraLerpTime >= _fCrouchLerpingDuration) { _fCrouchCameraLerpTime = 0.0f; }
+		else
+		{
+			// Get current percent of lerp time so that it doesn't jagger at the start of the next lerp sequence
+			float t = _fCrouchCameraLerpTime;
+			_fCrouchCameraLerpTime = _fCrouchLerpingDuration - t;
+		}
 		if (_PrimaryWeapon != NULL)
 		{
 			if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled())
-			{ _bLerpCrouchCamera = !IsAiming(); } 
-			else 
+			{ _bLerpCrouchCamera = !IsAiming(); }
+			else
 			{ _bLerpCrouchCamera = true; }
 		}
 
 		// _PrimaryWeapon == NULL
 		else { _bLerpCrouchCamera = true; }
-	}
+
+		// Set _bIsCrouching = TRUE
+		if (Role == ROLE_Authority) { _bIsCrouching = true; } else { Server_Reliable_SetIsCrouching(true); }
+	*/
 }
 
-///////////////////////////////////////////////
+void ABaseCharacter::ExitCrouch()
+{
+	/*
+		// Can only stop crouching if we we're previously crouching TRUE????
+		if (_bIsCrouching)
+		{
+		// Lerp camera transform?
+			_bCrouchEnter = false;
+			if (_fCrouchCameraLerpTime >= _fCrouchLerpingDuration) { _fCrouchCameraLerpTime = 0.0f; }
+			else
+			{
+				// Get current percent of lerp time so that it doesn't jagger at the start of the next lerp sequence
+				float t = _fCrouchCameraLerpTime;
+				_fCrouchCameraLerpTime = _fCrouchLerpingDuration - t;
+			}
+			if (_PrimaryWeapon != NULL)
+		{
+			if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled())
+			{ _bLerpCrouchCamera = !IsAiming(); }
+			else
+			{ _bLerpCrouchCamera = true; }
+		}
+
+			// _PrimaryWeapon == NULL
+			else { _bLerpCrouchCamera = true; }
+
+			// Set _bIsCrouching = FALSE
+			if (Role == ROLE_Authority) { _bIsCrouching = false; } else { Server_Reliable_SetIsCrouching(false); }
+		}
+	*/
+}
 
 bool ABaseCharacter::Server_Reliable_SetIsCrouching_Validate(bool IsCrouching)
 { return true; }
@@ -2007,8 +1962,6 @@ void ABaseCharacter::InputJump()
 	} else { return; }
 }
 
-///////////////////////////////////////////////
-
 bool ABaseCharacter::Server_Reliable_SetJumping_Validate(bool Jumping)
 { return true; }
 
@@ -2036,28 +1989,24 @@ void ABaseCharacter::Server_Reliable_SetSprinting_Implementation(bool Sprinting)
 	if (HasAuthority()) { _bIsSprinting = Sprinting; }
 }
 
-// Stamina ********************************************************************************************************************************
-
-/**
-* @summary:	Returns reference to the of stamina component attached to this character, specified by the channel.
-*
-* @param:	int Channel
-*
-* @return:	TArray<UStamina*>
-*/
-UStamina* ABaseCharacter::GetStaminaComponentByChannel(int Channel)
+void ABaseCharacter::SprintEnter()
 {
-	// Get relevant stamina via matching channel
-	UStamina* stamina = NULL;
-	for (int i = 0; i < _uStaminaComponents.Num(); i++)
+	if (_bSprintEnabled)
 	{
-		if (_uStaminaComponents[i]->GetStaminaChannel() == Channel)
+		if (_bIsAiming)
 		{
-			stamina = _uStaminaComponents[i];
-			break;
+
+		}
+		else
+		{
+
 		}
 	}
-	return stamina;
+}
+
+void ABaseCharacter::SprintExit()
+{
+
 }
 
 // Movement | Vault ***********************************************************************************************************************
@@ -2086,7 +2035,7 @@ void ABaseCharacter::InputVault()
 	_vWallHeightLocation = heightHit.ImpactPoint;
 
 	// Grab ledge check
-	if (UKismetMathLibrary::NotEqual_VectorVector(_vWallHeightLocation, FVector(0.0f, 0.0f, 0.0f), 10.0f))
+	if (UKismetMathLibrary::NotEqual_VectorVector(_vWallHeightLocation, FVector(0.0f, 0.0f, 0.0f), 10.0f) && _bCanVault)
 	{
 		// Distance check
 		_bIsTryingToVault = GetHipToLedge();
@@ -2115,8 +2064,6 @@ void ABaseCharacter::InputVault()
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -2138,8 +2085,6 @@ FHitResult ABaseCharacter::LedgeForwardTrace()
 
 	return hitResult;
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -2164,8 +2109,6 @@ FHitResult ABaseCharacter::LedgeHeightTrace()
 	return hitResult;
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -2180,8 +2123,6 @@ bool ABaseCharacter::GetHipToLedge()
 
 	return UKismetMathLibrary::InRange_FloatFloat(range, _fLedgeGrabThresholdMin, _fLedgeGrabThresholdMax);
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -2216,8 +2157,6 @@ void ABaseCharacter::Multicast_Reliable_GrabLedge_Implementation(FVector MoveLoc
 	GrabLedge(MoveLocation);
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -2234,8 +2173,6 @@ void ABaseCharacter::ClimbLedge()
 	_bIsTryingToVault = false;
 }
 
-///////////////////////////////////////////////
-
 bool ABaseCharacter::Server_Reliable_SetIsVaulting_Validate(bool Vaulting)
 { return true; }
 
@@ -2243,8 +2180,6 @@ void ABaseCharacter::Server_Reliable_SetIsVaulting_Implementation(bool Vaulting)
 {
 	_bIsVaulting = Vaulting;
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -2259,4 +2194,28 @@ FVector ABaseCharacter::GetMoveToLocation(float HeightOffset, float ForwardOffse
 	///DrawDebugLine(GetWorld(), _vWallTraceStart, _vWallTraceStart + forward, FColor::Blue, true, 10.0f);
 
 	return height + forward;
+}
+
+// Stamina ********************************************************************************************************************************
+
+/**
+* @summary:	Returns reference to the of stamina component attached to this character, specified by the channel.
+*
+* @param:	int Channel
+*
+* @return:	TArray<UStamina*>
+*/
+UStamina* ABaseCharacter::GetStaminaComponentByChannel(int Channel)
+{
+	// Get relevant stamina via matching channel
+	UStamina* stamina = NULL;
+	for (int i = 0; i < _uStaminaComponents.Num(); i++)
+	{
+		if (_uStaminaComponents[i]->GetStaminaChannel() == Channel)
+		{
+			stamina = _uStaminaComponents[i];
+			break;
+		}
+	}
+	return stamina;
 }

@@ -8,6 +8,7 @@
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Kismet/KismetInputLibrary.h"
 #include "Stamina.h"
 #include "UnrealNetwork.h"
 #include "Weapon.h"
@@ -60,16 +61,150 @@ void AArenaCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Get all firing mode components as reference
-	this->GetComponents<UStamina>(_uStaminaComponents);
-
 	// Get default variable values
 	_fCameraRotationLagSpeed = _FirstPerson_SpringArm->CameraRotationLagSpeed;
-	_fCapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	_fDefaultCapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+
+	// Get default movement values
 	_fDefaultAirControl = GetCharacterMovement()->AirControl;
 	_fDefaultGravityScale = GetCharacterMovement()->GravityScale;
+	_fDefaultGroundFriction = GetCharacterMovement()->GroundFriction;
+	_fDefaultBrakingFrictionFactor = GetCharacterMovement()->BrakingFrictionFactor;
+	_fDefaultBrakingDecelerationWalking = GetCharacterMovement()->BrakingDecelerationWalking;
 
-	///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Orange, FString::SanitizeFloat(_fDefaultGravityScale));
+	///GEngine->AddOnScreenDebugMessage(10, 5.0f, FColor::Purple, TEXT("" + FString::SanitizeFloat(GetCharacterMovement()->GravityScale)));
+	///GEngine->AddOnScreenDebugMessage(11, 5.0f, FColor::Orange, TEXT("" + FString::SanitizeFloat(_fDefaultGravityScale)));
+}
+
+// Current Frame **************************************************************************************************************************
+
+/**
+* @summary:	Called every frame.
+*
+* @param:	DeltaTime	- The delta of the frame.
+*
+* @return:	virtual void
+*/
+void AArenaCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	// If we're currently in the air and not doing any checks for landing on the ground, then start doing those checks
+	if (GetCharacterMovement()->IsFalling() && !_bIsPerformingGroundChecks) { _bIsPerformingGroundChecks; }
+	if (_bIsPerformingGroundChecks) { OnGroundChecks(); }
+	
+	// Slide camera(origin) lerping
+	if (_bLerpSlideCamera)
+	{
+		if (_PrimaryWeapon == NULL) { return; }
+
+		// Add to lerp time
+		if (_fSlideCameraLerpTime < _fSlideCameraLerpingDuration)
+		{
+			_fSlideCameraLerpTime += DeltaTime;
+
+			// Determine origin transform
+			bool ads = _PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled();
+			FTransform adsOrigin = _PrimaryWeapon->GetCurrentFireMode()->GetOriginADS();
+			FTransform hipOrigin = _PrimaryWeapon->GetTransformOriginHands();
+			FTransform originTransform = UKismetMathLibrary::SelectTransform(adsOrigin, hipOrigin, _bIsAiming && ads);
+
+			// Get slide/unslide origins
+			FTransform slideTransform = UKismetMathLibrary::SelectTransform(_tSlideWeaponOrigin, originTransform, _bIsSliding);
+			FTransform unslideTransform = UKismetMathLibrary::SelectTransform(originTransform, _tSlideWeaponOrigin, _bIsSliding);
+
+			// Current lerp transition origin between slide/unslide
+			FTransform enter = UKismetMathLibrary::SelectTransform(slideTransform, unslideTransform, _bSlideEnter);
+			FTransform exit = UKismetMathLibrary::SelectTransform(slideTransform, unslideTransform, !_bSlideEnter);
+			FTransform lerpTransform = UKismetMathLibrary::TLerp(unslideTransform, slideTransform, _fSlideCameraLerpTime / _fSlideCameraLerpingDuration);
+
+			// Set lerp transform to first person arms
+			_FirstPerson_Arms->SetRelativeTransform(lerpTransform);
+		}
+
+		// Stop lerping
+		else
+		{ _bLerpSlideCamera = false; }
+	}
+	
+	// Slide movement capsule lerping
+	if (_bLerpCrouchCapsule)
+	{
+		// Add to lerp time
+		if (_fSlideCameraLerpTime < _fCrouchLerpingDuration)
+		{
+			_fSlideCameraLerpTime += DeltaTime;
+
+			// Get capsule height values
+			float slideHeight = GetCharacterMovement()->CrouchedHalfHeight / 4;
+			float lerpA = UKismetMathLibrary::SelectFloat(_fDefaultCapsuleHalfHeight, slideHeight, _bIsSliding);
+			float lerpB = UKismetMathLibrary::SelectFloat(slideHeight, _fDefaultCapsuleHalfHeight, _bIsSliding);
+
+			// Lerp between values over time
+			float currentLerpHeight = UKismetMathLibrary::Lerp(lerpA, lerpB, _fSlideCameraLerpTime / _fSlideCameraLerpingDuration);
+			UCapsuleComponent* movementCapsule = GetCapsuleComponent();
+			if (movementCapsule == NULL) { return; }
+			movementCapsule->SetCapsuleHalfHeight(currentLerpHeight, true);
+		}
+	}
+}
+
+///////////////////////////////////////////////
+
+/**
+* @summary:	Called every frame.
+*
+* @param:	DeltaTime	- The delta of the frame.
+*
+* @return:	virtual void
+*/
+void AArenaCharacter::OnGroundChecks()
+{
+	// Character has landed on the ground
+	if (GetCharacterMovement()->IsMovingOnGround()) 
+	{
+		// Reset jumping
+		if (_bIsJumping)
+		{
+			if (Role == ROLE_Authority) { _bIsJumping = false; } else { Server_Reliable_SetJumping(false); }
+		}
+		if (_bIsDoubleJumping)
+		{
+			if (Role == ROLE_Authority) { _bIsDoubleJumping = false; } else { Server_Reliable_SetDoubleJumping(false); }
+		}
+		if (_bDoubleJumpEnabled) { _bCanDoubleJump = true; }
+		if (_bIsSlideJumping)
+		{
+			if (Role == ROLE_Authority) { _bIsSlideJumping = false; } else { Server_Reliable_SetDoubleJumping(false); }
+		}
+
+		// Set gravity scale to default
+		if (Role == ROLE_Authority)
+		{ Multicast_Reliable_SetGravityScale(_fDefaultGravityScale); } 
+		else
+		{ Server_Reliable_SetGravityScale(_fDefaultGravityScale); }
+		///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Purple, TEXT("" + FString::SanitizeFloat(_fDefaultGravityScale)));
+
+		// Reset falling/hover
+		_bCanHover = true;
+		_bHoverCancelled = false;
+
+		// Launch the character if we were trying to slide and waiting to hit the ground first
+		if (_bIsTryingToSlide) { Slide(); }
+		
+		// Dont play the landing camera shake if we're trying to slide
+		else
+		{
+			// Landing camera shake
+			float shakeScale = UKismetMathLibrary::NormalizeToRange(_fFallingVelocity *= -1, 0.0f, 2000.0f);
+			shakeScale *= _fFallingLandShakeMultiplier;
+			OwningClient_PlayCameraShake(_CameraShakeJumpLand, shakeScale);
+		}
+		_bIsPerformingGroundChecks = false;
+	}
+
+	// Character is falling
+	else { _fFallingVelocity = GetVelocity().Z; }
 }
 
 // Inventory | Weapon | Primary ***********************************************************************************************************
@@ -108,68 +243,6 @@ void AArenaCharacter::InitFirePrimaryWeapon()
 	if (_bIsDashing) { return; }
 
 	ABaseCharacter::InitFirePrimaryWeapon();
-}
-
-// Current Frame **************************************************************************************************************************
-
-/**
-* @summary:	Called every frame.
-*
-* @param:	DeltaTime	- The delta of the frame.
-*
-* @return:	virtual void
-*/
-void AArenaCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-	if (_bIsPerformingGroundChecks) { OnGroundChecks(); }
-}
-
-///////////////////////////////////////////////
-
-void AArenaCharacter::OnGroundChecks()
-{
-	// Character has landed on the ground
-	if (GetCharacterMovement()->IsMovingOnGround()) 
-	{
-		// Reset jumping
-		if (_bIsJumping)
-		{
-			if (Role == ROLE_Authority)
-			{ _bIsJumping = false; }
-			else
-			{ Server_Reliable_SetJumping(false); }
-		}
-		if (_bIsDoubleJumping)
-		{
-			if (Role == ROLE_Authority)
-			{ _bIsDoubleJumping = false; }
-			else
-			{ Server_Reliable_SetDoubleJumping(false); }
-		}
-		if (_bDoubleJumpEnabled) { _bCanDoubleJump = true; }
-
-		// Set gravity scale to default
-		if (Role == ROLE_Authority)
-		{ Multicast_Reliable_SetGravityScale(_fDefaultGravityScale); } 
-		else
-		{ Server_Reliable_SetGravityScale(_fDefaultGravityScale); }
-
-		// Reset falling/hover
-		_bCanHover = true;
-		_bHoverCancelled = false;
-
-		// Landing camera shake
-		float shakeScale = UKismetMathLibrary::NormalizeToRange(_fFallingVelocity *= -1, 0.0f, 2000.0f);
-		shakeScale *= 4;
-		OwningClient_PlayCameraShake(_CameraShakeJumpLand, shakeScale);
-
-		_bIsPerformingGroundChecks = false;
-	}
-
-	// Character is falling
-	else { _fFallingVelocity = GetVelocity().Z; }
 }
 
 // Movement | Base ************************************************************************************************************************
@@ -735,34 +808,45 @@ void AArenaCharacter::InputJump()
 			// Not falling
 			if (!GetCharacterMovement()->IsFalling())
 			{
-				// Uncrouch then jump
-				if (_bIsCrouching) { ExitCrouch(); } else
+				if (_bIsSliding)
 				{
-					// Set _bIsJumping = TRUE
-					if (Role == ROLE_Authority)
-					{ _bIsJumping = true; } else
-					{ Server_Reliable_SetJumping(true); }
+					InputSlideJump();
+				}
+				else
+				{
+					// Uncrouch then jump
+					if (_bIsCrouching) { ExitCrouch(); } else
+					{
+						// Set _bIsJumping = TRUE
+						if (Role == ROLE_Authority)
+						{ _bIsJumping = true; } else
+						{ Server_Reliable_SetJumping(true); }
 
-					// Action jump
-					Jump();
+						// Action jump
+						Jump();
 
-					// Play feedback(s) [Camera shakes / Gamepad Rumbles]
-					OwningClient_PlayCameraShake(_CameraShakeJumpStart, 1.0f);
-					OwningClient_GamepadRumble(_fJumpGamepadRumbleIntensity, _fJumpGamepadRumbleDuration,
-						_fJumpGamepadRumbleAffectsLeftLarge, _fJumpGamepadRumbleAffectsLeftSmall,
-						_fJumpGamepadRumbleAffectsRightLarge, _fJumpGamepadRumbleAffectsRightSmall);
+						// Play feedback(s) [Camera shakes / Gamepad Rumbles]
+						OwningClient_PlayCameraShake(_CameraShakeJumpStart, 1.0f);
+						OwningClient_GamepadRumble(_fJumpGamepadRumbleIntensity, _fJumpGamepadRumbleDuration,
+							_fJumpGamepadRumbleAffectsLeftLarge, _fJumpGamepadRumbleAffectsLeftSmall,
+							_fJumpGamepadRumbleAffectsRightLarge, _fJumpGamepadRumbleAffectsRightSmall);
+					}
+
+					// Unhover
+					if (_bIsHovering)
+					{
+						HoverExit();
+						InputDoubleJump();
+					}
 				}
 
-				// Unhover
-				if (_bIsHovering)
-				{ 
-					HoverExit(); 
-					InputDoubleJump();
-				}
 			}
 
 			// Falling 
 			else { InputDoubleJump(); }
+
+			// Start landing checks
+			_bIsPerformingGroundChecks = true;
 		}
 	}
 }
@@ -887,21 +971,30 @@ void AArenaCharacter::Server_Reliable_SetDoubleJumping_Implementation(bool Doubl
 */
 void AArenaCharacter::InputSlideEnter()
 {
-	if (_bCanSlide)
+	if (_bSlideEnabled/* && !_bIsDashing*/)
 	{
-		// If we're not currently sliding
-		if (!_bIsSliding)
+		// Can only slide when we are projecting forwards(relative to actors rotation) and downwards(world absolute) in velocity to a certain amount
+		FVector velocity = GetCharacterMovement()->Velocity;
+		float forwardSpeed = FVector::DotProduct(velocity, UKismetMathLibrary::GetForwardVector(GetActorRotation()));
+		///bool checkUpVelocity = GetCharacterMovement()->IsMovingOnGround() ? true : velocity.Z < _fSlideUpVelocityThreshold;
+		///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("" + FString::SanitizeFloat(forwardSpeed)));
+		if (forwardSpeed > _fSlideForwardVelocityThreshold)
 		{
-			// Set _bSliding to TRUE
-			bool slide = true;
-			if (Role == ROLE_Authority) { _bIsSliding = slide; } else { Server_Reliable_SetIsSliding(slide); }
+			// If we're currently airbourne
+			if (!GetCharacterMovement()->IsMovingOnGround())
+			{
+				// Fire trace to fall and check the distance of that trace
+				GetCharacterMovement()->GravityScale = _fSlideAirbourneGravityForce;
+				_bIsPerformingGroundChecks = true;
+				_bIsTryingToSlide = true;
+			} 
+			
+			// Already touching the ground so just slide straight away
+			else { Slide(); }
 
-			// Initiate sliding
-			if (Role != ROLE_Authority) { Multicast_Reliable_InitiateSlide(); } else { Server_Reliable_InitiateSlide(); }
+			// Disable vaulting during a slide attempt
+			_bCanVault = false;
 		}
-
-
-
 	}
 }
 
@@ -912,7 +1005,7 @@ void AArenaCharacter::InputSlideEnter()
 */
 void AArenaCharacter::InputSlideExit()
 {
-	// Stop sliding
+	// Can only stop sliding if we're currently sliding
 	if (_bIsSliding)
 	{
 		// Set _bSliding to FALSE
@@ -921,7 +1014,96 @@ void AArenaCharacter::InputSlideExit()
 
 		// Stop slide
 		if (Role != ROLE_Authority) { Multicast_Reliable_StopSlide(); } else { Server_Reliable_StopSlide(); }
+
+		// Lerp camera origin transform?
+		_bSlideEnter = false;
+		if (_fSlideCameraLerpTime != 0.0f)
+		{
+			if (_fSlideCameraLerpTime >= _fSlideCameraLerpingDuration) { _fSlideCameraLerpTime = 0.0f; } else
+			{
+				// Get current percent of lerp time so that it doesn't jagger at the start of the next lerp sequence
+				float t = _fSlideCameraLerpTime;
+				_fSlideCameraLerpTime = _fSlideCameraLerpingDuration - t;
+			}
+		}
+		if (_PrimaryWeapon != NULL)
+		{
+			if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled())
+			{ _bLerpSlideCamera = !IsAiming(); } else
+			{ _bLerpSlideCamera = true; }
+		} else { _bLerpSlideCamera = true; }
+		_bLerpCrouchCapsule = _bLerpSlideCamera;
+
+		// Stop camera shake
+		if (_SlideCameraShakeInstance != NULL) { _SlideCameraShakeInstance->StopShake(false); }
+
+		// Can no longer slide jump
+		_bCanSlideJump = false;
+		_bCanJump = true;
+
+		// Enable vaulting
+		_bCanVault = true;
 	}
+	_bIsTryingToSlide = false;
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void AArenaCharacter::Slide()
+{
+	// Can only slide when we're using forward input
+	APlayerController* playerController = Cast<APlayerController>(this->GetController());
+	if (playerController == NULL) { return; }
+	if (playerController->IsInputKeyDown(EKeys::W))
+	{
+		// If we're not currently sliding
+		if (!_bIsSliding)
+		{
+			// Set _bSliding to TRUE
+			bool slide = true;
+			if (Role == ROLE_Authority) { _bIsSliding = slide; } else { Server_Reliable_SetIsSliding(slide); }
+
+			// Initiate sliding
+			if (Role != ROLE_Authority) { Multicast_Reliable_InitiateSlide(); } else { Server_Reliable_InitiateSlide(); }
+
+			// Local camera shake
+			APlayerController* playerController = Cast<APlayerController>(GetController());
+			if (playerController != NULL && _SlideStartCameraShake != NULL)
+			{
+				_SlideCameraShakeInstance = playerController->PlayerCameraManager->PlayCameraShake(_SlideStartCameraShake, 1.0f, ECameraAnimPlaySpace::CameraLocal, FRotator::ZeroRotator);
+			}
+		}
+
+		// Lerp camera origin transform?
+		_tSlideEnterOrigin = _FirstPerson_Arms->GetRelativeTransform();
+		_bSlideEnter = true;
+		if (_fSlideCameraLerpTime != 0.0f)
+		{
+			if (_fSlideCameraLerpTime >= _fSlideCameraLerpingDuration) { _fSlideCameraLerpTime = 0.0f; } else
+			{
+				// Get current percent of lerp time so that it doesn't jagger at the start of the next lerp sequence
+				float t = _fCrouchCameraLerpTime;
+				_fSlideCameraLerpTime = _fSlideCameraLerpingDuration - t;
+			}
+		}
+		if (_PrimaryWeapon != NULL)
+		{
+			if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled())
+			{ _bLerpSlideCamera = !IsAiming(); } else
+			{ _bLerpSlideCamera = true; }
+		} else { _bLerpSlideCamera = true; }
+		_bLerpCrouchCapsule = _bLerpSlideCamera;
+	}
+
+	// Allow slide jumping whilst we are sliding
+	if (_bSlideJumpEnabled) { _bCanSlideJump = true; }
+	_bCanJump = true;
+
+	// Disable vaulting
+	_bCanVault = false;
 }
 
 ///////////////////////////////////////////////
@@ -962,16 +1144,20 @@ void AArenaCharacter::Multicast_Reliable_InitiateSlide_Implementation()
 	UCharacterMovementComponent* movement = GetCharacterMovement();
 	if (movement == NULL) { return; }
 
-	// Set slide values
-	movement->GroundFriction = 0.0f;
-	movement->BrakingFrictionFactor = _fSlideBreakingFrictionFactor;
-	movement->BrakingDecelerationWalking = _fSlideBrakingDeceleration;
+	// Only slide launch if we're touching the ground (so airbourne slides will wait till you hit the ground before launching you)
+	if (movement->IsMovingOnGround())
+	{
+		// Set slide values
+		movement->GroundFriction = 0.0f;
+		movement->BrakingFrictionFactor = _fSlideBreakingFrictionFactor;
+		movement->BrakingDecelerationWalking = _fSlideBrakingDeceleration;
 
-	// Launch the character
-	FVector forwardForce = GetActorForwardVector() * _fSlideForce;
-	FVector downForce = GetActorUpVector() * (_fSlideForce * -1.0f);
-	FVector launchForce = forwardForce + downForce;
-	this->LaunchCharacter(launchForce, _fSlideLaunchXYOverride, _fSlideLaunchZOverride);
+		// Launch the character
+		FVector forwardForce = GetActorForwardVector() * _fSlideForce;
+		FVector downForce = GetActorUpVector() * (_fSlideForce * -1.0f);
+		FVector launchForce = forwardForce + downForce;
+		this->LaunchCharacter(launchForce, _fSlideLaunchXYOverride, _fSlideLaunchZOverride);
+	}
 }
 
 ///////////////////////////////////////////////
@@ -1003,4 +1189,89 @@ void AArenaCharacter::Multicast_Reliable_StopSlide_Implementation()
 	movement->GroundFriction = _fDefaultGroundFriction;
 	movement->BrakingFrictionFactor = _fDefaultBrakingFrictionFactor;
 	movement->BrakingDecelerationWalking = _fDefaultBrakingDecelerationWalking;
+}
+
+// Movement | Slide Jump ************************************************************************************************************************
+
+/*
+*
+*/
+void AArenaCharacter::InputSlideJump()
+{
+	if (_bSlideJumpEnabled && _bCanSlideJump && !IsTryingToVault() && _uStaminaComponents.Num() > 0)
+	{		
+		// Get relevant stamina via matching channel
+		UStamina* stamina = NULL;
+		for (int i = 0; i < _uStaminaComponents.Num(); i++)
+		{
+			if (_uStaminaComponents[i]->GetStaminaChannel() == _iSlideJumpStaminaChannel)
+			{
+				stamina = _uStaminaComponents[i];
+				break;
+			}
+		}
+
+		// Valid stamina channel found
+		if (stamina != NULL)
+		{
+			if (stamina->IsFullyRecharged())
+			{
+				// Drain stamina
+				stamina->SetStamina(0.0f);
+				stamina->DelayedRecharge(stamina->GetRechargeDelayTime());
+
+				// Slide jump
+				_bCanSlideJump = false;
+				FVector force = FVector(0.0f, 0.0f, _fSlideJumpLaunchForce);
+				if (Role == ROLE_Authority)
+				{
+					LaunchCharacter(force, false, true);
+					_bIsSlideJumping = true;
+				} else
+				{
+					Server_Reliable_LaunchCharacter(force, false, _fSlideJumpLaunchZOverride);
+					Server_Reliable_SetSlideJumping(true);
+				}
+
+				// Start landing checks
+				_bIsPerformingGroundChecks = true;
+
+				// Play feedback(s) [Camera shakes / Gamepad Rumbles]
+				OwningClient_PlayCameraShake(_CameraShakeJumpStart, _fDoubleJumpCameraShakeScale);
+				OwningClient_GamepadRumble(_fThrustGamepadRumbleIntensity, _fThrustGamepadRumbleDuration,
+					_fThrustGamepadRumbleAffectsLeftLarge, _fThrustGamepadRumbleAffectsLeftSmall,
+					_fThrustGamepadRumbleAffectsRightLarge, _fThrustGamepadRumbleAffectsRightSmall);
+
+				// Stop sliding
+				InputSlideExit();
+				///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("Slide Jump!"));
+			}
+		}
+
+		// stamina == NULL
+		else
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red,
+				TEXT("ERROR: Cannot < Dash > due to _uStaminaComponents not finding a valid matching stamina channel."));
+		}
+	}
+}
+
+///////////////////////////////////////////////
+
+/**
+* @summary:	Sets the whether the character is slide jumping or not.
+*
+* @networking:	Runs on server
+*
+* @param:	bool SlideJumping
+*
+* @return:	void
+*/
+bool AArenaCharacter::Server_Reliable_SetSlideJumping_Validate(bool SlideJumping)
+{ return true; }
+
+void AArenaCharacter::Server_Reliable_SetSlideJumping_Implementation(bool SlideJumping)
+{
+	_bIsSlideJumping = SlideJumping;
 }

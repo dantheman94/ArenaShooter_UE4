@@ -3,7 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Curves/CurveVector.h"
 #include "GameFramework/Character.h"
+#include "Structures.h"
+
 #include "BaseCharacter.generated.h"
 
 // *** DEFINITIONS
@@ -20,18 +23,11 @@ enum class E_AimDirection : uint8
 	ePT_ZoomOut UMETA(DisplayName = "ZoomOut")
 };
 
-UENUM(BlueprintType)
-enum class E_GrenadeTypes : uint8
-{
-	eGT_Frag UMETA(DisplayName = "Framentation"),
-	eGT_Emp UMETA(DisplayName = "EMP"),
-	eGT_Flame UMETA(DisplayName = "Incendiary")
-};
-
 // *** EVENT DISPATCHERS / DELEGATES
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FADSAnimDelegate, bool, AimingEnter);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTakeDamage, float, DamageAmount);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSprintEnter, bool, IsAiming);
 
 // *** CLASSES
 
@@ -148,37 +144,37 @@ protected:
 
 	// Startup ********************************************************************************************************************************
 
-	float _fCapsuleHalfHeight = 0.0f;
+	float _fDefaultCapsuleHalfHeight = 0.0f;
 	float _fCameraRotationLagSpeed = 0.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Default Settings")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Default Settings")
 		float _fDefaultGravityScale = 0.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Default Settings")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Default Settings")
 		float _fDefaultAirControl = 0.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Default Settings")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Default Settings")
 		float _fDefaultGroundFriction = 0.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Default Settings")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Default Settings")
 		float _fDefaultBrakingFrictionFactor = 0.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Default Settings")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Default Settings")
 		float _fDefaultBrakingDecelerationWalking = 0.0f;
 
 	// Current Frame **************************************************************************************************************************
@@ -225,7 +221,7 @@ protected:
 	*	EG: Keyboard will either be -1.0, 0.0 or 1.0 explicitly, but a gamepad could be somewhere in between this range due to its axis controller).
 	*	This is primarily used for animation (Blending from idle ->  walk -> jog animation state)
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Controller | Input", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Controller: Input", Replicated)
 		float _fForwardInputScale = 0.0f;
 	
 	/*
@@ -233,7 +229,7 @@ protected:
 	*	EG: Keyboard will either be -1.0, 0.0 or 1.0 explicitly, but a gamepad could be somewhere in between this range due to its axis controller).
 	*	This is primarily used for animation (Blending from idle ->  walk -> jog animation state)
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Controller | Input", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Controller: Input", Replicated)
 		float _fRightInputScale = 0.0f;
 
 	// Health | *******************************************************************************************************************************
@@ -241,27 +237,27 @@ protected:
 	/*
 	*	Returns whether the character has HEALTH greater than 0.0f (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Health |", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Health", Replicated)
 		bool _bIsAlive = false;
 
 	/*
 	*	Returns whether the character is currently taking damage or not (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Health |", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Health", Replicated)
 		bool _bIsTakingDamage = false;
 
 	/*
 	*	The amount of time (in seconds) that must past since the last frame that the character was inflicted with damage,
 	*	before the _bIsTakingDamage is reset back to FALSE.
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Health |")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Health")
 		float _fTakingDamageResetDelay = 0.2f;
 
 	/*
 	*	A list of controllers that have inflicted damage to the character since they were at a maximum health & shield value.
 	*	This list is cleared only once the character has reached its maximum health values again.
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Health |")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Health")
 		TArray<AController*>_DamageInstigators;
 
 	/*
@@ -275,7 +271,7 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Health | Burn", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Health: Burn", Replicated)
 		bool _bIsBurning = false;
 
 	/*
@@ -289,7 +285,7 @@ protected:
 	/*
 	*	The current health value of the character (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Health | Flesh", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Health: Flesh", Replicated)
 		float _fFleshHealth = _MAX_FLESH_HEALTH;
 
 	// Health | Shield ************************************************************************************************************************
@@ -298,22 +294,22 @@ protected:
 	*	The minimum delay of time (in seconds) that must pass since the last frame that the character was inflicted with damage,
 	*	before the shields can begin recharging.
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Health | Shield")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Health: Shield")
 		float _fShieldRechargeDelay = 3.0f;
 
 	/*
 	*	The rate of recharge of the shield when it is below its maximum value.
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Health | Shield")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Health: Shield")
 		float _fShieldRechargingRate = 40.0f;
 
 	/*
 	*	The current shield value of the character (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Health | Shield", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Health: Shield", Replicated)
 		float _fShield = _MAX_SHIELD;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Health | Shield")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Health: Shield")
 		bool _bRechargeShields = false;
 
 	/*
@@ -327,28 +323,28 @@ protected:
 	/*
 	*	Returns whether the starting loadout of this character should use the loadout defined in the current gamemode.
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Starting")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory: Starting")
 		bool _bUseStartingLoadoutFromGamemode = true;
 
 	/*
 	*	The starting primary weapon of the character when created.
 	*	(Only valid if _UseStartingLoadoutFromGamemode is FALSE).
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Starting")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory: Starting")
 		TSubclassOf<class AWeapon> _StartingPrimaryWeaponClass = NULL;
 
 	/*
 	*	The starting secondary weapon of the character when created.
 	*	(Only valid if _UseStartingLoadoutFromGamemode is FALSE AND IF the _StartedPrimaryWeaponClass is a _bDuelWieldable AWeapon).
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Starting")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory: Starting")
 		TSubclassOf<class AWeapon> _StartingSecondaryWeaponClass = NULL;
 
 	/*
 	*	The starting reserve weapon of the character when created (Holstered weapon).
 	*	(Only valid if _UseStartingLoadoutFromGamemode is FALSE).
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Starting")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory: Starting")
 		TSubclassOf<class AWeapon> _StartingReserveWeaponClass = NULL;
 
 	// Inventory | Weapon *********************************************************************************************************************
@@ -370,40 +366,52 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Aiming")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Aiming")
 		bool _bCanAim = true;
 
 	/*
 	*	Returns whether the character is currently aiming (ADS) their weapon or not (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Aiming", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Aiming", Replicated)
 		bool _bIsAiming = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Aiming")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Aiming")
 		float _fAimTime = 0.0f;
 
 	/*
 	*	
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Aiming")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Aiming")
 		int _iCurrentFovStage = 0;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Aiming")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Aiming")
 		bool _bIsAimLerping = false;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Aiming")
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Aiming")
 		float _fFovStart = 90.0f;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Aiming")
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Aiming")
 		float _fFovTarget = 90.0f;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Aiming")
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Aiming")
 		E_AimDirection _eAimDirection = E_AimDirection::ePT_ZoomIn;
 
-	UPROPERTY(BlueprintAssignable, Category = "Inventory | Weapon | Aiming")
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintAssignable, Category = "Inventory: Weapon | Aiming")
 		FADSAnimDelegate _fAdsAnimationEvent;
 
 	// Inventory | Weapon | Primary ***********************************************************************************************************
@@ -411,37 +419,37 @@ protected:
 	/*
 	*	Returns reference to the current primary weapon of the character (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Primary", ReplicatedUsing=OnRep_PrimaryWeapon)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Primary", ReplicatedUsing=OnRep_PrimaryWeapon)
 		AWeapon* _PrimaryWeapon = NULL;
 
 	/*
 	*	Returns if whether the character is currently reloading their primary weapon or not (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Primary", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Primary", Replicated)
 		bool _bIsReloadingPrimaryWeapon = false;
 
 	/*
 	*	Returns if the character has cancelled reloading their primary weapon or not.
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Primary")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Primary")
 		bool _bPrimaryReloadCancelled = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Primary")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Primary")
 		bool _bCanFirePrimary = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Primary")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Primary")
 		bool _bIsTryingToFirePrimary = false;
 
 	/*
 	*	Returns reference to the previous primary weapon of the character (Used for toggling weapons) (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Primary")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Primary")
 		AWeapon* _OldPrimaryWeapon = NULL;
 
 	// Inventory | Weapon | Secondary *********************************************************************************************************
@@ -449,32 +457,32 @@ protected:
 	/*
 	*	Returns reference to the current secondary weapon of the character (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Secondary", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Secondary", Replicated)
 		AWeapon* _SecondaryWeapon = NULL;
 
 	/*
 	*	Returns whether the character is duel wielding a secondary weapon or not (REPLICATED).
 	*	This should be inline if whether _SecondaryWeapon isValid or not.
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Secondary", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Secondary", Replicated)
 		bool _bIsDuelWielding = false;
 
 	/*
 	*	Returns if whether the character is currently reloading their secondary weapon or not (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Secondary", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Secondary", Replicated)
 		bool _bIsReloadingSecondaryWeapon = false;
 
 	/*
 	*	Returns if the character has cancelled reloading their secondary weapon or not.
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Secondary")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Secondary")
 		bool _bSecondaryReloadCancelled = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Secondary")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Secondary")
 		bool _bCanFireSecondary = true;
 
 	// Inventory | Weapon | Reserve ***********************************************************************************************************
@@ -482,13 +490,13 @@ protected:
 	/*
 	*	Returns reference to the current reserve weapon of the character (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Reserve", ReplicatedUsing = OnRep_ReserveWeapon)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Reserve", ReplicatedUsing = OnRep_ReserveWeapon)
 		AWeapon* _ReserveWeapon = NULL;
 
 	/*
 	*	Returns reference to the previous reserve weapon of the character (Used for toggling weapons) (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Reserve", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Reserve", Replicated)
 		AWeapon* _OldReserveWeapon = NULL;
 
 	// Inventory | Weapon | Tabbing ***********************************************************************************************************
@@ -496,13 +504,13 @@ protected:
 	/*
 	*	Returns reference if the character is currently tabbing between its inventory weapons or not (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Tabbing", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Tabbing", Replicated)
 		bool _bIsTogglingWeapons = false;
 
 	/*
 	*	Returns reference if the character is currently equipping a new inventory weapon or not (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Weapon | Tabbing", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Tabbing", Replicated)
 		bool _bIsEquippingNewWeapon = false;
 
 	// Inventory | Grenade ********************************************************************************************************************
@@ -510,29 +518,29 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Grenade", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Grenade", Replicated)
 		int _iFragmentationGrenadeCount = 0;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Grenade", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Grenade", Replicated)
 		int _iEMPGrenadeCount = 0;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Grenade", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Grenade", Replicated)
 		int _iIncendiaryGrenadeCount = 0;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Grenade")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Grenade")
 		int _iMaximumGrenadeCount = 2;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Inventory | Grenade")
-		E_GrenadeTypes _eCurrentGrenadeType = E_GrenadeTypes::eGT_Frag;
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Grenade")
+		E_GrenadeType _eCurrentGrenadeType = E_GrenadeType::eWBT_Frag;
 
 	// Interaction ****************************************************************************************************************************
 
@@ -572,31 +580,43 @@ protected:
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Crouch")
-		float _fCrouchLerpingDuration = 0.35f;
+		float _fCrouchLerpingDuration = 0.25f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Crouch")
-		float _fCrouchLerpTime = 0.0f;
-
-	/*
-	*	Returns whether the character is currently in a crouching state or not (REPLICATED).
-	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Crouch", Replicated)
-		bool _bIsCrouching = false;
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Crouch")
+		float _fCrouchCameraLerpTime = 0.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Crouch")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Crouch")
+		float _fCrouchCapsuleLerpTime = 0.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Crouch")
 		bool _bLerpCrouchCamera = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Crouch")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Crouch")
+		bool _bLerpCrouchCapsule = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Crouch")
 		bool _bCrouchEnter = false;
+
+	/*
+	*	Returns whether the character is currently in a crouching state or not (REPLICATED).
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Crouch", Replicated)
+		bool _bIsCrouching = false;
 
 	/*
 	*
@@ -629,62 +649,74 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
 		bool _bCanJump = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Jump", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement: Jump", Replicated)
 		bool _bIsJumping = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
 		TSubclassOf<class UCameraShake> _CameraShakeJumpStart = NULL;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
 		TSubclassOf<class UCameraShake> _CameraShakeJumpLand = NULL;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
+		TSubclassOf<class UCurveVector> _CurveJumpLand = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
 		float _fJumpGamepadRumbleIntensity = 1.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
 		float _fJumpGamepadRumbleDuration = 0.15f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
 		bool _fJumpGamepadRumbleAffectsLeftLarge = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
 		bool _fJumpGamepadRumbleAffectsLeftSmall = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
 		bool _fJumpGamepadRumbleAffectsRightLarge = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
 		bool _fJumpGamepadRumbleAffectsRightSmall = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
+		float _fFallingLandShakeMultiplier = 2.75f;
 
 	// Movement | Speed ***********************************************************************************************************************
 
@@ -717,56 +749,62 @@ protected:
 	/*
 	*	Returns whether the character can use the sprint mechanic.
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Sprint")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Sprint")
 		bool _bSprintEnabled = false;
 
 	/*
 	*	Returns whether the character is trying to sprint (usually given by player input)
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Sprint")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement: Sprint")
 		bool _bTryingToSprint = false;
 
 	/*
 	*	Returns whether the character can sprint.
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Sprint")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement: Sprint")
 		bool _bCanSprint = false;
 
 	/*
 	*	Returns whether the character is currently in a sprinting state or not (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Sprint", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement: Sprint", Replicated)
 		bool _bIsSprinting = false;
 
 	/*
 	*	The amount of time the character has been sprinting for.
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Sprint")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement: Sprint")
 		float _fSprintTime = 0.0f;
 
 	/*
 	*	The multiplier used against the player's look input when the character is strafing.
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Sprint")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Sprint")
 		float _fSprintStrafeInputScale = 0.35f;
 
 	/*
 	*	The multiplier used against the player's look input when the character is sprinting.
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Sprint")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Sprint")
 		float _fSprintLookInputScale = 0.7f;
 
 	/*
 	*	A scalar multiplier of the camera shake used when sprinting. Higher values means more "bobbing".
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Sprint")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Sprint")
 		float _fSprintCameraBobScale = 2.0f;
 
 	/*
 	*	Reference to the camera shake class to be used when the character is sprinting.
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Sprint")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Sprint")
 		TSubclassOf<class UCameraShake> _CameraShakeSprint = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintAssignable, Category = "Movement: Sprint")
+		FOnSprintEnter _OnSprintEnter;
 
 	// Movement | Stamina *********************************************************************************************************************
 
@@ -853,49 +891,55 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Vault")
+		bool _bCanVault = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Vault", Replicated)
 		bool _bIsVaulting = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Vault")
 		bool _bIsTryingToVault = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Vault")
 		FVector _vWallImpactPoint = FVector::ZeroVector;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Vault")
 		FVector _vWallNormal = FVector::ZeroVector;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Vault")
 		FVector _vWallTraceStart = FVector::ZeroVector;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Vault")
 		FVector _vWallTraceEnd = FVector::ZeroVector;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Vault")
 		FVector _vWallHeightLocation = FVector::ZeroVector;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Vault")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Vault")
 		int32 _NextUUID = 0;
 
 	// ****************************************************************************************************************************************
@@ -925,23 +969,17 @@ public:
 	UFUNCTION()
 		USkeletalMeshComponent* GetFirstPersonPrimaryWeaponMesh() { return _FirstPerson_PrimaryWeapon_SkeletalMesh; }
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		USkeletalMeshComponent* GetFirstPersonSecondaryWeaponMesh() { return _FirstPerson_SecondaryWeapon_SkeletalMesh; }
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		USkeletalMeshComponent* GetThirdPersonPrimaryWeaponMesh() { return _ThirdPerson_PrimaryWeapon_SkeletalMesh; }
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -956,8 +994,6 @@ public:
 	*/
 	UFUNCTION(BlueprintPure)
 		float GetGlobalReloadPlayRate() { return _fGlobalReloadPlayRate; }
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -976,15 +1012,11 @@ public:
 	*/
 	virtual void Tick(float DeltaTime) override;
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		virtual void OnGroundChecks();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1023,12 +1055,8 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_SetUseControllerRotationYaw(bool useControllerRotationYaw);
 
-	///////////////////////////////////////////////
-
 	UFUNCTION()
 		void SetForwardInputScale(float ForwardInputScale);
-
-	///////////////////////////////////////////////
 
 	/**
 	* @summary:	Sets the whether forward input scale of the character (used for animation)
@@ -1042,12 +1070,8 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_SetForwardInputScale(float ForwardInputScale);
 
-	///////////////////////////////////////////////
-
 	UFUNCTION()
 		void SetRightInputScale(float RightInputScale);
-
-	///////////////////////////////////////////////
 
 	/**
 	* @summary:	Sets the whether right input scale of the character (used for animation)
@@ -1061,8 +1085,6 @@ public:
 	UFUNCTION(Server, Unreliable, WithValidation)
 		void Server_SetRightInputScale(float RightInputScale);
 
-	///////////////////////////////////////////////
-
 	/**
 	* @summary:	Returns the current forward input scale (used for animation walk blending)
 	*
@@ -1070,8 +1092,6 @@ public:
 	*/
 	UFUNCTION(BlueprintPure, Category = "Controller | Input")
 		float GetForwardInputScale() { return _fForwardInputScale; }
-
-	///////////////////////////////////////////////
 
 	/**
 	* @summary:	Returns the current right input scale (used for animation walk blending)
@@ -1120,23 +1140,17 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_OnAnyDamage(AActor* Actor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		virtual void OnPointDamage(float Damage);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		virtual void OnRadialDamage(float Damage);
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1149,8 +1163,6 @@ public:
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_OnDeath();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1178,15 +1190,11 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_ResetFleshHealth();
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintPure)
 		float GetCurrentFleshHealth() { return _fFleshHealth; }
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1206,15 +1214,11 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_ResetShield();
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintPure)
 		bool IsShieldDepleted() { return _fShield <= 0.0f; }
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1222,15 +1226,11 @@ public:
 	UFUNCTION(BlueprintPure)
 		float GetCurrentShield() { return _fShield; }
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintPure)
 		float GetMaxShield() { return (float)_MAX_SHIELD; }
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1238,23 +1238,17 @@ public:
 	UFUNCTION(BlueprintPure)
 		float GetShieldRechargeDelayTime() { return _fShieldRechargeDelay; }
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		void ResetShieldRecharge();
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		void StartRechargingShields();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1282,15 +1276,11 @@ public:
 	UFUNCTION()
 		void FireTraceFullAuto();
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		void InputToggleWeapon();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1298,15 +1288,11 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetupToggleWeapon();
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_ToggleWeapon();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1328,8 +1314,6 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetIsAiming(bool aiming);
 
-	///////////////////////////////////////////////
-
 	/**
 	* @summary:	Returns whether the character is aiming or not.
 	*
@@ -1338,15 +1322,11 @@ public:
 	UFUNCTION(BlueprintPure)
 		bool IsAiming() { return _bIsAiming; }
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		void AimWeaponEnter();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1369,8 +1349,6 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation, Category = "Inventory | Weapon | Primary")
 		void Server_Reliable_SetPrimaryWeapon(AWeapon* Weapon, bool FirstPickup);
 
-	///////////////////////////////////////////////
-
 	/**
 	* @summary:	Sets the character's third person mesh based on their primary weapon
 	*
@@ -1382,8 +1360,6 @@ public:
 	*/
 	UFUNCTION(NetMulticast, Unreliable, WithValidation, Category = "Inventory | Weapon | Primary")
 		void Multicast_UpdateThirdPersonPrimaryWeaponMesh(AWeapon* Weapon);
-
-	///////////////////////////////////////////////
 
 	/**
 	* @summary:	Sets the character's first person mesh based on their primary weapon
@@ -1397,22 +1373,16 @@ public:
 	UFUNCTION(Client, Unreliable, WithValidation, Category = "Inventory | Weapon | Primary")
 		void OwningClient_UpdateFirstPersonPrimaryWeaponMesh(AWeapon* Weapon, bool FirstPickup);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintCosmetic, Category = "Inventory | Weapon | Primary")
 		void UpdateFirstPersonPrimaryScopeAttachment(AWeapon* Weapon);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	virtual void InitFirePrimaryWeapon();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1420,12 +1390,8 @@ public:
 	UFUNCTION(Client, Reliable, WithValidation, Category = "Inventory | Weapon | Primary")
 		void OwningClient_Reliable_PrimaryWeaponCameraTrace();
 
-	///////////////////////////////////////////////
-
 	UFUNCTION(Server, Reliable, WithValidation, Category = "Inventory | Weapon | Primary")
 		void Server_Reliable_PrimaryWeaponCameraTrace(FHitResult ClientHitResult);
-
-	///////////////////////////////////////////////
 
 	/**
 	* @summary:	Checks and initiates a reload of the character's primary weapon.
@@ -1435,15 +1401,11 @@ public:
 	UFUNCTION()
 		virtual void InputReloadPrimaryWeapon();
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		virtual void OnRep_PrimaryWeapon();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1451,23 +1413,17 @@ public:
 	UFUNCTION()
 		void InputPrimaryFirePress();
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		void InputPrimaryFireRelease();
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintPure)
 		AWeapon* GetPointerPrimaryWeapon() const { return _PrimaryWeapon; }
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1477,23 +1433,17 @@ public:
 			bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame,
 			bool PlayGunAnimation, uint8 GunAnimation, float GunAnimationStartingFrame);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetIsReloadingPrimaryWeapon(bool ReloadingPrimary);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintGetter)
 		bool IsPrimaryReloadCanceled() { return _bPrimaryReloadCancelled; }
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1515,15 +1465,11 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetSecondaryWeapon(AWeapon* Weapon);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		void InputFireSecondaryWeapon();
-
-	///////////////////////////////////////////////
 
 	/**
 	* @summary:	Checks and initiates a reload of the character's secondary weapon.
@@ -1532,8 +1478,6 @@ public:
 	*/
 	UFUNCTION()
 		virtual void InputReloadSecondaryWeapon();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1555,15 +1499,11 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetReserveWeapon(AWeapon* Weapon);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintPure)
 		AWeapon* GetPointerReserveWeapon() { return _ReserveWeapon; }
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1579,15 +1519,11 @@ public:
 	UFUNCTION(BlueprintPure)
 		int GetFragmentationGrenadeCount() { return _iFragmentationGrenadeCount; }
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintPure)
 		int GetEMPGrenadeCount() { return _iEMPGrenadeCount; }
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1595,13 +1531,11 @@ public:
 	UFUNCTION(BlueprintPure)
 		int GetIncendiaryGrenadeCount() { return _iIncendiaryGrenadeCount; }
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintPure)
-		E_GrenadeTypes GetCurrentGrenadeType() { return _eCurrentGrenadeType; }
+		E_GrenadeType GetCurrentGrenadeType() { return _eCurrentGrenadeType; }
 
 	// Interaction ****************************************************************************************************************************
 
@@ -1611,15 +1545,11 @@ public:
 	UFUNCTION(Category = "Interaction")
 		TArray<AInteractable*> GetInteractablesArray() { return _Interactables; }
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Category = "Interaction")
 		AInteractable* CalculateFocusInteractable();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1627,15 +1557,11 @@ public:
 	UFUNCTION(Category = "Interaction")
 		void AddToInteractablesArray(AInteractable* Interactable);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Category = "Interaction")
 		void RemoveFromInteractablesArray(AInteractable* Interactable);
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1643,25 +1569,17 @@ public:
 	UFUNCTION(Category = "Interaction")
 		void InteractPrimary();
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Category = "Interaction")
 		void InteractSecondary();
 
-	///////////////////////////////////////////////
-
 	UFUNCTION()
 		void CancelInteraction();
 
-	///////////////////////////////////////////////
-
 	UFUNCTION()
 		void Interact(bool IsSecondary);
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1669,15 +1587,11 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation, Category = "Interaction")
 		void Server_Reliable_DropWeapon(AWeapon* WeaponInstance);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation, Category = "Interaction")
 		void Server_Reliable_SpawnWeapon(bool IsSecondary, TSubclassOf<AWeapon> WeaponClass, int MagazineSize, int ReserveSize, int BatterySize);
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1693,15 +1607,11 @@ public:
 	UFUNCTION()
 		virtual void MoveForward(float Value);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		virtual void MoveRight(float Value);
-
-	///////////////////////////////////////////////
 
 	UFUNCTION(Server, Unreliable, WithValidation)
 		void Server_SetMovementMode(EMovementMode MovementMode);
@@ -1717,15 +1627,11 @@ public:
 	UFUNCTION()
 		virtual void CrouchToggle(bool Crouch);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		void EnterCrouch();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1733,15 +1639,11 @@ public:
 	UFUNCTION()
 		void ExitCrouch();
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetIsCrouching(bool IsCrouching);
-
-	///////////////////////////////////////////////
 
 	/**
 	* @summary:	Returns whether the character is crouching or not.
@@ -1758,8 +1660,6 @@ public:
 	*/
 	UFUNCTION()
 		virtual void InputJump();
-
-	///////////////////////////////////////////////
 
 	/**
 	* @summary:	Sets the whether the character is jumping or not.
@@ -1781,8 +1681,6 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetMovingSpeed(float Speed);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
@@ -1803,17 +1701,13 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetSprinting(bool Sprinting);
 
-	///////////////////////////////////////////////
-
 	/**
 	* @summary:	Returns whether the character is sprinting or not.
 	*
 	* @return:	bool
 	*/
-	UFUNCTION(BlueprintPure, Category = "Movement | Sprint")
+	UFUNCTION(BlueprintPure, Category = "Movement: Sprint")
 		bool IsSprinting() { return _bIsSprinting; }
-
-	///////////////////////////////////////////////
 
 	/**
 	* @summary:	Returns the look input scalar when the character is sprinting.
@@ -1823,10 +1717,20 @@ public:
 	UFUNCTION()
 		float GetSprintLookInputScale() { return _fSprintLookInputScale; }
 
-	///////////////////////////////////////////////
-
 	UFUNCTION(BlueprintPure)
 		bool GetIsSprinting() { return _bIsSprinting; }
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void SprintEnter();
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void SprintExit();
 
 	// Movement | Stamina *********************************************************************************************************************
 
@@ -1837,8 +1741,6 @@ public:
 	*/
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 		TArray<UStamina*> GetStaminaComponents() { return _uStaminaComponents; }
-
-	///////////////////////////////////////////////
 
 	/**
 	* @summary:	Returns reference to the of stamina component attached to this character, specified by the channel.
@@ -1858,15 +1760,11 @@ public:
 	UFUNCTION()
 		void InputVault();
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		FHitResult LedgeForwardTrace();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1874,23 +1772,17 @@ public:
 	UFUNCTION()
 		FHitResult LedgeHeightTrace();
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		bool GetHipToLedge();
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		FVector GetMoveToLocation(float HeightOffset, float ForwardOffset);
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1904,15 +1796,11 @@ public:
 	UFUNCTION(NetMulticast, Reliable, WithValidation)
 		void Multicast_Reliable_GrabLedge(FVector MoveLocation);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		void ClimbLedge();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1920,8 +1808,6 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetIsVaulting(bool Vaulting);
 	
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/

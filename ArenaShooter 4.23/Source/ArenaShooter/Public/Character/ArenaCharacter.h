@@ -200,25 +200,25 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Dash")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Dash")
 		FTransform _tFpArmsRelativeStarting;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Dash", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Dash", Replicated)
 		bool _bIsDashing = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Dash")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Dash")
 		bool _bCanDash = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Dash", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Dash", Replicated)
 		E_Direction _eDashDirection = E_Direction::eGA_Idle; // TO BE MADE DEPRECIATED
 
 	/*
@@ -262,13 +262,13 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Double Jump")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Double Jump")
 		bool _bCanDoubleJump = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Double Jump", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Double Jump", Replicated)
 		bool _bIsDoubleJumping = false;
 
 	// Movement | Hover ***********************************************************************************************************************
@@ -288,19 +288,19 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Hover", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Hover", Replicated)
 		bool _bIsHovering = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Hover")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Hover")
 		bool _bCanHover = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Movement | Hover")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Hover")
 		bool _bHoverCancelled = false;
 
 	/*
@@ -315,13 +315,85 @@ protected:
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
-		bool _bCanSlide = true;
+		bool _bSlideEnabled = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Movement | Slide")
+		TSubclassOf<class UCameraShake> _SlideStartCameraShake;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide")
+		UCameraShake* _SlideCameraShakeInstance = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide")
+		bool _bIsTryingToSlide = false;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide", Replicated)
 		bool _bIsSliding = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide")
+		bool _bLerpSlideCamera = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide")
+		bool _bSlideEnter = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide")
+		FTransform _tSlideEnterOrigin;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		float _fSlideForwardVelocityThreshold = 600.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		float _fSlideUpVelocityThreshold = -500.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		float _fSlideAirbourneGravityForce = 5.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		FTransform _tSlideWeaponOrigin;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		float _fSlideCameraLerpingDuration = 0.25f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide")
+		float _fSlideCameraLerpTime = 0.0f;
 
 	/*
 	*
@@ -352,6 +424,44 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
 		float _fSlideBrakingDeceleration = 600.0f;
+
+	// Movement | Slide Jump ************************************************************************************************************************
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump")
+		bool _bSlideJumpEnabled = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump")
+		int _iSlideJumpStaminaChannel = 2;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump")
+		float _fSlideJumpLaunchForce = 700.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump")
+		bool _fSlideJumpLaunchZOverride = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide Jump")
+		bool _bCanSlideJump = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide Jump", Replicated)
+		bool _bIsSlideJumping = false;
 
 public:
 
@@ -602,6 +712,14 @@ public:
 	/*
 	*
 	*/
+	UFUNCTION()
+		void Slide();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetIsSliding(bool Sliding);
 
@@ -632,5 +750,35 @@ public:
 	*/
 	UFUNCTION(NetMulticast, Reliable, WithValidation)
 		void Multicast_Reliable_StopSlide();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure, Category = "Movement | Slide")
+		bool IsSliding() { return _bIsSliding; }
+
+	// Movement | Slide Jump ************************************************************************************************************************
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void InputSlideJump();
+
+	///////////////////////////////////////////////
+
+	/**
+	* @summary:	Sets the whether the character is slide jumping or not.
+	*
+	* @networking:	Runs on server
+	*
+	* @param:	bool Jumping
+	*
+	* @return:	void
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_SetSlideJumping(bool SlideJumping);
 
 };

@@ -462,10 +462,10 @@ void ABasePlayerController::Clamber()
 void ABasePlayerController::CrouchHoldEnter()
 {
 	// BaseCharacter crouch
-	auto basecharacter = Cast<ABaseCharacter>(this->GetPawn());
-	if (basecharacter) { basecharacter->EnterCrouch(); }
+	///auto basecharacter = Cast<ABaseCharacter>(this->GetPawn());
+	///if (basecharacter) { basecharacter->EnterCrouch(); }
 
-	// ArenaCharacte slide
+	// ArenaCharacter slide
 	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
 	if (pawn) { pawn->InputSlideEnter(); }
 }
@@ -473,10 +473,10 @@ void ABasePlayerController::CrouchHoldEnter()
 void ABasePlayerController::CrouchHoldExit()
 {
 	// BaseCharacter crouch
-	auto basecharacter = Cast<ABaseCharacter>(this->GetPawn());
-	if (basecharacter) { basecharacter->ExitCrouch(); }
+	///auto basecharacter = Cast<ABaseCharacter>(this->GetPawn());
+	///if (basecharacter) { basecharacter->ExitCrouch(); }
 
-	// ArenaCharacte slide
+	// ArenaCharacter slide
 	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
 	if (pawn) { pawn->InputSlideExit(); }
 }
@@ -522,13 +522,13 @@ void ABasePlayerController::Slide()
 void ABasePlayerController::SprintEnter()
 {
 	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
-	///if (pawn) { pawn->Sprint(); }
+	if (pawn) { pawn->SprintEnter(); }
 }
 
 void ABasePlayerController::SprintExit()
 {
 	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
-	///if (pawn) { pawn->Sprint(); }
+	if (pawn) { pawn->SprintExit(); }
 }
 
 // Movement | Vauit ***********************************************************************************************************************
