@@ -21,6 +21,9 @@ void ABaseHUD::DrawHUD()
 	TickDraw_Healthbars();
 	TickDraw_StaminaBar();
 
+	// Draw radar
+	TickDraw_Radar();
+
 	// Draw weapon stats
 	TickDraw_PrimaryWeaponStats();
 	TickDraw_SecondaryWeaponStats();
@@ -42,6 +45,7 @@ void ABaseHUD::Debug_DisplayHUD(bool Draw)
 	// Set individual HUD elements
 	_bDisplayHealthBars = _bDisplayHUD;
 	_bDisplayStaminabar = _bDisplayHUD;
+	_bDisplayRadar = _bDisplayHUD;
 	_bDisplayStatsPrimaryWeapon = _bDisplayHUD;
 	_bDisplayStatsSecondaryWeapon = _bDisplayHUD;
 	_bDisplayStatsReserveWeapon = _bDisplayHUD;
@@ -59,6 +63,7 @@ void ABaseHUD::SetDisplayHud(bool Display)
 	// Set individual HUD elements
 	_bDisplayHealthBars = _bDisplayHUD;
 	_bDisplayStaminabar = _bDisplayHUD;
+	_bDisplayRadar = _bDisplayHUD;
 	_bDisplayStatsPrimaryWeapon = _bDisplayHUD;
 	_bDisplayStatsSecondaryWeapon = _bDisplayHUD;
 	_bDisplayStatsReserveWeapon = _bDisplayHUD;
@@ -283,6 +288,44 @@ void ABaseHUD::TickDraw_StaminaBar()
 		{
 			widget->AddToViewport();
 			_HUD_StaminaBar_Instance = widget;
+		}
+	}
+}
+
+// Radar **********************************************************************************************************************************
+
+/*
+*
+*/
+void ABaseHUD::TickDraw_Radar()
+{
+	// Widget instance exists and is referenced (sanity check)
+	if (_HUD_Radar_Instance != NULL)
+	{
+		if (_HUD_Radar_Instance->IsInViewport() && _bDisplayRadar) { return; } else
+		{
+			// Add to viewport
+			if (_bDisplayRadar)
+			{ _HUD_Radar_Instance->AddToViewport(); }
+
+			// Remove from viewport
+			else
+			{ _HUD_Radar_Instance->RemoveFromViewport(); }
+		}
+	}
+
+	// No widget instance assigned >> Create a new one and assign it 
+	else
+	{
+		// Sanity check
+		if (_HUD_Radar == NULL) { return; }
+
+		// Create and assign new UMG widget
+		UUserWidget* widget = CreateWidget<UUserWidget>(this->GetOwningPlayerController(), _HUD_Radar);
+		if (widget != NULL)
+		{
+			widget->AddToViewport();
+			_HUD_Radar_Instance = widget;
 		}
 	}
 }

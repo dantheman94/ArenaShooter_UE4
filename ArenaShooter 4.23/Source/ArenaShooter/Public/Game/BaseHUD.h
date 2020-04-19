@@ -50,6 +50,12 @@ protected:
 	*
 	*/
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Widgets | Display")
+		bool _bDisplayRadar = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Widgets | Display")
 		bool _bDisplayStatsPrimaryWeapon = true;
 
 	/*
@@ -114,6 +120,20 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Widgets | ArenaCharacter HUD")
 		UUserWidget* _HUD_StaminaBar_Instance = NULL;
+
+	// Radar
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | ArenaCharacter HUD")
+		TSubclassOf<class UUserWidget> _HUD_Radar;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Widgets | ArenaCharacter HUD")
+		UUserWidget* _HUD_Radar_Instance = NULL;
 
 	// Weapon Stats
 	/*
@@ -307,6 +327,14 @@ public:
 	*/
 	UFUNCTION()
 		void TickDraw_StaminaBar();
+
+	// Radar **********************************************************************************************************************************
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void TickDraw_Radar();
 
 	// Weapon Stats ***************************************************************************************************************************
 
