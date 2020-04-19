@@ -6,6 +6,11 @@
 #include "Game/BaseGameState.h"
 #include "IngameGameState.generated.h"
 
+// *** EVENT DISPATCHERS / DELEGATES
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnRoundComplete);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMatchComplete);
+
 // *** CLASSES
 
 class ACameraCinematic;
@@ -24,37 +29,45 @@ protected:
 	// ************************************ VARIABLES *****************************************************************************************
 	// ****************************************************************************************************************************************
 
-	// Cinematics *****************************************************************************************************************************
+	// Sequences ******************************************************************************************************************************
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Cinematics")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Sequences")
 		bool _bPlayOpeningCinematic = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Cinematics")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Sequences")
 		bool _bPlayClosingCinematic = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Cinematics")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Sequences")
 		bool _bShowBuyMenu = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, Category = "Cinematics", Replicated)
+	UPROPERTY(BlueprintReadOnly, Category = "Sequences", Replicated)
 		TArray<ACameraCinematic*> _tOpeningCinematics;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, Category = "Cinematics", Replicated)
+	UPROPERTY(BlueprintReadOnly, Category = "Sequences", Replicated)
 		TArray<ACameraCinematic*> _tClosingCinematics;
+
+	// Match **********************************************************************************************************************************
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, Category = "Match", Replicated)
+		int _iCurrentRoundCount = 1;
 
 	// ****************************************************************************************************************************************
 	// ************************************ FUNCTIONS *****************************************************************************************
@@ -66,7 +79,7 @@ protected:
 
 public:
 
-	// Cinematics *****************************************************************************************************************************
+	// Sequences ******************************************************************************************************************************
 
 	/*
 	*
