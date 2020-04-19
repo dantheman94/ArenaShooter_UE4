@@ -100,6 +100,12 @@ protected:
 	/*
 	*
 	*/
+	UPROPERTY(BlueprintReadOnly, EditInstanceOnly, Category = "Cinematic Properties")
+		E_TeamNames _eTeam = E_TeamNames::eTN_Alpha;
+
+	/*
+	*
+	*/
 	UPROPERTY(BlueprintAssignable, Category = "Cinematic Properties")
 		FOnCinematicStart _OnCinematicStart;
 
