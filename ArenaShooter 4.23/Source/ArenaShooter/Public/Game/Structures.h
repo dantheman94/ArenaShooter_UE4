@@ -170,6 +170,14 @@ enum class E_ItemStatsType : uint8
 	eWST_EffectTime UMETA(DisplayName = "Effect Time"),
 };
 
+UENUM(BlueprintType)
+enum class E_SessionState : uint8
+{
+	eSS_Default UMETA(DisplayName = "Default"),
+	eSS_Alive UMETA(DisplayName = "Alive"),
+	eSS_Dead UMETA(DisplayName = "Dead")
+};
+
 USTRUCT(BlueprintType)
 struct FMapInfo : public FTableRowBase
 {
