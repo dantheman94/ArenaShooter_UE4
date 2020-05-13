@@ -5,19 +5,9 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Engine/Texture2D.h"
+#include "Structures.h"
 
 #include "TeamComponent.generated.h"
-
-// *** ENUMS
-
-UENUM(BlueprintType)
-enum class E_TeamNames : uint8
-{
-	eTN_Alpha UMETA(DisplayName = "Alpha"),
-	eTN_Bravo UMETA(DisplayName = "Bravo"),
-	eTN_Charlie UMETA(DisplayName = "Charlie"),
-	eTN_Delta UMETA(DisplayName = "Delta")
-};
 
 class ABasePlayerController;
 
