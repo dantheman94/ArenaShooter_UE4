@@ -1,9 +1,9 @@
 # UE4 Project directories to ignore
-ArenaShooter 4.23/Binaries/
-ArenaShooter 4.23/DerivedDataCache/
-ArenaShooter 4.23/Intermediate/
-ArenaShooter 4.23/Saved/
-ArenaShooter 4.23/Build/
+ArenaShooter UE4/Binaries/
+ArenaShooter UE4/DerivedDataCache/
+ArenaShooter UE4/Intermediate/
+ArenaShooter UE4/Saved/
+ArenaShooter UE4/Build/
  
 # Visual Studio solutions
 *.sln
@@ -12,29 +12,24 @@ ArenaShooter 4.23/Build/
 *.suo
 
 # Assets to ignore
-ArenaShooter 4.23/.vs/
-ArenaShooter 4.23/Builds/
-ArenaShooter 4.23/Content/Effects/
-ArenaShooter 4.23/Content/Materials/Character
-ArenaShooter 4.23/Content/Materials/Decals
-ArenaShooter 4.23/Content/Materials/Effects
-ArenaShooter 4.23/Content/Materials/Flat
-ArenaShooter 4.23/Content/Materials/Scenery
-ArenaShooter 4.23/Content/Materials/Weapons
-ArenaShooter 4.23/Content/Textures/Character
-ArenaShooter 4.23/Content/Textures/Particles
-ArenaShooter 4.23/Content/Textures/Weapons
-ArenaShooter 4.23/Content/Meshes/
+ArenaShooter UE4/.vs/
+ArenaShooter UE4/Builds/
+ArenaShooter UE4/Content/Effects/
+ArenaShooter UE4/Content/Materials/Character
+ArenaShooter UE4/Content/Materials/Decals
+ArenaShooter UE4/Content/Materials/Effects
+ArenaShooter UE4/Content/Materials/Flat
+ArenaShooter UE4/Content/Materials/Scenery
+ArenaShooter UE4/Content/Materials/Weapons
+ArenaShooter UE4/Content/Textures/Character
+ArenaShooter UE4/Content/Textures/Particles
+ArenaShooter UE4/Content/Textures/Weapons
+ArenaShooter UE4/Content/Meshes/
 
 ArenaShooter/ArenaShooter.png
 *.rar
 *.uproject
 *.db
 # *.ini
-ArenaShooter 4.23/Content/Blueprints/Environmental/Planet/
+ArenaShooter UE4/Content/Blueprints/Environmental/Planet/
 Data/
-ArenaShooter 4.23/Content/PN_FoliageCollection/
-ArenaShooter 4.23/Content/PN_OpenWorldFoliage/
-ArenaShooter 4.23/Content/ModularCliffs/Meshes/SM_cliff_01_green.uasset
-ArenaShooter 4.23/Content/ModularCliffs/
-ArenaShooter 4.23/Content/Brushify/
