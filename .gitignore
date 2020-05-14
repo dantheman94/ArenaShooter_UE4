@@ -14,17 +14,7 @@ ArenaShooter UE4/Build/
 # Assets to ignore
 ArenaShooter UE4/.vs/
 ArenaShooter UE4/Builds/
-ArenaShooter UE4/Content/Effects/
-ArenaShooter UE4/Content/Materials/Character
-ArenaShooter UE4/Content/Materials/Decals
-ArenaShooter UE4/Content/Materials/Effects
-ArenaShooter UE4/Content/Materials/Flat
-ArenaShooter UE4/Content/Materials/Scenery
-ArenaShooter UE4/Content/Materials/Weapons
-ArenaShooter UE4/Content/Textures/Character
-ArenaShooter UE4/Content/Textures/Particles
-ArenaShooter UE4/Content/Textures/Weapons
-ArenaShooter UE4/Content/Meshes/
+ArenaShooter UE4/Content/
 
 ArenaShooter/ArenaShooter.png
 *.rar
