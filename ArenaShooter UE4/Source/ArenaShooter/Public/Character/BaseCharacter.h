@@ -27,7 +27,7 @@ enum class E_AimDirection : uint8
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FADSAnimDelegate, bool, AimingEnter);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTakeDamage, float, DamageAmount);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSprintEnter, bool, IsAiming);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSprintEnter, bool, IsSprinting);
 
 // *** CLASSES
 
@@ -221,7 +221,7 @@ protected:
 	*	EG: Keyboard will either be -1.0, 0.0 or 1.0 explicitly, but a gamepad could be somewhere in between this range due to its axis controller).
 	*	This is primarily used for animation (Blending from idle ->  walk -> jog animation state)
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Controller: Input", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Controller | Input", Replicated)
 		float _fForwardInputScale = 0.0f;
 	
 	/*
@@ -229,7 +229,7 @@ protected:
 	*	EG: Keyboard will either be -1.0, 0.0 or 1.0 explicitly, but a gamepad could be somewhere in between this range due to its axis controller).
 	*	This is primarily used for animation (Blending from idle ->  walk -> jog animation state)
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Controller: Input", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Controller | Input", Replicated)
 		float _fRightInputScale = 0.0f;
 
 	// Health | *******************************************************************************************************************************
@@ -271,7 +271,7 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Health: Burn", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Health | Burn", Replicated)
 		bool _bIsBurning = false;
 
 	/*
@@ -285,7 +285,7 @@ protected:
 	/*
 	*	The current health value of the character (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Health: Flesh", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Health | Flesh", Replicated)
 		float _fFleshHealth = _MAX_FLESH_HEALTH;
 
 	// Health | Shield ************************************************************************************************************************
@@ -294,22 +294,22 @@ protected:
 	*	The minimum delay of time (in seconds) that must pass since the last frame that the character was inflicted with damage,
 	*	before the shields can begin recharging.
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Health: Shield")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Health | Shield")
 		float _fShieldRechargeDelay = 3.0f;
 
 	/*
 	*	The rate of recharge of the shield when it is below its maximum value.
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Health: Shield")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Health | Shield")
 		float _fShieldRechargingRate = 40.0f;
 
 	/*
 	*	The current shield value of the character (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Health: Shield", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Health | Shield", Replicated)
 		float _fShield = _MAX_SHIELD;
 
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Health: Shield")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Health | Shield")
 		bool _bRechargeShields = false;
 
 	/*
@@ -323,28 +323,28 @@ protected:
 	/*
 	*	Returns whether the starting loadout of this character should use the loadout defined in the current gamemode.
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory: Starting")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Starting")
 		bool _bUseStartingLoadoutFromGamemode = true;
 
 	/*
 	*	The starting primary weapon of the character when created.
 	*	(Only valid if _UseStartingLoadoutFromGamemode is FALSE).
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory: Starting")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Starting")
 		TSubclassOf<class AWeapon> _StartingPrimaryWeaponClass = NULL;
 
 	/*
 	*	The starting secondary weapon of the character when created.
 	*	(Only valid if _UseStartingLoadoutFromGamemode is FALSE AND IF the _StartedPrimaryWeaponClass is a _bDuelWieldable AWeapon).
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory: Starting")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Starting")
 		TSubclassOf<class AWeapon> _StartingSecondaryWeaponClass = NULL;
 
 	/*
 	*	The starting reserve weapon of the character when created (Holstered weapon).
 	*	(Only valid if _UseStartingLoadoutFromGamemode is FALSE).
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory: Starting")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Starting")
 		TSubclassOf<class AWeapon> _StartingReserveWeaponClass = NULL;
 
 	// Inventory | Weapon *********************************************************************************************************************
@@ -366,46 +366,46 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Aiming")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Aiming")
 		bool _bCanAim = true;
 
 	/*
 	*	Returns whether the character is currently aiming (ADS) their weapon or not (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Aiming", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Aiming", Replicated)
 		bool _bIsAiming = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Aiming")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Aiming")
 		float _fAimTime = 0.0f;
 
 	/*
 	*	
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Aiming")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Aiming")
 		int _iCurrentFovStage = 0;
 
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Aiming")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Aiming")
 		bool _bIsAimLerping = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Aiming")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Aiming")
 		float _fFovStart = 90.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Aiming")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Aiming")
 		float _fFovTarget = 90.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Aiming")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Aiming")
 		E_AimDirection _eAimDirection = E_AimDirection::ePT_ZoomIn;
 
 	/*
@@ -419,37 +419,37 @@ protected:
 	/*
 	*	Returns reference to the current primary weapon of the character (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Primary", ReplicatedUsing=OnRep_PrimaryWeapon)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Primary", ReplicatedUsing=OnRep_PrimaryWeapon)
 		AWeapon* _PrimaryWeapon = NULL;
 
 	/*
 	*	Returns if whether the character is currently reloading their primary weapon or not (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Primary", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Primary", Replicated)
 		bool _bIsReloadingPrimaryWeapon = false;
 
 	/*
 	*	Returns if the character has cancelled reloading their primary weapon or not.
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Primary")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Primary")
 		bool _bPrimaryReloadCancelled = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Primary")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Primary")
 		bool _bCanFirePrimary = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Primary")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Primary")
 		bool _bIsTryingToFirePrimary = false;
 
 	/*
 	*	Returns reference to the previous primary weapon of the character (Used for toggling weapons) (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Primary")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Primary")
 		AWeapon* _OldPrimaryWeapon = NULL;
 
 	// Inventory | Weapon | Secondary *********************************************************************************************************
@@ -457,32 +457,32 @@ protected:
 	/*
 	*	Returns reference to the current secondary weapon of the character (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Secondary", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Secondary", Replicated)
 		AWeapon* _SecondaryWeapon = NULL;
 
 	/*
 	*	Returns whether the character is duel wielding a secondary weapon or not (REPLICATED).
 	*	This should be inline if whether _SecondaryWeapon isValid or not.
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Secondary", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Secondary", Replicated)
 		bool _bIsDuelWielding = false;
 
 	/*
 	*	Returns if whether the character is currently reloading their secondary weapon or not (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Secondary", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Secondary", Replicated)
 		bool _bIsReloadingSecondaryWeapon = false;
 
 	/*
 	*	Returns if the character has cancelled reloading their secondary weapon or not.
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Secondary")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Secondary")
 		bool _bSecondaryReloadCancelled = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Weapon | Secondary")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Secondary")
 		bool _bCanFireSecondary = true;
 
 	// Inventory | Weapon | Reserve ***********************************************************************************************************
@@ -518,28 +518,28 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Grenade", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Grenade", Replicated)
 		int _iFragmentationGrenadeCount = 0;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Grenade", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Grenade", Replicated)
 		int _iEMPGrenadeCount = 0;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Grenade", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Grenade", Replicated)
 		int _iIncendiaryGrenadeCount = 0;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Grenade")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Grenade")
 		int _iMaximumGrenadeCount = 2;
 
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory: Grenade")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | renade")
 		E_GrenadeType _eCurrentGrenadeType = E_GrenadeType::eWBT_Frag;
 
 	// Interaction ****************************************************************************************************************************
@@ -649,73 +649,86 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
 		bool _bCanJump = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement: Jump", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Jump", Replicated)
 		bool _bIsJumping = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
+		bool _bOverwriteJumpMovementComponent = false;
+	
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump",
+		meta = (EditCondition = "_bOverwriteJumpMovementComponent"))
+		float _fOverwriteJumpForce = 740.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
 		TSubclassOf<class UCameraShake> _CameraShakeJumpStart = NULL;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
 		TSubclassOf<class UCameraShake> _CameraShakeJumpLand = NULL;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
 		TSubclassOf<class UCurveVector> _CurveJumpLand = NULL;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
 		float _fJumpGamepadRumbleIntensity = 1.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
 		float _fJumpGamepadRumbleDuration = 0.15f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
 		bool _fJumpGamepadRumbleAffectsLeftLarge = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
 		bool _fJumpGamepadRumbleAffectsLeftSmall = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
 		bool _fJumpGamepadRumbleAffectsRightLarge = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
 		bool _fJumpGamepadRumbleAffectsRightSmall = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Jump")
 		float _fFallingLandShakeMultiplier = 2.75f;
 
 	// Movement | Speed ***********************************************************************************************************************
@@ -749,62 +762,68 @@ protected:
 	/*
 	*	Returns whether the character can use the sprint mechanic.
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Sprint")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Sprint")
 		bool _bSprintEnabled = false;
 
 	/*
 	*	Returns whether the character is trying to sprint (usually given by player input)
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement: Sprint")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Sprint")
 		bool _bTryingToSprint = false;
 
 	/*
 	*	Returns whether the character can sprint.
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement: Sprint")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Sprint")
 		bool _bCanSprint = false;
 
 	/*
 	*	Returns whether the character is currently in a sprinting state or not (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement: Sprint", Replicated)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Sprint", Replicated)
 		bool _bIsSprinting = false;
 
 	/*
 	*	The amount of time the character has been sprinting for.
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement: Sprint")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Sprint")
 		float _fSprintTime = 0.0f;
 
 	/*
 	*	The multiplier used against the player's look input when the character is strafing.
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Sprint")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Sprint")
 		float _fSprintStrafeInputScale = 0.35f;
 
 	/*
 	*	The multiplier used against the player's look input when the character is sprinting.
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Sprint")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Sprint")
 		float _fSprintLookInputScale = 0.7f;
 
 	/*
 	*	A scalar multiplier of the camera shake used when sprinting. Higher values means more "bobbing".
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Sprint")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Sprint")
 		float _fSprintCameraBobScale = 2.0f;
 
 	/*
 	*	Reference to the camera shake class to be used when the character is sprinting.
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement: Sprint")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Sprint")
 		TSubclassOf<class UCameraShake> _CameraShakeSprint = NULL;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintAssignable, Category = "Movement: Sprint")
-		FOnSprintEnter _OnSprintEnter;
+		FOnSprintEnter _fOnSprintEnter;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Sprint")
+		FTransform _tSprintWeaponOrigin;
 
 	// Movement | Stamina *********************************************************************************************************************
 
