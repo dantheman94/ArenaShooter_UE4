@@ -491,10 +491,10 @@ void ABaseCharacter::UpdateReloadingPrimary()
 
 // Camera *********************************************************************************************************************************
 
-bool ABaseCharacter::OwningClient_PlayCameraShake_Validate(TSubclassOf<class UCameraShake>, float Scale)
+bool ABaseCharacter::OwningClient_PlayCameraShake_Validate(TSubclassOf<class UCameraShake>, float Scale = 1.0f)
 { return GetController() != NULL; }
 
-void ABaseCharacter::OwningClient_PlayCameraShake_Implementation(TSubclassOf<class UCameraShake> ShakeClass, float Scale)
+void ABaseCharacter::OwningClient_PlayCameraShake_Implementation(TSubclassOf<class UCameraShake> ShakeClass, float Scale = 1.0f)
 {
 	APlayerController* playerController = Cast<APlayerController>(GetController());
 	if (playerController != NULL && ShakeClass != NULL)
@@ -963,8 +963,8 @@ void ABaseCharacter::AimWeaponEnter()
 {
 	// Character sanity checks
 	if (_bIsReloadingPrimaryWeapon || _bIsReloadingSecondaryWeapon || _bIsTogglingWeapons) { return; }
-	///if (_bIsSprinting) { SprintExit(); }
 	if (!_bCanAim) { return; }
+	if (_bIsSprinting) { StopSprinting(); }
 
 	// Weapon sanity checks
 	if (_PrimaryWeapon == NULL) { return; }
@@ -2025,42 +2025,45 @@ void ABaseCharacter::Tick_Sprint()
 	if (characterMovement == NULL) { return; }
 
 	// Check if forward input is being pressed in this frame
-
-
-	// Moving on the ground
-	if (characterMovement->IsMovingOnGround())
+	auto ctrl = Cast<APlayerController>(this->GetController());
+	if (ctrl == NULL) { return; }
+	if (ctrl->IsInputKeyDown(EKeys::W))
 	{
-		// Set sprinting = true
-		if (!_bIsSprinting)
+		// Moving on the ground
+		if (characterMovement->IsMovingOnGround())
 		{
-			// Set _bIsSprinting on server for replication
-			if (HasAuthority()) 
-			{ _bIsSprinting = true; } 
-			else 
-			{ Server_Reliable_SetSprinting(true); }
+			// Not aiming
+			if (_bIsAiming) { AimWeaponExit(); }
+
+			// Set sprinting = true
+			if (!_bIsSprinting)
+			{
+				// Set _bIsSprinting on server for replication
+				if (HasAuthority())
+				{ _bIsSprinting = true; } else
+				{ Server_Reliable_SetSprinting(true); }
+
+				_fOnSprintEnter.Broadcast(true);
+			}
+
+			// Set sprinting movement speed
+			if (characterMovement->GetMaxSpeed() != _fMovementSpeedSprint)
+			{
+				if (HasAuthority())
+				{ Multicast_Reliable_SetMovingSpeed(_fMovementSpeedSprint); } else
+				{ Server_Reliable_SetMovingSpeed(_fMovementSpeedSprint); }
+			}
+
+			// Play feedback(s) [Camera shakes / Gamepad Rumbles]
+			OwningClient_PlayCameraShake(_CameraShakeSprint, 1.0f);
 		}
 
-		// Set sprinting movement speed
-		if (characterMovement->GetMaxSpeed() != _fMovementSpeedSprint)
-		{
-			if (HasAuthority())
-			{ Multicast_Reliable_SetMovingSpeed(_fMovementSpeedSprint); }
-			else
-			{ Server_Reliable_SetMovingSpeed(_fMovementSpeedSprint); }
-		}
+		// In the air
+		else { StopSprinting(); }
 	}
 
-	// In the air
-	else
-	{
-		// If we were sprinting last frame and have now started to fall (EG: jump/sprinted off ledge)
-		if (characterMovement->IsFalling() && _bIsSprinting)
-		{ StopSprinting(); }
-		else
-		{
-			if (characterMovement->IsFalling()) { StopSprinting(); }
-		}
-	}
+	// Not pressing forward input anymore, stop sprinting bruh
+	else { StopSprinting(); }
 }
 
 /*
@@ -2071,28 +2074,24 @@ void ABaseCharacter::StopSprinting()
 	UCharacterMovementComponent* characterMovement = GetCharacterMovement();
 	if (characterMovement == NULL) { return; }
 
-	// Wait until we're moving on the ground again
-	if (characterMovement->IsMovingOnGround())
+	// Set sprinting = false
+	if (_bIsSprinting)
 	{
-		// Set sprinting = false
-		if (_bIsSprinting)
-		{
-			// Set _bIsSprinting on server for replication
-			if (HasAuthority())
-			{ _bIsSprinting = false; } 
-			else
-			{ Server_Reliable_SetSprinting(false); }
-		}
+		// Set _bIsSprinting on server for replication
+		if (HasAuthority())
+		{ _bIsSprinting = false; } else
+		{ Server_Reliable_SetSprinting(false); }
 
-		// Reset movement speed
-		float movementSpeed = _fMovementSpeedJog; // This needs to determine if we should go to aim/crouch/walk/jog movement speed
-		if (characterMovement->GetMaxSpeed() != movementSpeed)
-		{
-			if (HasAuthority())
-			{ Multicast_Reliable_SetMovingSpeed(movementSpeed); }
-			else
-			{ Server_Reliable_SetMovingSpeed(movementSpeed); }
-		}
+		_fOnSprintEnter.Broadcast(false);
+	}
+
+	// Reset movement speed	once the character touches the floor
+	float movementSpeed = _fMovementSpeedJog; // This needs to determine if we should go to aim/crouch/walk/jog movement speed
+	if (characterMovement->GetMaxSpeed() != movementSpeed)
+	{
+		if (HasAuthority())
+		{ Multicast_Reliable_SetMovingSpeed(movementSpeed); } else
+		{ Server_Reliable_SetMovingSpeed(movementSpeed); }
 	}
 }
 
