@@ -89,19 +89,17 @@ void ACameraCinematic::Tick(float DeltaTime)
 					//_ViewCameraActor->SetActorRotation(rot);
 				} else
 				{
-
-				}
-
-				// Start fade in
-				if ((_fLerpTime / _fZoomDuration) >= _fZoomFadeThresholdPercent)
-				{
-					_OnHeadZoomThreshold.Broadcast();
-				}
+					// Start fade in
+					if ((_fLerpTime / _fZoomDuration) >= _fZoomFadeThresholdPercent)
+					{
+						_OnHeadZoomThreshold.Broadcast();
+					}
+				}				
 			}
 
 			// Camera spline movement
 			else
-			{
+			{				
 				if (_iCurrentSplinePoint < _CameraSpline->GetSpline()->GetNumberOfSplinePoints())
 				{
 					// Set camera facing direction
@@ -145,7 +143,7 @@ void ACameraCinematic::Tick(float DeltaTime)
 
 						// Cinematic complete
 						else
-						{
+						{							
 							_OnCinematicComplete.Broadcast();
 
 							// Do that really fast zoom into the local player
@@ -158,33 +156,33 @@ void ACameraCinematic::Tick(float DeltaTime)
 									// Get pawn reference
 									APawn* pawn = playerController->GetPawn();
 									if (pawn != NULL)
-									{
+									{										
 										// Get pawn's head position
 										ABaseCharacter* character = Cast<ABaseCharacter>(pawn);
 										USkeletalMeshComponent* mesh = character->GetMesh();
-										_HeadLocation = mesh->GetSocketLocation("head");
+										if (mesh) { _HeadLocation = mesh->GetSocketLocation("head"); }
 
 										// Get pawn's head facing direction
 										FVector dir = mesh->GetForwardVector();
 										_HeadRotation = UKismetMathLibrary::MakeRotFromX(dir);
-										// This is because the ue4 mesh is rotated -90 degrees on the Z axis (YAW)
-										_HeadRotation -= FRotator(0.0f, -90.0f, 0.0f);
+										_HeadRotation -= FRotator(0.0f, -90.0f, 0.0f); // This is because the ue4 mesh is rotated -90 degrees on the Z axis (YAW)
 
 										// Initialize lerp to location/rotation
 										_ZoomStartLocation = _ViewCameraActor->GetActorLocation();
 										_ZoomStartRotation = _ViewCameraActor->GetActorRotation();
 										_fLerpTime = 0.0f;
-										_bZoomIntoHead = true;
+										_bZoomIntoHead = true;										
 									}
 								}
-							}
+							}							
 						}
 					}
-				}
+				}			
 			}
 		}	
 	}
 }
+
 
 ///////////////////////////////////////////////
 
