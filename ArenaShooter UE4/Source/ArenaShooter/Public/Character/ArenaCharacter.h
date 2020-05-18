@@ -437,13 +437,25 @@ protected:
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump")
+		bool _bSlideJumpRequiresStamina = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump")
 		int _iSlideJumpStaminaChannel = 2;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump")
-		float _fSlideJumpLaunchForce = 700.0f;
+		float _fSlideJumpLaunchXForce = 100.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump")
+		float _fSlideJumpLaunchZForce = 700.0f;
 
 	/*
 	*

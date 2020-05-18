@@ -74,6 +74,17 @@ void AArenaCharacter::BeginPlay()
 
 	///GEngine->AddOnScreenDebugMessage(10, 5.0f, FColor::Purple, TEXT("" + FString::SanitizeFloat(GetCharacterMovement()->GravityScale)));
 	///GEngine->AddOnScreenDebugMessage(11, 5.0f, FColor::Orange, TEXT("" + FString::SanitizeFloat(_fDefaultGravityScale)));
+
+	// Overwriting jump force in the character movement component
+	if (_bOverwriteJumpMovementComponent)
+	{
+		// Get character movement component
+		UCharacterMovementComponent* characterMovement = GetCharacterMovement();
+		if (characterMovement == NULL) { return; }
+
+		// Overwrite the jump force in the movement component
+		characterMovement->JumpZVelocity = _fOverwriteJumpForce;
+	}
 }
 
 // Current Frame **************************************************************************************************************************
@@ -1059,6 +1070,13 @@ void AArenaCharacter::Slide()
 	if (playerController == NULL) { return; }
 	if (playerController->IsInputKeyDown(EKeys::W))
 	{
+		// Stop sprinting (if we were)
+		if (_bIsSprinting) { StopSprinting(); }
+
+		// Can shoot weapons again
+		_bCanFirePrimary = true;
+		if (_SecondaryWeapon != NULL) { _bCanFireSecondary = true; }
+
 		// If we're not currently sliding
 		if (!_bIsSliding)
 		{
@@ -1198,61 +1216,71 @@ void AArenaCharacter::Multicast_Reliable_StopSlide_Implementation()
 void AArenaCharacter::InputSlideJump()
 {
 	if (_bSlideJumpEnabled && _bCanSlideJump && !IsTryingToVault() && _uStaminaComponents.Num() > 0)
-	{		
-		// Get relevant stamina via matching channel
+	{
+		// Get relevant stamina via matching channel (if required)
 		UStamina* stamina = NULL;
-		for (int i = 0; i < _uStaminaComponents.Num(); i++)
+		bool canSlideJump = true;
+		if (_bSlideJumpRequiresStamina)
 		{
-			if (_uStaminaComponents[i]->GetStaminaChannel() == _iSlideJumpStaminaChannel)
+			for (int i = 0; i < _uStaminaComponents.Num(); i++)
 			{
-				stamina = _uStaminaComponents[i];
-				break;
+				if (_uStaminaComponents[i]->GetStaminaChannel() == _iSlideJumpStaminaChannel)
+				{
+					stamina = _uStaminaComponents[i];
+					break;
+				}
 			}
 		}
 
 		// Valid stamina channel found
-		if (stamina != NULL)
+		if (stamina != NULL) { canSlideJump = stamina->IsFullyRecharged(); }
+		else
 		{
-			if (stamina->IsFullyRecharged())
+			// Didn't find a valid stamina channel & we require one
+			if (_bSlideJumpRequiresStamina)
 			{
-				// Drain stamina
-				stamina->SetStamina(0.0f);
-				stamina->DelayedRecharge(stamina->GetRechargeDelayTime());
-
-				// Slide jump
-				_bCanSlideJump = false;
-				FVector force = FVector(0.0f, 0.0f, _fSlideJumpLaunchForce);
-				if (GetLocalRole() == ROLE_Authority)
-				{
-					LaunchCharacter(force, false, true);
-					_bIsSlideJumping = true;
-				} else
-				{
-					Server_Reliable_LaunchCharacter(force, false, _fSlideJumpLaunchZOverride);
-					Server_Reliable_SetSlideJumping(true);
-				}
-
-				// Start landing checks
-				_bIsPerformingGroundChecks = true;
-
-				// Play feedback(s) [Camera shakes / Gamepad Rumbles]
-				OwningClient_PlayCameraShake(_CameraShakeJumpStart, _fDoubleJumpCameraShakeScale);
-				OwningClient_GamepadRumble(_fThrustGamepadRumbleIntensity, _fThrustGamepadRumbleDuration,
-					_fThrustGamepadRumbleAffectsLeftLarge, _fThrustGamepadRumbleAffectsLeftSmall,
-					_fThrustGamepadRumbleAffectsRightLarge, _fThrustGamepadRumbleAffectsRightSmall);
-
-				// Stop sliding
-				InputSlideExit();
-				///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("Slide Jump!"));
+				GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red,
+					TEXT("ERROR: Cannot < Dash > due to _uStaminaComponents not finding a valid matching stamina channel."));
+				return;
 			}
 		}
 
-		// stamina == NULL
-		else
+		if (canSlideJump)
 		{
-			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red,
-				TEXT("ERROR: Cannot < Dash > due to _uStaminaComponents not finding a valid matching stamina channel."));
+			// Drain stamina
+			if (stamina != NULL)
+			{
+				stamina->SetStamina(0.0f);
+				stamina->DelayedRecharge(stamina->GetRechargeDelayTime());
+			}
+
+			// Slide jump
+			_bCanSlideJump = false;
+			FVector force = FVector(_fSlideJumpLaunchXForce, 0.0f, _fSlideJumpLaunchZForce);
+			if (GetLocalRole() == ROLE_Authority)
+			{
+				LaunchCharacter(force, false, true);
+				_bIsSlideJumping = true;
+			} else
+			{
+				Server_Reliable_LaunchCharacter(force, false, _fSlideJumpLaunchZOverride);
+				Server_Reliable_SetSlideJumping(true);
+			}
+
+			// Start landing checks
+			_bIsPerformingGroundChecks = true;
+
+			// Play feedback(s) [Camera shakes / Gamepad Rumbles]
+			OwningClient_PlayCameraShake(_CameraShakeJumpStart, _fDoubleJumpCameraShakeScale);
+			OwningClient_GamepadRumble(_fThrustGamepadRumbleIntensity, _fThrustGamepadRumbleDuration,
+				_fThrustGamepadRumbleAffectsLeftLarge, _fThrustGamepadRumbleAffectsLeftSmall,
+				_fThrustGamepadRumbleAffectsRightLarge, _fThrustGamepadRumbleAffectsRightSmall);
+
+			// Stop sliding
+			InputSlideExit();
+			///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("Slide Jump!"));
 		}
+
 	}
 }
 
