@@ -21,7 +21,7 @@ UTeamComponent::UTeamComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 
 	// Component replicates
-	SetIsReplicated(true);
+	SetIsReplicatedByDefault(true);
 }
 
 ///////////////////////////////////////////////

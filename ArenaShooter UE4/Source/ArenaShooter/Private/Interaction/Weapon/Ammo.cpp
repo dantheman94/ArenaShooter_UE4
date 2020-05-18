@@ -12,7 +12,7 @@ UAmmo::UAmmo()
 	PrimaryComponentTick.bCanEverTick = true;
 
 	// Component replicates
-	SetIsReplicated(true);
+	SetIsReplicatedByDefault(true);
 }
 
 
