@@ -201,16 +201,22 @@ public:
 
 	// Cinematic Properties *******************************************************************************************************************
 
-	/*
+
+	/**
+	* @summary:	Returns reference to the E_CinematicType on this instance (Opening/Closing cinematic)
 	*
+	* @return:	E_CinematicType
 	*/
 	UFUNCTION(BlueprintGetter)
 		E_CinematicType GetCinematicType() { return _eCinematicType; }
 
 	///////////////////////////////////////////////
 
+
 	/*
+	* @summary:	Starts the cinematic on this class instance. (Is being called from the GameState).
 	*
+	* @return:	void
 	*/
 	UFUNCTION()
 		void StartCinematic();

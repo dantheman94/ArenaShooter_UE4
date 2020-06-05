@@ -187,7 +187,9 @@ void ACameraCinematic::Tick(float DeltaTime)
 ///////////////////////////////////////////////
 
 /*
+* @summary:	Starts the cinematic on this class instance. (Is being called from the GameState).
 *
+* @return:	void
 */
 void ACameraCinematic::StartCinematic()
 {
