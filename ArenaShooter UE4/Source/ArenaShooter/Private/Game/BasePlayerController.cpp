@@ -63,11 +63,14 @@ void ABasePlayerController::SetupInputComponent()
 	InputComponent->BindAction("CrouchToggle", IE_Pressed, this, &ABasePlayerController::CrouchToggle);
 	InputComponent->BindAction("AimWeapon", IE_Pressed, this, &ABasePlayerController::HoverEnter);
 	InputComponent->BindAction("AimWeapon", IE_Released, this, &ABasePlayerController::HoverExit);
-	InputComponent->BindAction("Jump", IE_Pressed, this, &ABasePlayerController::Jump);
-	InputComponent->BindAction("Slide", IE_Pressed, this, &ABasePlayerController::Slide);
-	InputComponent->BindAction("Sprint", IE_Pressed, this, &ABasePlayerController::SprintEnter);
-	InputComponent->BindAction("Sprint", IE_Released, this, &ABasePlayerController::SprintExit);
-	///InputComponent->BindAction("Vault", IE_Released, this, &ABasePlayerController::Vault);
+	InputComponent->BindAction("Jump", IE_Pressed, this, &ABasePlayerController::JumpEnter);
+	InputComponent->BindAction("Jump", IE_Released, this, &ABasePlayerController::JumpExit);
+	InputComponent->BindAction("SlideHold", IE_Pressed, this, &ABasePlayerController::SlideHoldEnter);
+	InputComponent->BindAction("SlideHold", IE_Released, this, &ABasePlayerController::SlideHoldExit);
+	InputComponent->BindAction("SlideToggle", IE_Pressed, this, &ABasePlayerController::SlideToggle);
+	InputComponent->BindAction("SprintHold", IE_Pressed, this, &ABasePlayerController::SprintHoldEnter);
+	InputComponent->BindAction("SprintHold", IE_Released, this, &ABasePlayerController::SprintHoldExit);
+	InputComponent->BindAction("SprintToggle", IE_Pressed, this, &ABasePlayerController::SprintToggle);
 
 	// Bind combat controls
 	InputComponent->BindAction("AimWeapon", IE_Pressed, this, &ABasePlayerController::AimWeaponEnter);
@@ -157,6 +160,7 @@ bool ABasePlayerController::InputAxis(FKey Key, float Delta, float DeltaTime, in
 	{
 		_fOnControllerSwitch.Broadcast(_eCurrentControllerType);
 		_ePreviousControllerType = _eCurrentControllerType;
+		GEngine->AddOnScreenDebugMessage(25, 5.0f, FColor::Magenta, TEXT("Controller Type Switch"));
 	}
 
 	return ret;
@@ -171,7 +175,8 @@ bool ABasePlayerController::InputKey(FKey Key, EInputEvent EventType, float Amou
 
 	// Determine controller type
 	if (bGamepad)
-	{ _eCurrentControllerType = E_ControllerType::eCT_Xbox; } else
+	{ _eCurrentControllerType = E_ControllerType::eCT_Xbox; } 
+	else
 	{ _eCurrentControllerType = E_ControllerType::eCT_Keyboard; }
 
 	// New controller type?
@@ -179,6 +184,7 @@ bool ABasePlayerController::InputKey(FKey Key, EInputEvent EventType, float Amou
 	{
 		_fOnControllerSwitch.Broadcast(_eCurrentControllerType);
 		_ePreviousControllerType = _eCurrentControllerType;
+		GEngine->AddOnScreenDebugMessage(25, 5.0f, FColor::Magenta, TEXT("Controller Type Switch"));
 	}
 
 	return ret;
@@ -464,10 +470,6 @@ void ABasePlayerController::CrouchHoldEnter()
 	// BaseCharacter crouch
 	///auto basecharacter = Cast<ABaseCharacter>(this->GetPawn());
 	///if (basecharacter) { basecharacter->EnterCrouch(); }
-
-	// ArenaCharacter slide
-	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
-	if (pawn) { pawn->InputSlideEnter(); }
 }
 
 void ABasePlayerController::CrouchHoldExit()
@@ -475,17 +477,13 @@ void ABasePlayerController::CrouchHoldExit()
 	// BaseCharacter crouch
 	///auto basecharacter = Cast<ABaseCharacter>(this->GetPawn());
 	///if (basecharacter) { basecharacter->ExitCrouch(); }
-
-	// ArenaCharacter slide
-	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
-	if (pawn) { pawn->InputSlideExit(); }
 }
 
 void ABasePlayerController::CrouchToggle()
 {
 	// Pawn check
 	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
-	if (pawn) { pawn->CrouchToggle(pawn->IsCrouching()); }
+	if (pawn) { pawn->CrouchToggle(!pawn->IsCrouching()); }
 }
 
 // Movement | Hover ***********************************************************************************************************************
@@ -504,31 +502,65 @@ void ABasePlayerController::HoverExit()
 
 // Movement | Jump ************************************************************************************************************************
 
-void ABasePlayerController::Jump()
+/*
+*
+*/
+void ABasePlayerController::JumpEnter()
 {
 	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
 	if (pawn) { pawn->InputJump(); }
 }
 
+/*
+*
+*/
+void ABasePlayerController::JumpExit()
+{
+	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
+	if (pawn) { pawn->InputJumpExit(); }
+}
+
 // Movement | Slide ***********************************************************************************************************************
 
-void ABasePlayerController::Slide()
+void ABasePlayerController::SlideHoldEnter()
 {
+	// ArenaCharacter slide enter
+	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
+	if (pawn) { pawn->InputSlideEnter(); }
+}
 
+void ABasePlayerController::SlideHoldExit()
+{
+	// ArenaCharacter slide exit
+	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
+	if (pawn) { pawn->InputSlideExit(); }
+}
+
+void ABasePlayerController::SlideToggle()
+{
+	// ArenaCharacter slide toggle
+	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
+	if (pawn) { pawn->InputSlideToggle(!pawn->IsSliding()); }
 }
 
 // Movement | Sprint **********************************************************************************************************************
 
-void ABasePlayerController::SprintEnter()
+void ABasePlayerController::SprintHoldEnter()
 {
 	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
 	if (pawn) { pawn->SprintEnter(); }
 }
 
-void ABasePlayerController::SprintExit()
+void ABasePlayerController::SprintHoldExit()
 {
 	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
 	if (pawn) { pawn->SprintExit(); }
+}
+
+void ABasePlayerController::SprintToggle()
+{
+	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
+	if (pawn) { pawn->SprintToggle(!pawn->IsSprinting()); }
 }
 
 // Movement | Vauit ***********************************************************************************************************************
@@ -556,7 +588,7 @@ void ABasePlayerController::Tick(float DeltaTime)
 		if (playerState->GetPlayerInfo().GetPlayerController() == NULL)
 		{
 			playerState->SetPlayerController(this);
-			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Bepis"));
+			///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Bepis"));
 		}		
 	}
 }
