@@ -108,10 +108,8 @@ void UStamina::StartRechargingStamina()
 /*
 *
 */
-void UStamina::StartDrainingStamina(float DrainRate = 0.0f)
+void UStamina::StartDrainingStamina()
 {
-	if (DrainRate != 0.0f) { _fDrainRate = DrainRate; }
-
 	_eStaminaState = E_StaminaStateType::ePT_Subtractive;
 	_bShouldBeTicking = true;
 	SetComponentTickEnabled(_bShouldBeTicking);
@@ -122,11 +120,6 @@ void UStamina::StartDrainingStamina(float DrainRate = 0.0f)
 */
 void UStamina::StopDrainingStamina()
 {
-	// Start recharge delay
-	FTimerDelegate rechargeDelegate;
-	rechargeDelegate.BindUFunction(this, FName("StartRechargingStamina"));
-	GetWorld()->GetTimerManager().SetTimer(_fRechargeDelayHandle, rechargeDelegate, 1.0f, false, _fRechargeDelayTime);
-
 	// Stop ticking
 	_bShouldBeTicking = false;
 	SetComponentTickEnabled(_bShouldBeTicking);
@@ -135,12 +128,12 @@ void UStamina::StopDrainingStamina()
 /*
 *
 */
-void UStamina::DelayedRecharge(float DelayTime)
+void UStamina::DelayedRecharge()
 {
 	// Start recharge delay
 	FTimerDelegate rechargeDelegate;
 	rechargeDelegate.BindUFunction(this, FName("StartRechargingStamina"));
-	GetWorld()->GetTimerManager().SetTimer(_fRechargeDelayHandle, rechargeDelegate, 1.0f, false, DelayTime);
+	GetWorld()->GetTimerManager().SetTimer(_fRechargeDelayHandle, rechargeDelegate, 1.0f, false, _fRechargeDelayTime);
 
 	// Stop ticking
 	_bShouldBeTicking = false;
