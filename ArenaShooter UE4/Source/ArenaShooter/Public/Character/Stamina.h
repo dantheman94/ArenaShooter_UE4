@@ -122,7 +122,7 @@ public:
 	*
 	*/
 	UFUNCTION(BlueprintCallable)
-		void StartDrainingStamina(float DrainRate);
+		void StartDrainingStamina();
 
 	/*
 	*
@@ -134,7 +134,7 @@ public:
 	*
 	*/
 	UFUNCTION()
-		void DelayedRecharge(float DelayTime);
+		void DelayedRecharge();
 
 	/*
 	*
@@ -165,4 +165,17 @@ public:
 	*/
 	UFUNCTION()
 		int GetStaminaChannel() { return _iStaminaChannel; }
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		bool IsDraining() { return _bShouldBeTicking; }
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		bool HasStamina() { return _fStamina > 0.0f; }
+
 };
