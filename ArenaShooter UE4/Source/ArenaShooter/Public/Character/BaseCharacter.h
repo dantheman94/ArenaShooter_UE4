@@ -419,7 +419,7 @@ protected:
 	/*
 	*	Returns reference to the current primary weapon of the character (REPLICATED).
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Primary", ReplicatedUsing=OnRep_PrimaryWeapon)
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Primary", ReplicatedUsing = OnRep_PrimaryWeapon)
 		AWeapon* _PrimaryWeapon = NULL;
 
 	/*
@@ -1725,7 +1725,7 @@ public:
 	*
 	* @return:	bool
 	*/
-	UFUNCTION(BlueprintPure, Category = "Movement: Sprint")
+	UFUNCTION(BlueprintPure, Category = "Movement | Sprint")
 		bool IsSprinting() { return _bIsSprinting; }
 
 	/**
@@ -1735,9 +1735,6 @@ public:
 	*/
 	UFUNCTION()
 		float GetSprintLookInputScale() { return _fSprintLookInputScale; }
-
-	UFUNCTION(BlueprintPure)
-		bool GetIsSprinting() { return _bIsSprinting; }
 
 	/*
 	*
@@ -1750,6 +1747,12 @@ public:
 	*/
 	UFUNCTION()
 		void SprintExit();
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void SprintToggle(bool Sprint);
 
 	/*
 	*

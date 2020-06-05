@@ -413,6 +413,7 @@ void ABaseCharacter::Tick(float DeltaTime)
 	{
 		if (_bIsSprinting) { StopSprinting(); }
 	}
+
 }
 
 /*
@@ -2019,15 +2020,40 @@ void ABaseCharacter::SprintExit()
 /*
 *
 */
+void ABaseCharacter::SprintToggle(bool Sprint)
+{
+	// Sprint enter
+	if (Sprint)
+	{
+		if (!_bIsSprinting) { SprintEnter(); }
+	}
+
+	// Sprint exit
+	else
+	{ SprintExit(); }
+}
+
+/*
+*
+*/
 void ABaseCharacter::Tick_Sprint()
 {
 	UCharacterMovementComponent* characterMovement = GetCharacterMovement();
 	if (characterMovement == NULL) { return; }
 
 	// Check if forward input is being pressed in this frame
-	auto ctrl = Cast<APlayerController>(this->GetController());
-	if (ctrl == NULL) { return; }
-	if (ctrl->IsInputKeyDown(EKeys::W))
+	bool forward = false;
+	auto ctrl = Cast<ABasePlayerController>(this->GetController()); if (ctrl == NULL) { return; }
+
+	if (ctrl->GetControllerType() == E_ControllerType::eCT_Keyboard) { forward = ctrl->IsInputKeyDown(EKeys::W); }
+	else if (ctrl->GetControllerType() == E_ControllerType::eCT_Xbox) { forward = ctrl->IsInputKeyDown(EKeys::Gamepad_LeftStick_Up); }
+	else if (ctrl->GetControllerType() == E_ControllerType::eCT_PlayStation) { forward = ctrl->IsInputKeyDown(EKeys::Gamepad_LeftStick_Up); }
+
+	// This is so that when the forward input is released, the sprint is forcibly stopped.
+	else { StopSprinting(); }
+
+	// Forward input is present this frame
+	if (forward)
 	{
 		// Moving on the ground
 		if (characterMovement->IsMovingOnGround())
