@@ -2,6 +2,7 @@
 
 #include "ArenaCharacter.h"
 
+#include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "FireMode.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -9,6 +10,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetInputLibrary.h"
+#include "Math/UnrealMathUtility.h"
 #include "Stamina.h"
 #include "UnrealNetwork.h"
 #include "Weapon.h"
@@ -28,6 +30,7 @@ AArenaCharacter::AArenaCharacter()
 	// Actor replicates
 	bReplicates = true;
 	SetReplicateMovement(true);
+
 }
 
 ///////////////////////////////////////////////
@@ -47,7 +50,9 @@ void AArenaCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AArenaCharacter, _bIsDoubleJumping);
 	DOREPLIFETIME(AArenaCharacter, _bIsHovering);
 	DOREPLIFETIME(AArenaCharacter, _bIsSliding);
+	DOREPLIFETIME(AArenaCharacter, _bIsWallRunning);
 	DOREPLIFETIME(AArenaCharacter, _eDashDirection);
+	DOREPLIFETIME(AArenaCharacter, _eWallRunSide);
 }
 
 ///////////////////////////////////////////////
@@ -85,6 +90,8 @@ void AArenaCharacter::BeginPlay()
 		// Overwrite the jump force in the movement component
 		characterMovement->JumpZVelocity = _fOverwriteJumpForce;
 	}
+
+	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &AArenaCharacter::OnCapsuleComponentHit);
 }
 
 // Current Frame **************************************************************************************************************************
@@ -110,34 +117,34 @@ void AArenaCharacter::Tick(float DeltaTime)
 		if (_PrimaryWeapon == NULL) { return; }
 
 		// Add to lerp time
-		if (_fSlideCameraLerpTime < _fSlideCameraLerpingDuration)
-		{
-			_fSlideCameraLerpTime += DeltaTime;
+if (_fSlideCameraLerpTime < _fSlideCameraLerpingDuration)
+{
+	_fSlideCameraLerpTime += DeltaTime;
 
-			// Determine origin transform
-			bool ads = _PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled();
-			FTransform adsOrigin = _PrimaryWeapon->GetCurrentFireMode()->GetOriginADS();
-			FTransform hipOrigin = _PrimaryWeapon->GetTransformOriginHands();
-			FTransform originTransform = UKismetMathLibrary::SelectTransform(adsOrigin, hipOrigin, _bIsAiming && ads);
+	// Determine origin transform
+	bool ads = _PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled();
+	FTransform adsOrigin = _PrimaryWeapon->GetCurrentFireMode()->GetOriginADS();
+	FTransform hipOrigin = _PrimaryWeapon->GetTransformOriginHands();
+	FTransform originTransform = UKismetMathLibrary::SelectTransform(adsOrigin, hipOrigin, _bIsAiming && ads);
 
-			// Get slide/unslide origins
-			FTransform slideTransform = UKismetMathLibrary::SelectTransform(_tSlideWeaponOrigin, originTransform, _bIsSliding);
-			FTransform unslideTransform = UKismetMathLibrary::SelectTransform(originTransform, _tSlideWeaponOrigin, _bIsSliding);
+	// Get slide/unslide origins
+	FTransform slideTransform = UKismetMathLibrary::SelectTransform(_tSlideWeaponOrigin, originTransform, _bIsSliding);
+	FTransform unslideTransform = UKismetMathLibrary::SelectTransform(originTransform, _tSlideWeaponOrigin, _bIsSliding);
 
-			// Current lerp transition origin between slide/unslide
-			FTransform enter = UKismetMathLibrary::SelectTransform(slideTransform, unslideTransform, _bSlideEnter);
-			FTransform exit = UKismetMathLibrary::SelectTransform(slideTransform, unslideTransform, !_bSlideEnter);
-			FTransform lerpTransform = UKismetMathLibrary::TLerp(unslideTransform, slideTransform, _fSlideCameraLerpTime / _fSlideCameraLerpingDuration);
+	// Current lerp transition origin between slide/unslide
+	FTransform enter = UKismetMathLibrary::SelectTransform(slideTransform, unslideTransform, _bSlideEnter);
+	FTransform exit = UKismetMathLibrary::SelectTransform(slideTransform, unslideTransform, !_bSlideEnter);
+	FTransform lerpTransform = UKismetMathLibrary::TLerp(unslideTransform, slideTransform, _fSlideCameraLerpTime / _fSlideCameraLerpingDuration);
 
-			// Set lerp transform to first person arms
-			_FirstPerson_Arms->SetRelativeTransform(lerpTransform);
-		}
+	// Set lerp transform to first person arms
+	_FirstPerson_Arms->SetRelativeTransform(lerpTransform);
+}
 
-		// Stop lerping
-		else
-		{ _bLerpSlideCamera = false; }
+// Stop lerping
+else
+{ _bLerpSlideCamera = false; }
 	}
-	
+
 	// Slide movement capsule lerping
 	if (_bLerpCrouchCapsule)
 	{
@@ -156,6 +163,53 @@ void AArenaCharacter::Tick(float DeltaTime)
 			UCapsuleComponent* movementCapsule = GetCapsuleComponent();
 			if (movementCapsule == NULL) { return; }
 			movementCapsule->SetCapsuleHalfHeight(currentLerpHeight, true);
+		}
+	}
+
+	ClampHorizontalVelocity();
+	if (_bIsWallRunning) { Tick_WallRunning(); }
+
+	// Wall-run camera(origin) lerping
+	if (_bLerpWallRunCamera)
+	{
+		// Tilt camera to wall run angle
+		APlayerController* controller = Cast<APlayerController>(GetController());
+		float roll = controller->GetControlRotation().Roll;
+		switch (_eWallRunSide)
+		{
+		case E_WallRunDirection::eWRD_Left:
+		{
+			if (roll <= _fWallRunningRollMaximum + 1 || roll > 360 - _fWallRunningRollMaximum)
+			{
+				AddControllerRollInput(-_fWallRunningOriginAdditive);
+			}
+			break;
+		}
+		case E_WallRunDirection::eWRD_Right:
+		{
+			if (roll < _fWallRunningRollMaximum || roll >= 360 - _fWallRunningRollMaximum - 1)
+			{
+				AddControllerRollInput(_fWallRunningOriginAdditive);
+			}
+			break;
+		}
+		default: break;
+		}
+
+		///GEngine->AddOnScreenDebugMessage(5, 5.0f, FColor::Cyan, FString::SanitizeFloat(controller->GetControlRotation().Roll));
+	}
+	else
+	{
+		// Tilt camera back to zero
+		APlayerController* controller = Cast<APlayerController>(GetController());
+		float roll = controller->GetControlRotation().Roll;
+
+		if (roll != 0)
+		{
+			if (roll >= 360 - _fWallRunningRollMaximum - 1) { AddControllerRollInput(_fWallRunningOriginAdditive); }
+			if (roll <= _fWallRunningRollMaximum + 1) { AddControllerRollInput(-_fWallRunningOriginAdditive); }
+
+			///GEngine->AddOnScreenDebugMessage(5, 5.0f, FColor::Cyan, FString::SanitizeFloat(controller->GetControlRotation().Roll));
 		}
 	}
 }
@@ -330,7 +384,7 @@ void AArenaCharacter::InputDash()
 			{
 				// Drain stamina
 				stamina->SetStamina(0.0f);
-				stamina->DelayedRecharge(stamina->GetRechargeDelayTime());
+				stamina->DelayedRecharge();
 
 				// Cancel/disable combat modes
 				_bPrimaryReloadCancelled = true;
@@ -852,14 +906,31 @@ void AArenaCharacter::InputJump()
 				}
 
 			}
+					   
+			// Falling
+			else { 
 
-			// Falling 
-			else { InputDoubleJump(); }
+				_bIsTryingToWallJump = true;
+
+				// Wall running is technically falling in the movement component
+				if (IsWallRunning()) { EndWallRun();}
+				else
+				{ InputDoubleJump(); }
+			}
 
 			// Start landing checks
 			_bIsPerformingGroundChecks = true;
 		}
 	}
+}
+
+/*
+*
+*
+*/
+void AArenaCharacter::InputJumpExit()
+{
+	_bIsTryingToWallJump = false;
 }
 
 ///////////////////////////////////////////////
@@ -875,61 +946,70 @@ void AArenaCharacter::InputDoubleJump()
 	{
 		// Get relevant stamina via matching channel
 		UStamina* stamina = NULL;
-		for (int i = 0; i < _uStaminaComponents.Num(); i++)
+		bool canDoubleJump = true;
+		if (_bDoubleJumpRequiresStamina)
 		{
-			if (_uStaminaComponents[i]->GetStaminaChannel() == _iDoubleJumpStaminaChannel)
+			for (int i = 0; i < _uStaminaComponents.Num(); i++)
 			{
-				stamina = _uStaminaComponents[i];
-				break;
+				if (_uStaminaComponents[i]->GetStaminaChannel() == _iDoubleJumpStaminaChannel)
+				{
+					stamina = _uStaminaComponents[i];
+					break;
+				}
 			}
 		}
 
 		// Valid stamina channel found
-		if (stamina != NULL)
+		if (stamina != NULL) { canDoubleJump = stamina->IsFullyRecharged(); }
+		else
 		{
-			if (stamina->IsFullyRecharged())
+			// Didn't find a valid stamina channel & we require one
+			if (_bDoubleJumpRequiresStamina)
 			{
-				// Drain stamina
-				stamina->SetStamina(0.0f);
-				stamina->DelayedRecharge(stamina->GetRechargeDelayTime());
-				
-				// Double jump
-				_bCanDoubleJump = false;
-				FVector force = FVector(0.0f, 0.0f, _fDoubleJumpForce);
-				if (GetLocalRole() == ROLE_Authority)
-				{
-					LaunchCharacter(force, false, true);
-					_bIsDoubleJumping = true;
-				}
-				else
-				{
-					Server_Reliable_LaunchCharacter(force, false, true);
-					Server_Reliable_SetDoubleJumping(true);
-				}
-
-				// Start landing checks
-				_bIsPerformingGroundChecks = true;
-
-				// Play feedback(s) [Camera shakes / Gamepad Rumbles]
-				OwningClient_PlayCameraShake(_CameraShakeJumpStart, _fDoubleJumpCameraShakeScale);
-				OwningClient_GamepadRumble(_fThrustGamepadRumbleIntensity, _fThrustGamepadRumbleDuration,
-					_fThrustGamepadRumbleAffectsLeftLarge, _fThrustGamepadRumbleAffectsLeftSmall,
-					_fThrustGamepadRumbleAffectsRightLarge, _fThrustGamepadRumbleAffectsRightSmall);
+				GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red,
+					TEXT("ERROR: Cannot < Double Jump > due to _uStaminaComponents not finding a valid matching stamina channel."));
+				return;
 			}
 		}
 
-		// stamina == NULL
-		else
+		if (canDoubleJump)
 		{
-			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Orange,
-				TEXT("WARNING: Cannot < Double Jump > due to _uStaminaComponents not finding a valid matching stamina channel."));
+			// Drain stamina
+			if (stamina != NULL)
+			{
+				if (stamina->IsFullyRecharged())
+				{
+					stamina->SetStamina(0.0f);
+					stamina->DelayedRecharge();
+				}
+			}
+
+			// Double jump
+			_bCanDoubleJump = false;
+			FVector force = FVector(0.0f, 0.0f, _fDoubleJumpForce);
+			if (GetLocalRole() == ROLE_Authority)
+			{
+				LaunchCharacter(force, false, true);
+				_bIsDoubleJumping = true;
+			} else
+			{
+				Server_Reliable_LaunchCharacter(force, false, true);
+				Server_Reliable_SetDoubleJumping(true);
+			}
+
+			// Start landing checks
+			_bIsPerformingGroundChecks = true;
+
+			// Play feedback(s) [Camera shakes / Gamepad Rumbles]
+			OwningClient_PlayCameraShake(_CameraShakeJumpStart, _fDoubleJumpCameraShakeScale);
+			OwningClient_GamepadRumble(_fThrustGamepadRumbleIntensity, _fThrustGamepadRumbleDuration,
+				_fThrustGamepadRumbleAffectsLeftLarge, _fThrustGamepadRumbleAffectsLeftSmall,
+				_fThrustGamepadRumbleAffectsRightLarge, _fThrustGamepadRumbleAffectsRightSmall);
 		}
 	}
 }
 
 ///////////////////////////////////////////////
-
-#pragma region Server_Reliable_LaunchCharacter
 
 /*
 *
@@ -942,12 +1022,6 @@ void AArenaCharacter::Server_Reliable_LaunchCharacter_Implementation(FVector Lau
 	Multicast_Reliable_LaunchCharacter(LaunchVelocity, XYOverride, ZOverride);
 }
 
-#pragma endregion
-
-///////////////////////////////////////////////
-
-#pragma region Multicast_Reliable_LaunchCharacter
-
 /*
 *
 */
@@ -958,8 +1032,6 @@ void AArenaCharacter::Multicast_Reliable_LaunchCharacter_Implementation(FVector 
 {
 	LaunchCharacter(LaunchVelocity, XYOverride, ZOverride);
 }
-
-#pragma endregion
 
 // Movement | Jump ************************************************************************************************************************
 
@@ -1056,6 +1128,28 @@ void AArenaCharacter::InputSlideExit()
 		_bCanVault = true;
 	}
 	_bIsTryingToSlide = false;
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+void AArenaCharacter::InputSlideToggle(bool Sliding)
+{
+	// Slide enter
+	if (Sliding)
+	{
+		if (!_bIsSliding) { InputSlideEnter(); 
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Slide Enter!"));
+		}
+	}
+
+	// Slide exit
+	else
+	{
+		InputSlideExit(); GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Slide Exit!"));
+	}
 }
 
 ///////////////////////////////////////////////
@@ -1251,7 +1345,7 @@ void AArenaCharacter::InputSlideJump()
 			if (stamina != NULL)
 			{
 				stamina->SetStamina(0.0f);
-				stamina->DelayedRecharge(stamina->GetRechargeDelayTime());
+				stamina->DelayedRecharge();
 			}
 
 			// Slide jump
@@ -1259,11 +1353,11 @@ void AArenaCharacter::InputSlideJump()
 			FVector force = FVector(_fSlideJumpLaunchXForce, 0.0f, _fSlideJumpLaunchZForce);
 			if (GetLocalRole() == ROLE_Authority)
 			{
-				LaunchCharacter(force, false, true);
+				LaunchCharacter(force, _fSlideJumpLaunchXYOverride, true);
 				_bIsSlideJumping = true;
 			} else
 			{
-				Server_Reliable_LaunchCharacter(force, false, _fSlideJumpLaunchZOverride);
+				Server_Reliable_LaunchCharacter(force, _fSlideJumpLaunchXYOverride, _fSlideJumpLaunchZOverride);
 				Server_Reliable_SetSlideJumping(true);
 			}
 
@@ -1301,4 +1395,388 @@ bool AArenaCharacter::Server_Reliable_SetSlideJumping_Validate(bool SlideJumping
 void AArenaCharacter::Server_Reliable_SetSlideJumping_Implementation(bool SlideJumping)
 {
 	_bIsSlideJumping = SlideJumping;
+}
+
+// Movement | Wall Running **********************************************************************************************************************
+
+/*
+*
+*/
+void AArenaCharacter::OnRep_IsWallRunning()
+{
+	if (_bIsTryingToWallJump)
+	{
+		// Set _bIsJumping = TRUE
+		if (GetLocalRole() == ROLE_Authority)
+		{ _bIsJumping = true; } else
+		{ Server_Reliable_SetJumping(true); }
+
+		// Action jump
+		FVector launchVelocity = GetWallRunLaunchVelocity();
+		if (GetLocalRole() == ROLE_Authority)
+		{ Multicast_Reliable_LaunchCharacter(launchVelocity, _bWallRunJumpXYOverride, true); }
+		else
+		{ Server_Reliable_LaunchCharacter(launchVelocity, _bWallRunJumpXYOverride, true); }
+
+		///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, launchVelocity.ToString());
+
+		// Play feedback(s) [Camera shakes / Gamepad Rumbles]
+		OwningClient_PlayCameraShake(_CameraShakeJumpStart, 1.0f);
+		OwningClient_GamepadRumble(_fJumpGamepadRumbleIntensity, _fJumpGamepadRumbleDuration,
+			_fJumpGamepadRumbleAffectsLeftLarge, _fJumpGamepadRumbleAffectsLeftSmall,
+			_fJumpGamepadRumbleAffectsRightLarge, _fJumpGamepadRumbleAffectsRightSmall);
+	
+		///_bIsTryingToWallJump = false;
+	}
+}
+
+/*
+*
+*/
+void AArenaCharacter::SetHorizontalVelocity(float HorizontalVelocityX, float HorizontalVelocityY)
+{
+	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
+	if (movementComponent == NULL) { return; }
+
+	// Convert FVector2D velocity to FVector velocity
+	FVector vec = FVector();
+	vec.X = HorizontalVelocityX;
+	vec.Y = HorizontalVelocityY;
+	vec.Z = movementComponent->Velocity.Z;
+	movementComponent->Velocity = vec;
+}
+
+/*
+*
+*/
+bool AArenaCharacter::Server_Reliable_SetHorizontalVelocity_Validate(float HorizontalVelocityX, float HorizontalVelocityY) { return true; }
+
+void AArenaCharacter::Server_Reliable_SetHorizontalVelocity_Implementation(float HorizontalVelocityX, float HorizontalVelocityY)
+{
+	SetHorizontalVelocity(HorizontalVelocityX, HorizontalVelocityY);
+}
+
+/*
+*
+*/
+FVector2D AArenaCharacter::GetHorizontalVelocity() const
+{
+	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
+	if (movementComponent == NULL) { return FVector2D(); }
+
+	// Convert FVector velocity to FVector2D velocity
+	FVector2D vec = FVector2D();
+	vec.X = movementComponent->Velocity.X;
+	vec.Y = movementComponent->Velocity.Y;
+	
+	return FVector2D();
+}
+
+/*
+*
+*/
+void AArenaCharacter::ClampHorizontalVelocity()
+{
+	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
+	if (movementComponent == NULL) { return; }
+
+	if (movementComponent->IsFalling())
+	{		
+		float vecLength = UKismetMathLibrary::VSize2D(GetHorizontalVelocity());
+		vecLength /= movementComponent->GetMaxSpeed();
+
+		// Moving too fast?
+		if (vecLength > 1.0)
+		{
+			FVector2D newVelocity = UKismetMathLibrary::Multiply_Vector2DFloat(GetHorizontalVelocity(), vecLength);
+			
+			// Apply new velocity
+			if (GetLocalRole() == ROLE_Authority)
+			{ SetHorizontalVelocity(newVelocity.X, newVelocity.Y); }
+			else
+			{ Server_Reliable_SetHorizontalVelocity(newVelocity.X, newVelocity.Y); }
+		}
+	}
+}
+
+/*
+*
+*/
+FVector AArenaCharacter::DetermineRunDirectionAndSide(FVector WallNormal, E_WallRunDirection& WallRunDirectionEnum)
+{
+	FVector2D normal = FVector2D();
+	normal.X = WallNormal.X;
+	normal.Y = WallNormal.Y;
+
+	FVector2D right = FVector2D();
+	right.X = GetActorRightVector().X;
+	right.Y = GetActorRightVector().Y;
+
+	float dot = UKismetMathLibrary::DotProduct2D(normal, right);
+	E_WallRunDirection eDir = E_WallRunDirection::eWRD_Up;
+	if (dot > 0) { eDir = E_WallRunDirection::eWRD_Right; }
+	else { eDir = E_WallRunDirection::eWRD_Left; }
+
+	FVector select = FVector::ZeroVector;
+	if (eDir == E_WallRunDirection::eWRD_Left) { select = FVector(0.0f, 0.0f, -1.0f); }
+	else if (eDir == E_WallRunDirection::eWRD_Right) { select = FVector(0.0f, 0.0f, 1.0f); }
+	///else { select = FVector(0.0f, 0.0f, 0.0f); }
+
+	WallRunDirectionEnum = eDir;
+	return UKismetMathLibrary::Cross_VectorVector(WallNormal, select);
+}
+
+/*
+*
+*/
+bool AArenaCharacter::ValidWallRunInput() const
+{
+	// No valid forward input
+	if (_fForwardInputScale < 0.1f) { return false; }
+	if (_bIsTryingToWallJump) { return false; }
+
+	bool validInput = false;
+	switch (_eWallRunSide)
+	{
+	case E_WallRunDirection::eWRD_Left:
+	{
+		validInput = _fRightInputScale > 0.1f;
+		break;
+	}
+	case E_WallRunDirection::eWRD_Right:
+	{
+		validInput = _fRightInputScale < -0.1f;
+		break;
+	}
+	case E_WallRunDirection::eWRD_Up:
+	{
+		validInput = true;
+		break;
+	}
+	default: break;
+	}
+
+	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Emerald, validInput ? TEXT("true") : TEXT("false"));
+	return validInput;
+}
+
+/*
+*
+*/
+bool AArenaCharacter::CheckIfSurfaceCanBeWallRan(FVector SurfaceNormal) const
+{
+	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
+	if (movementComponent == NULL) { return false; }
+
+	float z = SurfaceNormal.Z;
+	if (z < -0.05) { return false; }
+
+	FVector vec = FVector(SurfaceNormal.X, SurfaceNormal.Y, 0.0f);
+	UKismetMathLibrary::Vector_Normalize(vec);
+	float dot = UKismetMathLibrary::DegAcos(UKismetMathLibrary::Dot_VectorVector(vec, SurfaceNormal));
+	return (dot < movementComponent->GetWalkableFloorAngle());
+}
+
+/*
+*
+*/
+void AArenaCharacter::OnCapsuleComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+{
+	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
+	if (movementComponent == NULL) { return; }
+	
+	// Not currently wall-running
+	if (!_bIsWallRunning && Hit.IsValidBlockingHit())
+	{
+		// Valid wall-runnable surface & currently falling
+		if (CheckIfSurfaceCanBeWallRan(Hit.ImpactNormal) && movementComponent->IsFalling())
+		{
+			E_WallRunDirection eDir = E_WallRunDirection::eWRD_Up;
+			_WallRunDirection = DetermineRunDirectionAndSide(Hit.ImpactNormal, eDir);
+
+			// Set wall run side/direction
+			if (GetLocalRole() == ROLE_Authority) { _eWallRunSide = eDir; } 
+			else { Server_Reliable_SetWallRunDirection(eDir); }
+			
+			// Start wall running (if there's valid input)
+			if (ValidWallRunInput()) { StartWallRun(); }
+		}
+	}
+}
+
+/*
+*
+*/
+FVector AArenaCharacter::GetWallRunLaunchVelocity()
+{
+	FVector launchDirection = FVector::ZeroVector;
+	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
+	if (movementComponent == NULL) { return FVector::ZeroVector; }
+
+	FVector v = FVector::ZeroVector;
+	if (_eWallRunSide == E_WallRunDirection::eWRD_Left) { v = FVector(_fWallRunJumpLaunchXForce, (-1 * _fWallRunJumpLaunchYForce), _fWallRunJumpLaunchZForce); }
+	else if (_eWallRunSide == E_WallRunDirection::eWRD_Right) { v = FVector(_fWallRunJumpLaunchXForce, _fWallRunJumpLaunchYForce, _fWallRunJumpLaunchZForce); }
+	else { v = FVector((-1 * _fWallRunJumpLaunchXForce), 0.0f, _fWallRunJumpLaunchZForce); }
+
+	float yaw = GetCharacterMovement()->GetPawnOwner()->GetControlRotation().Yaw;
+	FQuat quat = FQuat::MakeFromEuler(FVector(0.0f, 0.0f, yaw));
+	v  = UKismetMathLibrary::Quat_RotateVector(quat, v);
+	return v;
+
+	if (_bIsWallRunning)
+	{
+		FVector select = FVector::ZeroVector;
+		if (_eWallRunSide == E_WallRunDirection::eWRD_Left) { select = FVector(0.0f, 0.0f, -1.0f); } 
+		else if (_eWallRunSide == E_WallRunDirection::eWRD_Right) { select = FVector(0.0f, 0.0f, 1.0f); } 
+		else { select = FVector(0.0f, 0.0f, 0.0f); }
+
+		launchDirection = UKismetMathLibrary::Cross_VectorVector(_WallRunDirection, select);
+	}
+	launchDirection += FVector(0.0f, 0.0f, 1.0f);
+	return UKismetMathLibrary::Multiply_VectorFloat(launchDirection, movementComponent->JumpZVelocity);
+}
+
+/*
+*
+*/
+void AArenaCharacter::StartWallRun()
+{
+	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
+	if (movementComponent == NULL) { return; }
+
+	movementComponent->AirControl = 1.0f;
+	movementComponent->GravityScale = 0.0f;
+	movementComponent->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 1.0f));
+
+	if (GetLocalRole() == ROLE_Authority) { _bIsWallRunning = true; OnRep_IsWallRunning(); }
+	else { Server_Reliable_SetIsWallRunning(true); }
+	
+	// Reset double jump
+	if (_bDoubleJumpEnabled) { _bCanDoubleJump = true; }
+
+	_bLerpWallRunCamera = true;
+}
+
+/*
+*
+*/
+void AArenaCharacter::EndWallRun()
+{
+	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
+	if (movementComponent == NULL) { return; }
+
+	movementComponent->AirControl = _fDefaultAirControl;
+	movementComponent->GravityScale = _fDefaultGravityScale;
+	movementComponent->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 0.0f));
+
+	if (GetLocalRole() == ROLE_Authority) { _bIsWallRunning = false; OnRep_IsWallRunning(); }
+	else { Server_Reliable_SetIsWallRunning(false); }
+
+	// Get relevant stamina via matching channel
+	UStamina* stamina = NULL;
+	for (int i = 0; i < _uStaminaComponents.Num(); i++)
+	{
+		if (_uStaminaComponents[i]->GetStaminaChannel() == _iWallRunStaminaChannel)
+		{
+			stamina = _uStaminaComponents[i];
+			break;
+		}
+	}
+
+	if (stamina == NULL) { return; }
+	else
+	{
+		// Found a matching stamina channel
+		stamina->StopDrainingStamina();
+		stamina->DelayedRecharge();
+	}
+
+	_bLerpWallRunCamera = false;
+}
+
+/*
+*
+*/
+void AArenaCharacter::Tick_WallRunning()
+{
+	if (!_bWallRunEnabled) { EndWallRun(); }
+
+	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
+	if (movementComponent == NULL) { return; }
+
+	// Get relevant stamina via matching channel
+	UStamina* stamina = NULL;
+	for (int i = 0; i < _uStaminaComponents.Num(); i++)
+	{
+		if (_uStaminaComponents[i]->GetStaminaChannel() == _iWallRunStaminaChannel)
+		{
+			stamina = _uStaminaComponents[i];
+			break;
+		}
+	}
+
+	// Didn't find a matching stamina channel
+	if (stamina == NULL) { return; }
+
+	// Valid wall running input & theres valid stamina left
+	if (ValidWallRunInput() && stamina->HasStamina())
+	{
+		// Trace to current wall-running side to ensure that there is still a valid wall to wall run on
+		FVector select = FVector::ZeroVector;
+		if (_eWallRunSide == E_WallRunDirection::eWRD_Left) { select = FVector(0.0f, 0.0f, -1.0f); }
+		else if (_eWallRunSide == E_WallRunDirection::eWRD_Right) { select = FVector(0.0f, 0.0f, 1.0f); }
+		///else { select = FVector(0.0f, 0.0f, 0.0f); }
+
+		FVector cross = UKismetMathLibrary::Cross_VectorVector(_WallRunDirection, select);
+		FVector endTrace = GetActorLocation() + cross * 200.0f;
+		
+		FHitResult hitResult;
+		FCollisionQueryParams params;
+		params.bTraceComplex = false;
+		params.AddIgnoredActor(this);
+		GetWorld()->LineTraceSingleByChannel(hitResult, GetActorLocation(), endTrace, ECollisionChannel::ECC_Visibility, params);
+		
+		if (hitResult.IsValidBlockingHit())
+		{
+			E_WallRunDirection eDir = E_WallRunDirection::eWRD_Up;
+			FVector vDir = DetermineRunDirectionAndSide(hitResult.ImpactNormal, eDir);
+
+			// Moving in the same assumed direction needed for the wall run (EG: We are moving forward relative to a left-sided wall run & not trying to move forward relative to a right-sided wall run)
+			if (eDir == _eWallRunSide)
+			{
+				_WallRunDirection = vDir;
+				///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Magenta, FString::Printf(TEXT("vDir %s"), *vDir.ToString()));
+				FVector v = UKismetMathLibrary::Multiply_VectorFloat(_WallRunDirection, movementComponent->GetMaxSpeed());
+				movementComponent->Velocity = FVector(v.X, v.Y, 0.0f);
+
+				// Drain stamina
+				stamina->StartDrainingStamina();
+			} 
+			else { EndWallRun(); }
+		} 
+		else { EndWallRun(); }
+	}
+	else { EndWallRun(); }
+}
+
+/*
+*
+*/
+bool AArenaCharacter::Server_Reliable_SetWallRunDirection_Validate(E_WallRunDirection WallRunDirection)
+{ return true; }
+
+void AArenaCharacter::Server_Reliable_SetWallRunDirection_Implementation(E_WallRunDirection WallRunDirection)
+{
+	_eWallRunSide = WallRunDirection;
+}
+
+/*
+*
+*/
+bool AArenaCharacter::Server_Reliable_SetIsWallRunning_Validate(bool IsWallRunning) { return true; }
+
+void AArenaCharacter::Server_Reliable_SetIsWallRunning_Implementation(bool IsWallRunning)
+{
+	_bIsWallRunning = IsWallRunning;
+	if (GetLocalRole() == ROLE_Authority) { OnRep_IsWallRunning(); }
 }

@@ -16,6 +16,14 @@ class ABasePlayerController;
 class ABasePlayerState;
 
 UENUM(BlueprintType)
+enum class E_WallRunDirection : uint8
+{
+	eWRD_Left UMETA(DisplayName = "Left Side"),
+	eWRD_Right UMETA(DisplayName = "Right Side"),
+	eWRD_Up UMETA(DisplayName = "Upwards")
+};
+
+UENUM(BlueprintType)
 enum class E_TeamNames : uint8
 {
 	eTN_Spectator UMETA(DisplayName = "Unbiased Spectator"),

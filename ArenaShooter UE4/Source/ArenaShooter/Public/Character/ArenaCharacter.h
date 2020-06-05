@@ -61,6 +61,7 @@ public:
 // *** EVENT DISPATCHERS / DELEGATES
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDashAnimDelegate, E_Direction, Direction);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWallRunAnimDelegate, E_WallRunDirection, WallRunSide);
 
 // *** CLASSES
 
@@ -78,17 +79,14 @@ public:
 	// Startup ********************************************************************************************************************************
 
 	/**
-	* @summary:	Sets default values for this actor's properties.
-	*
-	* @return:	Constructor
+	* @summary:	Constructor
 	*/
 	AArenaCharacter();
 
-	///////////////////////////////////////////////
-
+	/**
+	* @summary:	Deconstructor
+	*/
 	~AArenaCharacter();
-
-	///////////////////////////////////////////////
 
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const;
 
@@ -240,6 +238,12 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Double Jump")
 		bool _bDoubleJumpEnabled = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Double Jump")
+		bool _bDoubleJumpRequiresStamina = false;
 
 	/*
 	*
@@ -461,6 +465,12 @@ protected:
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump")
+		bool _fSlideJumpLaunchXYOverride = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump")
 		bool _fSlideJumpLaunchZOverride = true;
 
 	/*
@@ -474,6 +484,88 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide Jump", Replicated)
 		bool _bIsSlideJumping = false;
+
+	// Movement | Wall Running **********************************************************************************************************************
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Running")
+		bool _bWallRunEnabled = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Running")
+		int _iWallRunStaminaChannel = 1.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Running")
+		float _fWallRunningOriginAdditive = 1.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Running")
+		float _fWallRunningRollMaximum = 20.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Wall Running")
+		bool _bLerpWallRunCamera = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Wall Running", ReplicatedUsing = OnRep_IsWallRunning)
+		bool _bIsWallRunning = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Wall Running")
+		FVector _WallRunDirection = FVector::ZeroVector;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Wall Running", Replicated)
+		E_WallRunDirection _eWallRunSide = E_WallRunDirection::eWRD_Left;
+
+	// Movement | Wall Run Jump *********************************************************************************************************************
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Wall Run Jump")
+		bool _bIsTryingToWallJump = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Run Jump")
+		bool _bWallRunJumpXYOverride = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Run Jump")
+		float _fWallRunJumpLaunchXForce = 500.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Run Jump")
+		float _fWallRunJumpLaunchYForce = 300.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Run Jump")
+		float _fWallRunJumpLaunchZForce = 700.0f;
 
 public:
 
@@ -661,9 +753,14 @@ public:
 	// Movement | Jump ************************************************************************************************************************
 
 	/*
-
+	*
 	*/
 	virtual void InputJump() override;
+
+	/*
+	*
+	*/
+	virtual void InputJumpExit();
 
 	///////////////////////////////////////////////
 
@@ -690,7 +787,15 @@ public:
 	///////////////////////////////////////////////
 
 	/*
+	* @summary:	Launches the character with velocity in the specified direction.
 	*
+	* @networking:	Runs on server
+	*
+	* @param:	FVector LaunchVelocity
+	* @param:	bool XYOverride
+	* @param:	bool ZYOverride
+	*
+	* @return:	void
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_LaunchCharacter(FVector LaunchVelocity, bool XYOverride, bool ZOverride);
@@ -698,7 +803,15 @@ public:
 	///////////////////////////////////////////////
 
 	/*
+	* @summary:	Launches the character with velocity in the specified direction.
 	*
+	* @networking:	Runs on all clients
+	*
+	* @param:	FVector LaunchVelocity
+	* @param:	bool XYOverride
+	* @param:	bool ZYOverride
+	*
+	* @return:	void
 	*/
 	UFUNCTION(NetMulticast, Reliable, WithValidation)
 		void Multicast_Reliable_LaunchCharacter(FVector LaunchVelocity, bool XYOverride, bool ZOverride);
@@ -718,6 +831,14 @@ public:
 	*/
 	UFUNCTION()
 		virtual void InputSlideExit();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		virtual void InputSlideToggle(bool Sliding);
 
 	///////////////////////////////////////////////
 
@@ -792,5 +913,103 @@ public:
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetSlideJumping(bool SlideJumping);
+
+	// Movement | Wall Running **********************************************************************************************************************
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		virtual void OnRep_IsWallRunning();
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void SetHorizontalVelocity(float HorizontalVelocityX, float HorizontalVelocityY);
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_SetHorizontalVelocity(float HorizontalVelocityX, float HorizontalVelocityY);
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure, Category = "Movement | Wall Running")
+		FVector2D GetHorizontalVelocity() const;
+
+	/*
+	*
+	*/ 
+	UFUNCTION()
+		void ClampHorizontalVelocity();
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		FVector DetermineRunDirectionAndSide(FVector WallNormal, E_WallRunDirection& WallRunDirectionEnum);
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure, Category = "Movement | Wall Running")
+		bool IsWallRunning() const { return _bIsWallRunning; }
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure, Category = "Movement | Wall Running")
+		bool ValidWallRunInput() const;
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		bool CheckIfSurfaceCanBeWallRan(FVector SurfaceNormal) const;
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void OnCapsuleComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		FVector GetWallRunLaunchVelocity();
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void StartWallRun();
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void EndWallRun();
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void Tick_WallRunning();
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_SetIsWallRunning(bool IsWallRunning);
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_SetWallRunDirection(E_WallRunDirection WallRunDirection);
 
 };
