@@ -2,6 +2,7 @@
 
 #include "ArenaCharacter.h"
 
+#include "BasePlayerController.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "FireMode.h"
@@ -12,6 +13,7 @@
 #include "Kismet/KismetInputLibrary.h"
 #include "Math/UnrealMathUtility.h"
 #include "Stamina.h"
+#include "Structures.h"
 #include "UnrealNetwork.h"
 #include "Weapon.h"
 
@@ -110,39 +112,39 @@ void AArenaCharacter::Tick(float DeltaTime)
 	// If we're currently in the air and not doing any checks for landing on the ground, then start doing those checks
 	if (GetCharacterMovement()->IsFalling() && !_bIsPerformingGroundChecks) { _bIsPerformingGroundChecks; }
 	if (_bIsPerformingGroundChecks) { OnGroundChecks(); }
-	
+
 	// Slide camera(origin) lerping
 	if (_bLerpSlideCamera)
 	{
 		if (_PrimaryWeapon == NULL) { return; }
 
 		// Add to lerp time
-if (_fSlideCameraLerpTime < _fSlideCameraLerpingDuration)
-{
-	_fSlideCameraLerpTime += DeltaTime;
+		if (_fSlideCameraLerpTime < _fSlideCameraLerpingDuration)
+		{
+			_fSlideCameraLerpTime += DeltaTime;
 
-	// Determine origin transform
-	bool ads = _PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled();
-	FTransform adsOrigin = _PrimaryWeapon->GetCurrentFireMode()->GetOriginADS();
-	FTransform hipOrigin = _PrimaryWeapon->GetTransformOriginHands();
-	FTransform originTransform = UKismetMathLibrary::SelectTransform(adsOrigin, hipOrigin, _bIsAiming && ads);
+			// Determine origin transform
+			bool ads = _PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled();
+			FTransform adsOrigin = _PrimaryWeapon->GetCurrentFireMode()->GetOriginADS();
+			FTransform hipOrigin = _PrimaryWeapon->GetTransformOriginHands();
+			FTransform originTransform = UKismetMathLibrary::SelectTransform(adsOrigin, hipOrigin, _bIsAiming && ads);
 
-	// Get slide/unslide origins
-	FTransform slideTransform = UKismetMathLibrary::SelectTransform(_tSlideWeaponOrigin, originTransform, _bIsSliding);
-	FTransform unslideTransform = UKismetMathLibrary::SelectTransform(originTransform, _tSlideWeaponOrigin, _bIsSliding);
+			// Get slide/unslide origins
+			FTransform slideTransform = UKismetMathLibrary::SelectTransform(_tSlideWeaponOrigin, originTransform, _bIsSliding);
+			FTransform unslideTransform = UKismetMathLibrary::SelectTransform(originTransform, _tSlideWeaponOrigin, _bIsSliding);
 
-	// Current lerp transition origin between slide/unslide
-	FTransform enter = UKismetMathLibrary::SelectTransform(slideTransform, unslideTransform, _bSlideEnter);
-	FTransform exit = UKismetMathLibrary::SelectTransform(slideTransform, unslideTransform, !_bSlideEnter);
-	FTransform lerpTransform = UKismetMathLibrary::TLerp(unslideTransform, slideTransform, _fSlideCameraLerpTime / _fSlideCameraLerpingDuration);
+			// Current lerp transition origin between slide/unslide
+			FTransform enter = UKismetMathLibrary::SelectTransform(slideTransform, unslideTransform, _bSlideEnter);
+			FTransform exit = UKismetMathLibrary::SelectTransform(slideTransform, unslideTransform, !_bSlideEnter);
+			FTransform lerpTransform = UKismetMathLibrary::TLerp(unslideTransform, slideTransform, _fSlideCameraLerpTime / _fSlideCameraLerpingDuration);
 
-	// Set lerp transform to first person arms
-	_FirstPerson_Arms->SetRelativeTransform(lerpTransform);
-}
+			// Set lerp transform to first person arms
+			_FirstPerson_Arms->SetRelativeTransform(lerpTransform);
+		}
 
-// Stop lerping
-else
-{ _bLerpSlideCamera = false; }
+		// Stop lerping
+		else
+		{ _bLerpSlideCamera = false; }
 	}
 
 	// Slide movement capsule lerping
@@ -197,19 +199,21 @@ else
 		}
 
 		///GEngine->AddOnScreenDebugMessage(5, 5.0f, FColor::Cyan, FString::SanitizeFloat(controller->GetControlRotation().Roll));
-	}
-	else
+	} else
 	{
 		// Tilt camera back to zero
 		APlayerController* controller = Cast<APlayerController>(GetController());
-		float roll = controller->GetControlRotation().Roll;
-
-		if (roll != 0)
+		if (controller != NULL)
 		{
-			if (roll >= 360 - _fWallRunningRollMaximum - 1) { AddControllerRollInput(_fWallRunningOriginAdditive); }
-			if (roll <= _fWallRunningRollMaximum + 1) { AddControllerRollInput(-_fWallRunningOriginAdditive); }
+			float roll = controller->GetControlRotation().Roll;
 
-			///GEngine->AddOnScreenDebugMessage(5, 5.0f, FColor::Cyan, FString::SanitizeFloat(controller->GetControlRotation().Roll));
+			if (roll != 0)
+			{
+				if (roll >= 360 - _fWallRunningRollMaximum - 1) { AddControllerRollInput(_fWallRunningOriginAdditive); }
+				if (roll <= _fWallRunningRollMaximum + 1) { AddControllerRollInput(-_fWallRunningOriginAdditive); }
+
+				///GEngine->AddOnScreenDebugMessage(5, 5.0f, FColor::Cyan, FString::SanitizeFloat(controller->GetControlRotation().Roll));
+			}
 		}
 	}
 }
@@ -1061,7 +1065,7 @@ void AArenaCharacter::InputSlideEnter()
 		float forwardSpeed = FVector::DotProduct(velocity, UKismetMathLibrary::GetForwardVector(GetActorRotation()));
 		///bool checkUpVelocity = GetCharacterMovement()->IsMovingOnGround() ? true : velocity.Z < _fSlideUpVelocityThreshold;
 		///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("" + FString::SanitizeFloat(forwardSpeed)));
-		if (forwardSpeed > _fSlideForwardVelocityThreshold)
+		if (forwardSpeed > _fSlideForwardVelocityThreshold || forwardSpeed < -_fSlideForwardVelocityThreshold)
 		{
 			// If we're currently airbourne
 			if (!GetCharacterMovement()->IsMovingOnGround())
@@ -1159,10 +1163,17 @@ void AArenaCharacter::InputSlideToggle(bool Sliding)
 */
 void AArenaCharacter::Slide()
 {
-	// Can only slide when we're using forward input
+	// Can only slide when we're using forward/backward input
 	APlayerController* playerController = Cast<APlayerController>(this->GetController());
 	if (playerController == NULL) { return; }
-	if (playerController->IsInputKeyDown(EKeys::W))
+
+	// If we're pressing forward, then our velocity HAS to be forward (and above threshold)
+	// If we're pressing backward, then our velocity HAS to be backward (and under threshold)
+	FVector velocity = GetCharacterMovement()->Velocity;
+	float forwardSpeed = FVector::DotProduct(velocity, UKismetMathLibrary::GetForwardVector(GetActorRotation()));
+	bool validForward = forwardSpeed > _fSlideForwardVelocityThreshold && playerController->IsInputKeyDown(EKeys::W);
+	bool validBackward = forwardSpeed < -_fSlideForwardVelocityThreshold && playerController->IsInputKeyDown(EKeys::S);
+	if (validForward || validBackward)
 	{
 		// Stop sprinting (if we were)
 		if (_bIsSprinting) { StopSprinting(); }
@@ -1531,10 +1542,23 @@ FVector AArenaCharacter::DetermineRunDirectionAndSide(FVector WallNormal, E_Wall
 */
 bool AArenaCharacter::ValidWallRunInput() const
 {
-	// No valid forward input
-	if (_fForwardInputScale < 0.1f) { return false; }
+	APlayerController* playerController = Cast<APlayerController>(GetController());
+	if (playerController == NULL) { return false; }
+
+	// Get controller type (keyboard/gamepad)
+	ABasePlayerController* basePlayerController = Cast<ABasePlayerController>(playerController);
+	E_ControllerType controllerType = basePlayerController->GetControllerType();
+
+	// Only need valid forward input if this is a keyboard/mouse combo
+	if (controllerType == E_ControllerType::eCT_Keyboard)
+	{
+		if (_fForwardInputScale == 0.0f) { return false; }
+	}
+	
+	// Cant wall run anymore if we're trying to jump off the wall
 	if (_bIsTryingToWallJump) { return false; }
 
+	// Checking for sideways input
 	bool validInput = false;
 	switch (_eWallRunSide)
 	{
@@ -1556,7 +1580,7 @@ bool AArenaCharacter::ValidWallRunInput() const
 	default: break;
 	}
 
-	//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Emerald, validInput ? TEXT("true") : TEXT("false"));
+	///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Emerald, validInput ? TEXT("true") : TEXT("false"));
 	return validInput;
 }
 
