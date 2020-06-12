@@ -120,73 +120,85 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDashEnabled"))
 		int _iDashStaminaChannel = 1;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDashEnabled"))
 		float _fGroundDashStrength = 1350.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDashEnabled"))
 		float _fGroundDashAngleStrength = 875.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDashEnabled"))
 		float _fAirDashStrength = 1200.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDashEnabled"))
 		float _fAirDashAngleStrength = 925.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDashEnabled"))
 		TArray<FDashCameraShakeStruct> _DashCameraShakes;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDashEnabled"))
 		float _fThrustGamepadRumbleIntensity = 3.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDashEnabled"))
 		float _fThrustGamepadRumbleDuration = 0.15f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDashEnabled"))
 		bool _fThrustGamepadRumbleAffectsLeftLarge = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDashEnabled"))
 		bool _fThrustGamepadRumbleAffectsLeftSmall = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDashEnabled"))
 		bool _fThrustGamepadRumbleAffectsRightLarge = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDashEnabled"))
 		bool _fThrustGamepadRumbleAffectsRightSmall = true;
 
 	/*
@@ -222,7 +234,8 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDashEnabled"))
 		float _fDashDuration = 2.0f;
 
 	/*
@@ -242,25 +255,29 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Double Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Double Jump",
+		meta = (EditCondition = "_bDoubleJumpEnabled"))
 		bool _bDoubleJumpRequiresStamina = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Double Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Double Jump",
+		meta = (EditCondition = "_bDoubleJumpEnabled && _bDoubleJumpRequiresStamina"))
 		int _iDoubleJumpStaminaChannel = 2;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Double Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Double Jump",
+		meta = (EditCondition = "_bDoubleJumpEnabled"))
 		float _fDoubleJumpForce = 820.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Double Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Double Jump",
+		meta = (EditCondition = "_bDoubleJumpEnabled"))
 		float _fDoubleJumpCameraShakeScale = 1.5f;
 
 	/*
