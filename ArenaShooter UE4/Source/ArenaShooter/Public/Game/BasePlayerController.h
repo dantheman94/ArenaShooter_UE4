@@ -468,8 +468,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Input | Rebinding")
 		bool RebindAxisKey(FInputAxisKeyMapping OldBinding, FInputAxisKeyMapping NewBinding);
 
-	///////////////////////////////////////////////
-
 	/**
 	* @summary:	Tries to find the matching action binding & replaces the input key with the new binding.
 	*
@@ -481,7 +479,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Input | Rebinding")
 		bool RebindActionKey(FInputActionKeyMapping OldBinding, FInputActionKeyMapping NewBinding);
 
-	///////////////////////////////////////////////
+	// Debug **********************************************************************************************************************************
 
 	virtual bool ProcessConsoleExec(const TCHAR* Cmd, FOutputDevice& Ar, UObject* Executor) override;
 
