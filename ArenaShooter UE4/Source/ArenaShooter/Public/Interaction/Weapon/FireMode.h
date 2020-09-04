@@ -327,7 +327,7 @@ protected:
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Activation")
-		int _iFiringModeIterator = NULL;
+		int _iFiringModeIterator = 0;
 
 	// Aim Assist *****************************************************************************************************************************
 
