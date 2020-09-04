@@ -56,7 +56,9 @@ void ABasePlayerController::SetupInputComponent()
 	InputComponent->BindAxis("MoveRight", this, &ABasePlayerController::MoveRight);
 
 	// Bind movement controls
-	InputComponent->BindAction("Ability", IE_Pressed, this, &ABasePlayerController::Ability);
+	InputComponent->BindAction("Dash", IE_Pressed, this, &ABasePlayerController::DashEnter);
+	InputComponent->BindAction("Grapple", IE_Pressed, this, &ABasePlayerController::GrappleHookEnter);
+	InputComponent->BindAction("Grapple", IE_Released, this, &ABasePlayerController::GrappleHookExit);
 	InputComponent->BindAction("Clamber", IE_Pressed, this, &ABasePlayerController::Clamber);
 	InputComponent->BindAction("CrouchHold", IE_Pressed, this, &ABasePlayerController::CrouchHoldEnter);
 	InputComponent->BindAction("CrouchHold", IE_Released, this, &ABasePlayerController::CrouchHoldExit);
@@ -194,13 +196,13 @@ bool ABasePlayerController::InputKey(FKey Key, EInputEvent EventType, float Amou
 
 void ABasePlayerController::AimWeaponEnter()
 {
-	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
+	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
 	if (pawn) { pawn->AimWeaponEnter(); }
 }
 
 void ABasePlayerController::AimWeaponExit()
 {
-	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
+	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
 	if (pawn) { pawn->AimWeaponExit(); }
 }
 
@@ -240,13 +242,13 @@ void ABasePlayerController::FireSecondaryWeaponExit()
 
 void ABasePlayerController::ReloadPrimaryWeapon()
 {
-	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
+	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
 	if (pawn) { pawn->InputReloadPrimaryWeapon(); }
 }
 
 void ABasePlayerController::ReloadSecondaryWeapon()
 {
-	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
+	auto pawn = Cast<ABaseCharacter>(this->GetPawn());
 	if (pawn) { pawn->InputReloadSecondaryWeapon(); }
 }
 
@@ -450,14 +452,38 @@ void ABasePlayerController::LookRight(float Value)
 
 // Movement | Ability *********************************************************************************************************************
 
-void ABasePlayerController::Ability()
+/*
+*
+*/
+void ABasePlayerController::DashEnter()
 {
 	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
 	if (pawn) { pawn->InputDash(); }
 }
 
+/*
+*
+*/
+void ABasePlayerController::GrappleHookEnter()
+{
+	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
+	if (pawn) { pawn->GrappleHookEnter(); }
+}
+
+/*
+*
+*/
+void ABasePlayerController::GrappleHookExit()
+{
+	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
+	if (pawn) { pawn->GrappleHookExit(); }
+}
+
 // Movement | Clamber *********************************************************************************************************************
 
+/*
+*
+*/
 void ABasePlayerController::Clamber()
 {
 
@@ -465,6 +491,9 @@ void ABasePlayerController::Clamber()
 
 // Movement | Crouch **********************************************************************************************************************
 
+/*
+*
+*/
 void ABasePlayerController::CrouchHoldEnter()
 {
 	// BaseCharacter crouch
@@ -472,6 +501,9 @@ void ABasePlayerController::CrouchHoldEnter()
 	///if (basecharacter) { basecharacter->EnterCrouch(); }
 }
 
+/*
+*
+*/
 void ABasePlayerController::CrouchHoldExit()
 {
 	// BaseCharacter crouch
@@ -479,6 +511,9 @@ void ABasePlayerController::CrouchHoldExit()
 	///if (basecharacter) { basecharacter->ExitCrouch(); }
 }
 
+/*
+*
+*/
 void ABasePlayerController::CrouchToggle()
 {
 	// Pawn check
@@ -488,12 +523,18 @@ void ABasePlayerController::CrouchToggle()
 
 // Movement | Hover ***********************************************************************************************************************
 
+/*
+*
+*/
 void ABasePlayerController::HoverEnter()
 {
 	auto pawn = Cast<AArenaCharacter>(this->GetPawn());
 	if (pawn) { pawn->HoverEnter(); }
 }
 
+/*
+*
+*/
 void ABasePlayerController::HoverExit()
 {
 	auto pawn = Cast<AArenaCharacter>(this->GetPawn());

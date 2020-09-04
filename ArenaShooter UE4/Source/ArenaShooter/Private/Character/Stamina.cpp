@@ -61,6 +61,8 @@ void UStamina::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompone
 			// Stop ticking
 			_bShouldBeTicking = false;
 			SetComponentTickEnabled(_bShouldBeTicking);
+
+			_fOnEndRechargingStamina.Broadcast();
 		}
 
 		// Regenerate stamina
@@ -103,13 +105,21 @@ void UStamina::StartRechargingStamina()
 	_eStaminaState = E_StaminaStateType::ePT_Additive;
 	_bShouldBeTicking = true;
 	SetComponentTickEnabled(_bShouldBeTicking);
+
+	_fOnStartRechargingStamina.Broadcast(1.0f);
 }
 
 /*
 *
 */
-void UStamina::StartDrainingStamina()
+void UStamina::StartDrainingStamina(float DrainRate = 0.0f)
 {
+	if (DrainRate != 0.0f)
+	{ 		
+		_fDefaultDrainRate = _fDrainRate;
+		_fDrainRate = DrainRate; 
+	}
+
 	_eStaminaState = E_StaminaStateType::ePT_Subtractive;
 	_bShouldBeTicking = true;
 	SetComponentTickEnabled(_bShouldBeTicking);
@@ -123,6 +133,7 @@ void UStamina::StopDrainingStamina()
 	// Stop ticking
 	_bShouldBeTicking = false;
 	SetComponentTickEnabled(_bShouldBeTicking);
+	DelayedRecharge();
 }
 
 /*

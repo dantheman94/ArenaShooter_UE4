@@ -16,6 +16,13 @@ enum class E_StaminaStateType : uint8
 	ePT_Subtractive UMETA(DisplayName = "Draining")
 };
 
+// *** EVENT DISPATCHERS / DELEGATES
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStartRechargingStamina, float, RechargeTime);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEndRechargingStamina);
+
+// *** CLASSES
+
 UCLASS(ClassGroup = (Custom), BlueprintType, Blueprintable, meta = (BlueprintSpawnableComponent))
 class ARENASHOOTER_API UStamina : public UActorComponent
 {
@@ -80,6 +87,12 @@ protected:
 		float _fDrainRate = 2.0f;
 
 	/*
+	*	The rate of drainage on the stamina when its in a subtractive state.
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly)
+		float _fDefaultDrainRate = 2.0f;
+
+	/*
 	*	The rate of regeneration on the stamina when its in an additive state.
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly)
@@ -96,6 +109,18 @@ protected:
 	*/
 	UPROPERTY()
 		FTimerHandle _fRechargeDelayHandle;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintAssignable)
+		FOnStartRechargingStamina _fOnStartRechargingStamina;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintAssignable)
+		FOnEndRechargingStamina _fOnEndRechargingStamina;
 
 public:
 
@@ -122,7 +147,7 @@ public:
 	*
 	*/
 	UFUNCTION(BlueprintCallable)
-		void StartDrainingStamina();
+		void StartDrainingStamina(float DrainRate);
 
 	/*
 	*
@@ -133,14 +158,14 @@ public:
 	/*
 	*
 	*/
-	UFUNCTION()
-		void DelayedRecharge();
+	UFUNCTION(BlueprintPure)
+		float GetStamina() { return _fStamina; }
 
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintPure)
-		float GetStamina() { return _fStamina; }
+		float GetMaxStaminaAmount() { return _MAX_STAMINA; }
 
 	/*
 	*
@@ -177,5 +202,17 @@ public:
 	*/
 	UFUNCTION()
 		bool HasStamina() { return _fStamina > 0.0f; }
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable)
+		void ClearStamina() { SetStamina(0.0f); }
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable)
+		void DelayedRecharge();
 
 };

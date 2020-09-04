@@ -16,6 +16,13 @@ class ABasePlayerController;
 class ABasePlayerState;
 
 UENUM(BlueprintType)
+enum class E_GameStates : uint8
+{
+	eGS_Menu UMETA(DisplayName = "Main Menu"),
+	eGS_Ingame UMETA(DisplayName = "Gameplay")
+};
+
+UENUM(BlueprintType)
 enum class E_WallRunDirection : uint8
 {
 	eWRD_Left UMETA(DisplayName = "Left Side"),
@@ -41,20 +48,40 @@ enum class E_GameTypes : uint8
 };
 
 UENUM(BlueprintType)
-enum class E_MainMenu : uint8
+enum class E_MainMenuPage : uint8
 {
 	eGT_Splash UMETA(DisplayName = "Splash Screen"),
 	eGT_Loading UMETA(DisplayName = "Loading Screen"),
 	eGT_MainMenu UMETA(DisplayName = "Main Menu"),
 	eGT_Matchmaking UMETA(DisplayName = "Matchmaking"),
+	eGT_Playlist UMETA(DisplayName = "Playlist"),
+	eGT_ServerBrowser UMETA(DisplayName = "Server Browser"),
 	eGT_CreateMatch UMETA(DisplayName = "Host Match"),
 	eGT_NotHosting UMETA(DisplayName = "Non-host Screen"),
+	eGT_Searching UMETA(DisplayName = "Searching for Match"),
+	eGT_PreMatch UMETA(DisplayName = "PreMatch"),
 	eGT_BarracksHome UMETA(DisplayName = "Barracks Home"),
 	eGT_SettingsHome UMETA(DisplayName = "Settings Home"),
 	eGT_SettingsGamepad UMETA(DisplayName = "Settings Gamepad"),
 	eGT_SettingsKeyBindings UMETA(DisplayName = "Settings Key Bindings"),
 	eGT_SettingsDisplay UMETA(DisplayName = "Settings Display"),
 	eGT_SettingsAudio UMETA(DisplayName = "Settings Audio")
+};
+
+UENUM(BlueprintType)
+enum class E_ProfilePage : uint8
+{
+	ePP_ProfileHome UMETA(DisplayName = "Profile Home"),
+	ePP_ServiceRecord UMETA(DisplayName = "Service Record"),
+	ePP_Commendations UMETA(DisplayName = "Commendations"),
+	ePP_Emblem UMETA(DisplayName = "Emblem"),
+	ePP_Character UMETA(DisplayName = "Character"),
+	ePP_WeaponSkins UMETA(DisplayName = "Weapon Skins"),
+	ePP_SettingsHome UMETA(DisplayName = "Settings Home"),
+	ePP_SettingsGamepad UMETA(DisplayName = "Settings Gamepad"),
+	ePP_SettingsKeyBindings UMETA(DisplayName = "Settings Key Bindings"),
+	ePP_SettingsDisplay UMETA(DisplayName = "Settings Display"),
+	ePP_SettingsAudio UMETA(DisplayName = "Settings Audio")
 };
 
 UENUM(BlueprintType)
@@ -184,6 +211,16 @@ enum class E_SessionState : uint8
 	eSS_Default UMETA(DisplayName = "Default"),
 	eSS_Alive UMETA(DisplayName = "Alive"),
 	eSS_Dead UMETA(DisplayName = "Dead")
+};
+
+UENUM(BlueprintType)
+enum class E_MatchmakingState : uint8
+{
+	eMS_Idle UMETA(DisplayName = "Idle"),
+	eMS_SearchingPlayers UMETA(DisplayName = "Searching for players"),
+	eMS_ExpandingSearching UMETA(DisplayName = "Expanding search pool"),
+	eMS_SearchComplete UMETA(DisplayName = "Players found"),
+	eMS_Vetoing UMETA(DisplayName = "Confirming match")
 };
 
 USTRUCT(BlueprintType)

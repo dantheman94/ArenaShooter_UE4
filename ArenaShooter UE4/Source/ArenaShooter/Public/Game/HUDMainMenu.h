@@ -26,10 +26,10 @@ protected:
 	// Main Menu ******************************************************************************************************************************
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
-		E_MainMenu _CurrentMenuState = E_MainMenu::eGT_Splash;
+		E_MainMenuPage _CurrentMenuState = E_MainMenuPage::eGT_Splash;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
-		E_MainMenu _PreviousMenuState = E_MainMenu::eGT_Splash;
+		E_MainMenuPage _PreviousMenuState = E_MainMenuPage::eGT_Splash;
 
 	/*
 	*
@@ -40,7 +40,7 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Main Menu")
 		UUserWidget* _UI_SplashScreen_Instance = NULL;
 
 	/*
@@ -52,7 +52,7 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Main Menu")
 		UUserWidget* _UI_MainMenu_Instance = NULL;
 
 	/*
@@ -64,8 +64,32 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Main Menu")
 		UUserWidget* _UI_Matchmaking_Instance = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Main Menu")
+		TSubclassOf<class UUserWidget> _UI_ServerBrowser_Class;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Main Menu")
+		UUserWidget* _UI_ServerBrowser_Instance = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Main Menu")
+		TSubclassOf<class UUserWidget> _UI_Playlist_Class;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Main Menu")
+		UUserWidget* _UI_Playlist_Instance = NULL;
 
 	/*
 	*
@@ -76,7 +100,7 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Main Menu")
 		UUserWidget* _UI_HostLobby_Instance = NULL;
 
 	/*
@@ -88,8 +112,32 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Main Menu")
 		UUserWidget* _UI_ClientLobby_Instance = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Main Menu")
+		TSubclassOf<class UUserWidget> _UI_SearchingForMatch_Class;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Main Menu")
+		UUserWidget* _UI_SearchingForMatch_Instance = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Main Menu")
+		TSubclassOf<class UUserWidget> _UI_PreMatch_Class;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Main Menu")
+		UUserWidget* _UI_PreMatch_Instance = NULL;
 
 	/*
 	*
@@ -100,7 +148,7 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Main Menu")
 		UUserWidget* _UI_LobbyRoster_Instance = NULL;
 
 	/*
@@ -112,7 +160,7 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Main Menu")
 		UUserWidget* _UI_LoadingServer_Instance = NULL;
 
 	/*
@@ -124,7 +172,7 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Main Menu")
 		UUserWidget* _UI_GameModeList_Instance = NULL;
 
 	/*
@@ -136,7 +184,7 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Main Menu")
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Main Menu")
 		UUserWidget* _UI_MapList_Instance = NULL;
 
 	/*
@@ -148,7 +196,7 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Settings")
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Settings")
 		UUserWidget* _UI_BarracksHome_Instance = NULL;
 
 	/*
@@ -160,7 +208,7 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Settings")
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Settings")
 		UUserWidget* _UI_SettingsHome_Instance = NULL;
 
 	/*
@@ -172,7 +220,7 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Settings")
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Settings")
 		UUserWidget* _UI_SettingsGamepad_Instance = NULL;
 
 	/*
@@ -184,7 +232,7 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Settings")
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Settings")
 		UUserWidget* _UI_SettingsKeyBindings_Instance = NULL;
 
 	/*
@@ -196,7 +244,7 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Settings")
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Settings")
 		UUserWidget* _UI_SettingsDisplay_Instance = NULL;
 
 	/*
@@ -208,7 +256,7 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Widgets | Settings")
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Settings")
 		UUserWidget* _UI_SettingsAudio_Instance = NULL;
 
 public:
@@ -227,7 +275,7 @@ public:
 	*
 	*/
 	UFUNCTION(BlueprintGetter)
-		E_MainMenu GetCurrentMainMenuState() { return _CurrentMenuState; }
+		E_MainMenuPage GetCurrentMainMenuState() { return _CurrentMenuState; }
 
 	///////////////////////////////////////////////
 
@@ -274,6 +322,22 @@ public:
 	/*
 	*
 	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void ShowUI_Playlist(int ZOrder);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void ShowUI_ServerBrowser(int ZOrder);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
 	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent)
 		void ShowUI_LobbyPrematch(bool Hosting, int ZOrder);
 
@@ -314,6 +378,38 @@ public:
 	/*
 	*
 	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void ShowUI_SearchingForGames(int ZOrder);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void HideUI_SearchingForGames();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void ShowUI_PreMatchLobby(int ZOrder);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void HideUI_PreMatchLobby();
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
 	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent)
 		void ShowUI_LobbyMainMenu(bool Hosting, int ZOrder);
 
@@ -324,6 +420,14 @@ public:
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_LobbyRoster(int ZOrder);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void HideUI_LobbyRoster(bool bHideListOnly);
 
 	///////////////////////////////////////////////
 
@@ -396,5 +500,13 @@ public:
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_SettingsAudio(int ZOrder);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void ShowUI_NewMenuState(E_MainMenuPage NewMenuState, int ZOrder);
 
 };

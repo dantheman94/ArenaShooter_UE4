@@ -48,6 +48,7 @@ void AArenaCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	DOREPLIFETIME(AArenaCharacter, _bDashExiting);
 	DOREPLIFETIME(AArenaCharacter, _bIsDashing);
 	DOREPLIFETIME(AArenaCharacter, _bIsDoubleJumping);
 	DOREPLIFETIME(AArenaCharacter, _bIsHovering);
@@ -55,6 +56,8 @@ void AArenaCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AArenaCharacter, _bIsWallRunning);
 	DOREPLIFETIME(AArenaCharacter, _eDashDirection);
 	DOREPLIFETIME(AArenaCharacter, _eWallRunSide);
+	DOREPLIFETIME(AArenaCharacter, _DashExitVelocityStart);
+	DOREPLIFETIME(AArenaCharacter, _DashExitVelocityEnd);
 }
 
 ///////////////////////////////////////////////
@@ -169,7 +172,7 @@ void AArenaCharacter::Tick(float DeltaTime)
 	}
 
 	ClampHorizontalVelocity();
-	if (_bIsWallRunning) { Tick_WallRunning(); }
+	if (_bIsWallRunning) { Tick_WallRunning(DeltaTime); }
 
 	// Wall-run camera(origin) lerping
 	if (_bLerpWallRunCamera)
@@ -199,7 +202,8 @@ void AArenaCharacter::Tick(float DeltaTime)
 		}
 
 		///GEngine->AddOnScreenDebugMessage(5, 5.0f, FColor::Cyan, FString::SanitizeFloat(controller->GetControlRotation().Roll));
-	} else
+	} 
+	else
 	{
 		// Tilt camera back to zero
 		APlayerController* controller = Cast<APlayerController>(GetController());
@@ -216,6 +220,123 @@ void AArenaCharacter::Tick(float DeltaTime)
 			}
 		}
 	}
+
+	// Ramp down velocity
+	if (_bDashExiting)
+	{
+		if (_fVelocityZeroingTime < _fDashExitDuration)
+		{
+			// Zero the velocity over time
+			_fVelocityZeroingTime += DeltaTime;
+
+			// Set velocity
+			FVector vLerp = UKismetMathLibrary::VLerp(_DashExitVelocityStart, _DashExitVelocityEnd, _fVelocityZeroingTime / _fDashExitDuration);
+			///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Magenta, vLerp.ToString());
+			GetCharacterMovement()->Velocity = vLerp;
+
+			// Check if we're finished
+			if (_fVelocityZeroingTime >= _fDashExitDuration)
+			{
+				if (GetLocalRole() == ROLE_Authority)
+				{ _bDashExiting = false; }
+				else
+				{ Server_Reliable_SetDashExiting(false); }
+			}
+		}
+	}
+}
+
+///////////////////////////////////////////////
+
+/*
+* @summary:	Called every frame (if _bIsWallRunning == true)
+*
+* @param:	DeltaTime	- The delta of the frame.
+*
+* @return:	void
+*/
+void AArenaCharacter::Tick_WallRunning(float DeltaTime)
+{
+	if (!_bWallRunEnabled) { EndWallRun(); }
+
+	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
+	if (movementComponent == NULL) { return; }
+
+	// Get relevant stamina via matching channel
+	UStamina* stamina = NULL;
+	bool canWallRun = true; // Represents if there's a valid stamina channel found if needed
+	if (_bWallRunningRequiresStamina)
+	{
+		for (int i = 0; i < _uStaminaComponents.Num(); i++)
+		{
+			if (_uStaminaComponents[i]->GetStaminaChannel() == _iWallRunStaminaChannel)
+			{
+				stamina = _uStaminaComponents[i];
+				break;
+			}
+		}
+	}
+
+	// Valid stamina channel found
+	if (stamina != NULL) { canWallRun = stamina->HasStamina(); } else
+	{
+		// Didn't find a valid stamina channel & we require one
+		if (_bWallRunningRequiresStamina)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red,
+				TEXT("ERROR: Cannot < Wall Run > due to _uStaminaComponents not finding a valid matching stamina channel."));
+			return;
+		}
+	}
+
+	// Didn't find a matching stamina channel
+	if (stamina == NULL && _bWallRunningRequiresStamina) { return; }
+
+	if (canWallRun)
+	{
+		// Valid wall running input & theres valid stamina left
+		bool hasStamina = true;
+		if (stamina != NULL) { hasStamina = stamina->HasStamina(); } // This is so if there isn't a requirement for stamina to wall run then the game will assume that there is enough stamina
+		if (ValidWallRunInput() && hasStamina)
+		{
+			// Trace to current wall-running side to ensure that there is still a valid wall to wall run on
+			FVector select = FVector::ZeroVector;
+			if (_eWallRunSide == E_WallRunDirection::eWRD_Left) { select = FVector(0.0f, 0.0f, -1.0f); } else if (_eWallRunSide == E_WallRunDirection::eWRD_Right) { select = FVector(0.0f, 0.0f, 1.0f); }
+			///else { select = FVector(0.0f, 0.0f, 0.0f); }
+
+			FVector cross = UKismetMathLibrary::Cross_VectorVector(_WallRunDirection, select);
+			FVector endTrace = GetActorLocation() + cross * 200.0f;
+
+			FHitResult hitResult;
+			FCollisionQueryParams params;
+			params.bTraceComplex = false;
+			params.AddIgnoredActor(this);
+			GetWorld()->LineTraceSingleByChannel(hitResult, GetActorLocation(), endTrace, ECollisionChannel::ECC_Visibility, params);
+
+			if (hitResult.IsValidBlockingHit())
+			{
+				E_WallRunDirection eDir = E_WallRunDirection::eWRD_Up;
+				FVector vDir = DetermineRunDirectionAndSide(hitResult.ImpactNormal, eDir);
+
+				// Moving in the same assumed direction needed for the wall run (EG: We are moving forward relative to a left-sided wall run & not trying to move forward relative to a right-sided wall run)
+				if (eDir == _eWallRunSide)
+				{
+					_WallRunDirection = vDir;
+					///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Magenta, FString::Printf(TEXT("vDir %s"), *vDir.ToString()));
+					FVector v = UKismetMathLibrary::Multiply_VectorFloat(_WallRunDirection, movementComponent->GetMaxSpeed());
+					movementComponent->Velocity = FVector(v.X, v.Y, 0.0f);
+
+					// Drain stamina
+					if (stamina != NULL) { stamina->StartDrainingStamina(_bWallRunningCustomDrainRate ? _fWallRunStaminaDrainRate : 0.0f); }
+
+					// Push the player down (to imitate a slow slipping action off the wall)
+					FVector slip = FVector(0.0f, 0.0f, (_fWallRunningVerticalSlip * -1) * DeltaTime);
+					LaunchCharacter(slip, false, false);
+
+				} else { EndWallRun(); }
+			} else { EndWallRun(); }
+		} else { EndWallRun(); }
+	} else { EndWallRun(); }
 }
 
 ///////////////////////////////////////////////
@@ -259,7 +380,11 @@ void AArenaCharacter::OnGroundChecks()
 		_bHoverCancelled = false;
 
 		// Launch the character if we were trying to slide and waiting to hit the ground first
-		if (_bIsTryingToSlide) { Slide(); }
+		if (_bIsTryingToSlide)
+		{
+			Slide(_bWasDashingWhenSlideInputWasPressed); 
+			_bWasDashingWhenSlideInputWasPressed = false;
+		}
 		
 		// Dont play the landing camera shake if we're trying to slide
 		else
@@ -361,6 +486,28 @@ void AArenaCharacter::Multicast_Reliable_SetMovementMode_Implementation(EMovemen
 	movementComp->SetMovementMode(NewMovementMode, NewCustomMode);
 }
 
+// Movement | Grapple Hook ****************************************************************************************************************
+
+/*
+*
+*/
+void AArenaCharacter::GrappleHookEnter()
+{
+	if (!_bGrappleHookEnabled) { return; }
+
+	_fOnGrappleHook.Broadcast();
+}
+
+/*
+*
+*/
+void AArenaCharacter::GrappleHookExit()
+{
+	if (!_bGrappleHookEnabled) { return; }
+
+	_fOnGrappleHookRelease.Broadcast();
+}
+
 // Movement | Dash ************************************************************************************************************************
 
 /*
@@ -368,7 +515,9 @@ void AArenaCharacter::Multicast_Reliable_SetMovementMode_Implementation(EMovemen
 */
 void AArenaCharacter::InputDash()
 {
-	if (_bDashEnabled && _bCanDash && _uStaminaComponents.Num() > 0)
+	if (!_bDashEnabled) { return; }
+
+	if (_bCanDash && _uStaminaComponents.Num() > 0)
 	{
 		// Get relevant stamina via matching channel
 		UStamina* stamina = NULL;
@@ -384,11 +533,29 @@ void AArenaCharacter::InputDash()
 		// Valid stamina channel found
 		if (stamina != NULL)
 		{
-			if (stamina->IsFullyRecharged())
+			// Enough stamina to perform action?
+			bool enoughStamina = false;
+			if (!_bDashDrainsStaminaCompletely)
 			{
-				// Drain stamina
-				stamina->SetStamina(0.0f);
-				stamina->DelayedRecharge();
+				// Can perform multiple dashes per max stamina
+				float currentStaminaPercentage = stamina->GetStamina() / stamina->GetMaxStaminaAmount();
+				enoughStamina = currentStaminaPercentage >= _fDashStaminaPercentageCost;
+			}
+			
+			// Dash requires full stamina
+			else { enoughStamina = stamina->IsFullyRecharged(); }
+			if (enoughStamina)
+			{
+				// Current stamina is max stamina
+				float maxStamina = stamina->GetMaxStaminaAmount();
+
+				// Determine amount to subtract from stamina
+				float deductAmount = maxStamina * _fDashStaminaPercentageCost;
+
+				// New stamina amount
+				float newStamina = _bDashDrainsStaminaCompletely ? 0.0f : stamina->GetStamina() - deductAmount;
+				stamina->SetStamina(newStamina);
+				stamina->StopDrainingStamina();
 
 				// Cancel/disable combat modes
 				_bPrimaryReloadCancelled = true;
@@ -526,16 +693,25 @@ void AArenaCharacter::InputDash()
 					}
 				}
 
+				// Remove gravity
+				if (HasAuthority())
+				{ Multicast_Reliable_SetGravityScale(_fDashGravityScale); }
+				else
+				{ Server_Reliable_SetGravityScale(_fDashGravityScale); }
+
 				// Dash
+				*launchVector = FVector(launchVector->X, launchVector->Y, 0.0f);
 				if (HasAuthority())
 				{ Multicast_Reliable_LaunchCharacter(*launchVector, true, true); }
 				else
 				{ Server_Reliable_LaunchCharacter(*launchVector, true, true); }
+
+				_bCanExitDash = true;
 				
 				// Start Dash timer
 				Server_Reliable_SetDashing(true);
 				FTimerDelegate dashDelegate;
-				dashDelegate.BindUFunction(this, FName("StopDashing"));
+				dashDelegate.BindUFunction(this, FName("StopDashing"), *launchVector);
 				GetWorld()->GetTimerManager().SetTimer(_fDashHandle, dashDelegate, 1.0f, false, _fDashDuration);
 
 				// Camera shake
@@ -644,6 +820,90 @@ E_Direction AArenaCharacter::GetDirectionFromInput()
 
 ///////////////////////////////////////////////
 
+/*
+
+*/
+FVector AArenaCharacter::DirectionalInputToVector()
+{
+	float yaw = GetCharacterMovement()->GetPawnOwner()->GetControlRotation().Yaw;
+	FQuat quat = FQuat::MakeFromEuler(FVector(0.0f, 0.0f, yaw));
+	
+	// Get direction from input
+	FVector launchVector = FVector(FVector::ZeroVector);
+	E_Direction direction = GetDirectionFromInput();
+	switch (direction)
+	{
+
+	// Idle
+	case E_Direction::eGA_Idle:
+	{		
+		launchVector = UKismetMathLibrary::Quat_RotateVector(quat, FVector(0.0f, 0.0f, 0.0f));
+		break;
+	}
+
+	// Forward
+	case E_Direction::eGA_Fwd:
+	{
+		launchVector = UKismetMathLibrary::Quat_RotateVector(quat, FVector(1.0f, 0.0f, 0.0f));
+		break;
+	}
+
+	// Forward left
+	case E_Direction::eGA_FwdL:
+	{
+		launchVector = UKismetMathLibrary::Quat_RotateVector(quat, FVector(1.0f, -1.0f, 0.0f));
+		break;
+	}
+
+	// Forward right
+	case E_Direction::eGA_FwdR:
+	{
+		launchVector = UKismetMathLibrary::Quat_RotateVector(quat, FVector(1.0f, 1.0f, 0.0f));
+		break;
+	}
+
+	// Backward
+	case E_Direction::eGA_Bwd:
+	{
+		launchVector = UKismetMathLibrary::Quat_RotateVector(quat, FVector(-1.0f, 0.0f, 0.0f));
+		break;
+	}
+
+	// Backword Left
+	case E_Direction::eGA_BwdL:
+	{
+		launchVector = UKismetMathLibrary::Quat_RotateVector(quat, FVector(-1.0f, -1.0f, 0.0f));
+		break;
+	}
+
+	// Backword Rigth
+	case E_Direction::eGA_BwdR:
+	{
+		launchVector = UKismetMathLibrary::Quat_RotateVector(quat, FVector(-1.0f, 1.0f, 0.0f));
+		break;
+	}
+
+	// Left
+	case E_Direction::eGA_Left:
+	{
+		launchVector = UKismetMathLibrary::Quat_RotateVector(quat, FVector(0.0f, -1.0f, 0.0f));
+		break;
+	}
+
+	// Right
+	case E_Direction::eGA_Right:
+	{
+		launchVector = UKismetMathLibrary::Quat_RotateVector(quat, FVector(0.0f, 1.0f, 0.0f));
+		break;
+	}
+	default: break;
+	}
+
+	return launchVector;
+}
+
+///////////////////////////////////////////////
+
 bool AArenaCharacter::Server_Reliable_SetDashDirection_Validate(E_Direction Direction)
 { return true; }
 
@@ -663,7 +923,7 @@ void AArenaCharacter::Server_Reliable_SetDashing_Implementation(bool Dashing)
 /*
 *
 */
-void AArenaCharacter::StopDashing()
+void AArenaCharacter::StopDashing(FVector LaunchVelocity)
 {
 	// Reset friction
 	GetCharacterMovement()->GroundFriction = _fJogGroundFriction;
@@ -673,6 +933,31 @@ void AArenaCharacter::StopDashing()
 	// Set weapon firing capabilities
 	_bCanFirePrimary = true;
 	_bCanFireSecondary = _bIsDuelWielding; // Can only fire secondary weapon if we're currently duel-wielding
+
+	// Stop velocity to zero so we don't launch for fkn ages
+	_fVelocityZeroingTime = 0.0f;
+	if (_bCanExitDash && _bSeparateDashExitSpeed)
+	{
+		FVector vec = UKismetMathLibrary::ClampVectorSize(LaunchVelocity, 0.0f, _fDashExitSpeed);
+		///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Magenta, vec.ToString());
+		if (GetLocalRole() == ROLE_Authority)
+		{
+			_bDashExiting = true;
+			_DashExitVelocityStart = GetCharacterMovement()->Velocity;
+			_DashExitVelocityEnd = vec;
+		} else
+		{
+			Server_Reliable_SetDashExiting(true);
+			Server_Reliable_SetDashExitingStartVelocity(GetCharacterMovement()->Velocity);
+			Server_Reliable_SetDashExitingEndVelocity(vec);
+		}
+	}
+
+	// Reset gravity
+	if (HasAuthority())
+	{ Multicast_Reliable_SetGravityScale(_fDefaultGravityScale); } 
+	else
+	{ Server_Reliable_SetGravityScale(_fDefaultGravityScale); }
 }
 
 ///////////////////////////////////////////////
@@ -693,6 +978,42 @@ void AArenaCharacter::DetermineFinalLaunchVelocity(FVector& LaunchVelocity, FVec
 	{ LaunchVelocity = FVector(LaunchVelocity.X, LaunchVelocity.Y, LaunchVelocity.Z - 100.0f); }
 }
 
+///////////////////////////////////////////////
+
+bool AArenaCharacter::Server_Reliable_SetDashExiting_Validate(bool DashExiting)
+{ return true; }
+
+void AArenaCharacter::Server_Reliable_SetDashExiting_Implementation(bool DashExiting)
+{
+	_bDashExiting = DashExiting;
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+bool AArenaCharacter::Server_Reliable_SetDashExitingStartVelocity_Validate(FVector Velocity)
+{ return true; }
+
+void AArenaCharacter::Server_Reliable_SetDashExitingStartVelocity_Implementation(FVector Velocity)
+{
+	_DashExitVelocityStart = Velocity;
+}
+
+///////////////////////////////////////////////
+
+/*
+*
+*/
+bool AArenaCharacter::Server_Reliable_SetDashExitingEndVelocity_Validate(FVector Velocity)
+{ return true; }
+
+void AArenaCharacter::Server_Reliable_SetDashExitingEndVelocity_Implementation(FVector Velocity)
+{
+	_DashExitVelocityEnd = Velocity;
+}
+
 // Movement | Hover ***********************************************************************************************************************
 
 /*
@@ -709,45 +1030,77 @@ void AArenaCharacter::HoverEnter()
 		// Can only hover if we're currently in the air
 		if (moveComp->IsFalling())
 		{
-			// Stop jumping if we are
-			if (_bIsJumping)
+			// Get relevant stamina via matching channel
+			UStamina* stamina = NULL;
+			bool canHover = true; // Represents if there's a valid stamina channel found if needed
+			if (_bHoverRequiresStamina)
 			{
-				if (GetLocalRole() == ROLE_Authority)
-				{ _bIsJumping = false; }
-				else 
-				{ Server_Reliable_SetJumping(false); }
+				for (int i = 0; i < _uStaminaComponents.Num(); i++)
+				{
+					if (_uStaminaComponents[i]->GetStaminaChannel() == _iHoverStaminaChannel)
+					{
+						stamina = _uStaminaComponents[i];
+						break;
+					}
+				}
 			}
 
-			// Stop double jumping if we are
-			if (_bIsDoubleJumping)
-			{
-				if (GetLocalRole() == ROLE_Authority)
-				{ _bIsDoubleJumping = false; }
-				else
-				{ Server_Reliable_SetDoubleJumping(false); }
-			}		
-
-			// Start hovering
-			if (GetLocalRole() == ROLE_Authority)
-			{ 
-				_bIsHovering = true;
-				Multicast_Reliable_ChangeHoverState(true); 
-			}
+			// Valid stamina channel found
+			if (stamina != NULL) { canHover = stamina->HasStamina(); } 
 			else
-			{ 
-				Server_Reliable_SetHovering(true);
-				Server_Reliable_ChangeHoverState(true); 
+			{
+				// Didn't find a valid stamina channel & we require one
+				if (_bHoverRequiresStamina)
+				{
+					GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red,
+						TEXT("ERROR: Cannot < Hover > due to _uStaminaComponents not finding a valid matching stamina channel."));
+					return;
+				}
 			}
 
-			// Cannot perform air control maneuverabilities
-			moveComp->AirControl = 0.0f;
+			if (canHover)
+			{
+				// Stop jumping if we are
+				if (_bIsJumping)
+				{
+					if (GetLocalRole() == ROLE_Authority)
+					{ _bIsJumping = false; } else
+					{ Server_Reliable_SetJumping(false); }
+				}
 
-			_bCanHover = false;
-			_bHoverCancelled = false;
+				// Stop double jumping if we are
+				_bCanDoubleJump = false;
+				if (_bIsDoubleJumping)
+				{
+					if (GetLocalRole() == ROLE_Authority)
+					{ _bIsDoubleJumping = false; } else
+					{ Server_Reliable_SetDoubleJumping(false); }
+				}
 
-			FTimerDelegate hoverDelegate;
-			hoverDelegate.BindUFunction(this, FName("HoverExit"));
-			GetWorld()->GetTimerManager().SetTimer(_fHoverHandle, hoverDelegate, 1.0f, false, _fHoverDuration);
+				// Start hovering
+				if (GetLocalRole() == ROLE_Authority)
+				{
+					_bIsHovering = true;
+					Multicast_Reliable_ChangeHoverState(true);
+				} else
+				{
+					Server_Reliable_SetHovering(true);
+					Server_Reliable_ChangeHoverState(true);
+				}
+
+				// Cannot perform air control maneuverabilities
+				moveComp->AirControl = 0.0f;
+
+				_bCanHover = false; // This boolean represents whether we have hovered already (can only hover once per "falling" state, we have to touch the ground before we can hover again)
+				_bHoverCancelled = false;
+
+				FTimerDelegate hoverDelegate;
+				hoverDelegate.BindUFunction(this, FName("HoverExit"));
+				GetWorld()->GetTimerManager().SetTimer(_fHoverHandle, hoverDelegate, 1.0f, false, _fHoverDuration);
+
+				// Drain stamina
+				if (stamina != NULL) { stamina->StartDrainingStamina(_bHoverCustomDrainRate? _fHoverStaminaDrainRate : 0.0f); }
+			}
 		}
 	}
 }
@@ -786,6 +1139,24 @@ void AArenaCharacter::HoverExit()
 
 		// Reset air control maneuverabilities
 		GetCharacterMovement()->AirControl = _fDefaultAirControl;
+
+		// Get relevant stamina via matching channel
+		UStamina* stamina = NULL;
+		if (_bHoverRequiresStamina)
+		{
+			for (int i = 0; i < _uStaminaComponents.Num(); i++)
+			{
+				if (_uStaminaComponents[i]->GetStaminaChannel() == _iHoverStaminaChannel)
+				{
+					stamina = _uStaminaComponents[i];
+					break;
+				}
+			}
+		}
+		else { return; }
+
+		// Stop draining stamina
+		if (stamina != NULL) { stamina->StopDrainingStamina(); }
 	}
 }
 
@@ -964,7 +1335,15 @@ void AArenaCharacter::InputDoubleJump()
 		}
 
 		// Valid stamina channel found
-		if (stamina != NULL) { canDoubleJump = stamina->IsFullyRecharged(); }
+		if (stamina != NULL) { 
+
+			// Determine if the current stamina value as a % is greater than the threshold needed to perform the action
+			float currentStamina = stamina->GetStamina();
+			float maxStamina = stamina->GetMaxStaminaAmount();
+			float percent = currentStamina / maxStamina;
+			canDoubleJump = percent > _fDoubleJumpStaminaCost;
+			///canDoubleJump = stamina->IsFullyRecharged(); 
+		}
 		else
 		{
 			// Didn't find a valid stamina channel & we require one
@@ -978,19 +1357,34 @@ void AArenaCharacter::InputDoubleJump()
 
 		if (canDoubleJump)
 		{
-			// Drain stamina
+			// Drain stamina (Completely)
 			if (stamina != NULL)
 			{
+				// Stamina is full?
 				if (stamina->IsFullyRecharged())
-				{
-					stamina->SetStamina(0.0f);
-					stamina->DelayedRecharge();
+				{		
+					// Determine amount to subtract from stamina
+					float maxStamina = stamina->GetMaxStaminaAmount();
+					float deductAmount = maxStamina * _fDoubleJumpStaminaCost;
+
+					// New stamina amount
+					float newStamina = _bDoubleJumpDrainsStaminaCompletely ? 0.0f : maxStamina - deductAmount;
+					stamina->SetStamina(newStamina);
+					stamina->StopDrainingStamina();
 				}
 			}
 
-			// Double jump
+			// Can double jump
 			_bCanDoubleJump = false;
-			FVector force = FVector(0.0f, 0.0f, _fDoubleJumpForce);
+
+			// Directional force (WASD)
+			FVector force = DirectionalInputToVector();
+			force *= _fDoubleJumpDirectionalForce;
+
+			// Add vertical force to the directional force
+			force += FVector(0.0f, 0.0f, _fDoubleJumpZForce);
+
+			// Launch character
 			if (GetLocalRole() == ROLE_Authority)
 			{
 				LaunchCharacter(force, false, true);
@@ -1039,8 +1433,6 @@ void AArenaCharacter::Multicast_Reliable_LaunchCharacter_Implementation(FVector 
 
 // Movement | Jump ************************************************************************************************************************
 
-#pragma region Server_Reliable_SetDoubleJumping
-
 bool AArenaCharacter::Server_Reliable_SetDoubleJumping_Validate(bool DoubleJumping)
 { return true; }
 
@@ -1048,8 +1440,6 @@ void AArenaCharacter::Server_Reliable_SetDoubleJumping_Implementation(bool Doubl
 {
 	_bIsDoubleJumping = DoubleJumping;
 }
-
-#pragma endregion
 
 // Movement | Slide ***********************************************************************************************************************
 
@@ -1074,13 +1464,17 @@ void AArenaCharacter::InputSlideEnter()
 				GetCharacterMovement()->GravityScale = _fSlideAirbourneGravityForce;
 				_bIsPerformingGroundChecks = true;
 				_bIsTryingToSlide = true;
+				_bWasDashingWhenSlideInputWasPressed = _bIsDashing;
 			} 
 			
 			// Already touching the ground so just slide straight away
-			else { Slide(); }
+			else { Slide(_bIsDashing); }
 
 			// Disable vaulting during a slide attempt
 			_bCanVault = false;
+
+			// This disables the velocity zeroing sequence once a dash maneuver is complete
+			_bCanExitDash = false;
 		}
 	}
 }
@@ -1132,6 +1526,9 @@ void AArenaCharacter::InputSlideExit()
 		_bCanVault = true;
 	}
 	_bIsTryingToSlide = false;
+
+	// This re-enables the velocity zeroing sequence once a dash maneuver is complete
+	_bCanExitDash = _bIsDashing;
 }
 
 ///////////////////////////////////////////////
@@ -1161,7 +1558,7 @@ void AArenaCharacter::InputSlideToggle(bool Sliding)
 /*
 *
 */
-void AArenaCharacter::Slide()
+void AArenaCharacter::Slide(bool WasDashing)
 {
 	// Can only slide when we're using forward/backward input
 	APlayerController* playerController = Cast<APlayerController>(this->GetController());
@@ -1175,6 +1572,14 @@ void AArenaCharacter::Slide()
 	bool validBackward = forwardSpeed < -_fSlideForwardVelocityThreshold && playerController->IsInputKeyDown(EKeys::S);
 	if (validForward || validBackward)
 	{
+		_bCanExitDash = false;
+
+		// Reset gravity
+		if (HasAuthority())
+		{ Multicast_Reliable_SetGravityScale(_fDefaultGravityScale); } 
+		else
+		{ Server_Reliable_SetGravityScale(_fDefaultGravityScale); }
+
 		// Stop sprinting (if we were)
 		if (_bIsSprinting) { StopSprinting(); }
 
@@ -1190,7 +1595,7 @@ void AArenaCharacter::Slide()
 			if (GetLocalRole() == ROLE_Authority) { _bIsSliding = slide; } else { Server_Reliable_SetIsSliding(slide); }
 
 			// Initiate sliding
-			if (GetLocalRole() != ROLE_Authority) { Multicast_Reliable_InitiateSlide(); } else { Server_Reliable_InitiateSlide(); }
+			if (GetLocalRole() != ROLE_Authority) { Multicast_Reliable_InitiateSlide(WasDashing); } else { Server_Reliable_InitiateSlide(WasDashing); }
 
 			// Local camera shake
 			if (playerController != NULL && _SlideStartCameraShake != NULL)
@@ -1246,27 +1651,27 @@ void AArenaCharacter::Server_Reliable_SetIsSliding_Implementation(bool Sliding)
 /*
 *
 */
-bool AArenaCharacter::Server_Reliable_InitiateSlide_Validate()
+bool AArenaCharacter::Server_Reliable_InitiateSlide_Validate(bool WasDashing)
 { return true; }
 
-void AArenaCharacter::Server_Reliable_InitiateSlide_Implementation()
+void AArenaCharacter::Server_Reliable_InitiateSlide_Implementation(bool WasDashing)
 {
-	Multicast_Reliable_InitiateSlide();
+	Multicast_Reliable_InitiateSlide(WasDashing);
 }
 
 /*
 *
 */
-bool AArenaCharacter::Multicast_Reliable_InitiateSlide_Validate()
+bool AArenaCharacter::Multicast_Reliable_InitiateSlide_Validate(bool WasDashing)
 { return true; }
 
-void AArenaCharacter::Multicast_Reliable_InitiateSlide_Implementation()
+void AArenaCharacter::Multicast_Reliable_InitiateSlide_Implementation(bool WasDashing)
 {
 	// Get movement component
 	UCharacterMovementComponent* movement = GetCharacterMovement();
 	if (movement == NULL) { return; }
 
-	// Only slide launch if we're touching the ground (so airbourne slides will wait till you hit the ground before launching you)
+	// Only slide launch if we're touching the ground (so airborne slides will wait till you hit the ground before launching you)
 	if (movement->IsMovingOnGround())
 	{
 		// Set slide values
@@ -1275,10 +1680,19 @@ void AArenaCharacter::Multicast_Reliable_InitiateSlide_Implementation()
 		movement->BrakingDecelerationWalking = _fSlideBrakingDeceleration;
 
 		// Launch the character
-		FVector forwardForce = GetActorForwardVector() * _fSlideForce;
+		FVector forwardForce = FVector::ZeroVector;
+		if (!WasDashing && _bOverrideSlideVelocityFromDash)
+		{ forwardForce = GetActorForwardVector() * _fSlideForce; }
+		else
+		{ 
+			float f = _DashExitVelocityEnd.Size() / _fSlideForce;
+			float h = _fSlideForce * (f / 2);
+			forwardForce = GetActorForwardVector() * (_fSlideForwardVelocityThreshold + h);
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Magenta, FString::SanitizeFloat(_fSlideForwardVelocityThreshold + h));
+		}
 		FVector downForce = GetActorUpVector() * (_fSlideForce * -1.0f);
 		FVector launchForce = forwardForce + downForce;
-		this->LaunchCharacter(launchForce, _fSlideLaunchXYOverride, _fSlideLaunchZOverride);
+		this->LaunchCharacter(launchForce, /*_fSlideLaunchXYOverride &&*/ WasDashing, _fSlideLaunchZOverride);
 	}
 }
 
@@ -1356,7 +1770,7 @@ void AArenaCharacter::InputSlideJump()
 			if (stamina != NULL)
 			{
 				stamina->SetStamina(0.0f);
-				stamina->DelayedRecharge();
+				stamina->StopDrainingStamina();
 			}
 
 			// Slide jump
@@ -1415,29 +1829,38 @@ void AArenaCharacter::Server_Reliable_SetSlideJumping_Implementation(bool SlideJ
 */
 void AArenaCharacter::OnRep_IsWallRunning()
 {
+	// We are currently exiting our wall run & are trying to jump
 	if (_bIsTryingToWallJump)
 	{
-		// Set _bIsJumping = TRUE
-		if (GetLocalRole() == ROLE_Authority)
-		{ _bIsJumping = true; } else
-		{ Server_Reliable_SetJumping(true); }
+		// Get relevant stamina via matching channel
+		UStamina* stamina = NULL;
+		bool canWallRunJump = true;
+		if (_bWallRunJumpingRequiresStamina)
+		{
+			for (int i = 0; i < _uStaminaComponents.Num(); i++)
+			{
+				if (_uStaminaComponents[i]->GetStaminaChannel() == _iWallRunJumpStaminaChannel)
+				{
+					stamina = _uStaminaComponents[i];
+					break;
+				}
+			}
+		}
 
-		// Action jump
-		FVector launchVelocity = GetWallRunLaunchVelocity();
-		if (GetLocalRole() == ROLE_Authority)
-		{ Multicast_Reliable_LaunchCharacter(launchVelocity, _bWallRunJumpXYOverride, true); }
+		// Valid stamina channel found
+		if (stamina != NULL) { canWallRunJump = stamina->IsFullyRecharged(); } 
 		else
-		{ Server_Reliable_LaunchCharacter(launchVelocity, _bWallRunJumpXYOverride, true); }
+		{
+			// Didn't find a valid stamina channel & we require one
+			if (_bWallRunJumpingRequiresStamina)
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red,
+					TEXT("ERROR: Cannot < Double Jump > due to _uStaminaComponents not finding a valid matching stamina channel."));
+				return;
+			}
+		}
 
-		///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, launchVelocity.ToString());
-
-		// Play feedback(s) [Camera shakes / Gamepad Rumbles]
-		OwningClient_PlayCameraShake(_CameraShakeJumpStart, 1.0f);
-		OwningClient_GamepadRumble(_fJumpGamepadRumbleIntensity, _fJumpGamepadRumbleDuration,
-			_fJumpGamepadRumbleAffectsLeftLarge, _fJumpGamepadRumbleAffectsLeftSmall,
-			_fJumpGamepadRumbleAffectsRightLarge, _fJumpGamepadRumbleAffectsRightSmall);
-	
-		///_bIsTryingToWallJump = false;
+		if (canWallRunJump) { WallRunJump(); }
 	}
 }
 
@@ -1631,38 +2054,6 @@ void AArenaCharacter::OnCapsuleComponentHit(UPrimitiveComponent* HitComp, AActor
 /*
 *
 */
-FVector AArenaCharacter::GetWallRunLaunchVelocity()
-{
-	FVector launchDirection = FVector::ZeroVector;
-	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
-	if (movementComponent == NULL) { return FVector::ZeroVector; }
-
-	FVector v = FVector::ZeroVector;
-	if (_eWallRunSide == E_WallRunDirection::eWRD_Left) { v = FVector(_fWallRunJumpLaunchXForce, (-1 * _fWallRunJumpLaunchYForce), _fWallRunJumpLaunchZForce); }
-	else if (_eWallRunSide == E_WallRunDirection::eWRD_Right) { v = FVector(_fWallRunJumpLaunchXForce, _fWallRunJumpLaunchYForce, _fWallRunJumpLaunchZForce); }
-	else { v = FVector((-1 * _fWallRunJumpLaunchXForce), 0.0f, _fWallRunJumpLaunchZForce); }
-
-	float yaw = GetCharacterMovement()->GetPawnOwner()->GetControlRotation().Yaw;
-	FQuat quat = FQuat::MakeFromEuler(FVector(0.0f, 0.0f, yaw));
-	v  = UKismetMathLibrary::Quat_RotateVector(quat, v);
-	return v;
-
-	if (_bIsWallRunning)
-	{
-		FVector select = FVector::ZeroVector;
-		if (_eWallRunSide == E_WallRunDirection::eWRD_Left) { select = FVector(0.0f, 0.0f, -1.0f); } 
-		else if (_eWallRunSide == E_WallRunDirection::eWRD_Right) { select = FVector(0.0f, 0.0f, 1.0f); } 
-		else { select = FVector(0.0f, 0.0f, 0.0f); }
-
-		launchDirection = UKismetMathLibrary::Cross_VectorVector(_WallRunDirection, select);
-	}
-	launchDirection += FVector(0.0f, 0.0f, 1.0f);
-	return UKismetMathLibrary::Multiply_VectorFloat(launchDirection, movementComponent->JumpZVelocity);
-}
-
-/*
-*
-*/
 void AArenaCharacter::StartWallRun()
 {
 	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
@@ -1672,8 +2063,16 @@ void AArenaCharacter::StartWallRun()
 	movementComponent->GravityScale = 0.0f;
 	movementComponent->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 1.0f));
 
-	if (GetLocalRole() == ROLE_Authority) { _bIsWallRunning = true; OnRep_IsWallRunning(); }
-	else { Server_Reliable_SetIsWallRunning(true); }
+	if (GetLocalRole() == ROLE_Authority) 
+	{ 
+		_bIsWallRunning = true; OnRep_IsWallRunning(); 		
+		Server_Reliable_SetMovingSpeed(_fMovementSpeedWallRunning);
+	}
+	else 
+	{ 
+		Server_Reliable_SetIsWallRunning(true); 
+		Server_Reliable_SetMovingSpeed(_fMovementSpeedWallRunning);
+	}
 	
 	// Reset double jump
 	if (_bDoubleJumpEnabled) { _bCanDoubleJump = true; }
@@ -1712,75 +2111,9 @@ void AArenaCharacter::EndWallRun()
 	{
 		// Found a matching stamina channel
 		stamina->StopDrainingStamina();
-		stamina->DelayedRecharge();
 	}
 
 	_bLerpWallRunCamera = false;
-}
-
-/*
-*
-*/
-void AArenaCharacter::Tick_WallRunning()
-{
-	if (!_bWallRunEnabled) { EndWallRun(); }
-
-	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
-	if (movementComponent == NULL) { return; }
-
-	// Get relevant stamina via matching channel
-	UStamina* stamina = NULL;
-	for (int i = 0; i < _uStaminaComponents.Num(); i++)
-	{
-		if (_uStaminaComponents[i]->GetStaminaChannel() == _iWallRunStaminaChannel)
-		{
-			stamina = _uStaminaComponents[i];
-			break;
-		}
-	}
-
-	// Didn't find a matching stamina channel
-	if (stamina == NULL) { return; }
-
-	// Valid wall running input & theres valid stamina left
-	if (ValidWallRunInput() && stamina->HasStamina())
-	{
-		// Trace to current wall-running side to ensure that there is still a valid wall to wall run on
-		FVector select = FVector::ZeroVector;
-		if (_eWallRunSide == E_WallRunDirection::eWRD_Left) { select = FVector(0.0f, 0.0f, -1.0f); }
-		else if (_eWallRunSide == E_WallRunDirection::eWRD_Right) { select = FVector(0.0f, 0.0f, 1.0f); }
-		///else { select = FVector(0.0f, 0.0f, 0.0f); }
-
-		FVector cross = UKismetMathLibrary::Cross_VectorVector(_WallRunDirection, select);
-		FVector endTrace = GetActorLocation() + cross * 200.0f;
-		
-		FHitResult hitResult;
-		FCollisionQueryParams params;
-		params.bTraceComplex = false;
-		params.AddIgnoredActor(this);
-		GetWorld()->LineTraceSingleByChannel(hitResult, GetActorLocation(), endTrace, ECollisionChannel::ECC_Visibility, params);
-		
-		if (hitResult.IsValidBlockingHit())
-		{
-			E_WallRunDirection eDir = E_WallRunDirection::eWRD_Up;
-			FVector vDir = DetermineRunDirectionAndSide(hitResult.ImpactNormal, eDir);
-
-			// Moving in the same assumed direction needed for the wall run (EG: We are moving forward relative to a left-sided wall run & not trying to move forward relative to a right-sided wall run)
-			if (eDir == _eWallRunSide)
-			{
-				_WallRunDirection = vDir;
-				///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Magenta, FString::Printf(TEXT("vDir %s"), *vDir.ToString()));
-				FVector v = UKismetMathLibrary::Multiply_VectorFloat(_WallRunDirection, movementComponent->GetMaxSpeed());
-				movementComponent->Velocity = FVector(v.X, v.Y, 0.0f);
-
-				// Drain stamina
-				stamina->StartDrainingStamina();
-			} 
-			else { EndWallRun(); }
-		} 
-		else { EndWallRun(); }
-	}
-	else { EndWallRun(); }
 }
 
 /*
@@ -1803,4 +2136,69 @@ void AArenaCharacter::Server_Reliable_SetIsWallRunning_Implementation(bool IsWal
 {
 	_bIsWallRunning = IsWallRunning;
 	if (GetLocalRole() == ROLE_Authority) { OnRep_IsWallRunning(); }
+}
+
+// Movement | Wall Run Jump *********************************************************************************************************************
+
+/*
+*
+*/
+FVector AArenaCharacter::GetWallRunLaunchVelocity()
+{
+	FVector launchDirection = FVector::ZeroVector;
+	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
+	if (movementComponent == NULL) { return FVector::ZeroVector; }
+
+	FVector v = FVector::ZeroVector;
+	if (_eWallRunSide == E_WallRunDirection::eWRD_Left)
+	{ v = FVector(_fWallRunJumpLaunchXForce, (-1 * _fWallRunJumpLaunchYForce), _fWallRunJumpLaunchZForce); } 
+	else if (_eWallRunSide == E_WallRunDirection::eWRD_Right)
+	{ v = FVector(_fWallRunJumpLaunchXForce, _fWallRunJumpLaunchYForce, _fWallRunJumpLaunchZForce); } 
+	else 
+	{ v = FVector((-1 * _fWallRunJumpLaunchXForce), 0.0f, _fWallRunJumpLaunchZForce); }
+
+	float yaw = GetCharacterMovement()->GetPawnOwner()->GetActorRotation().Yaw;
+	FQuat quat = FQuat::MakeFromEuler(FVector(0.0f, 0.0f, yaw));
+	v = UKismetMathLibrary::Quat_RotateVector(quat, v);
+	return v;
+
+	if (_bIsWallRunning)
+	{
+		FVector select = FVector::ZeroVector;
+		if (_eWallRunSide == E_WallRunDirection::eWRD_Left) { select = FVector(0.0f, 0.0f, -1.0f); } 
+		else if (_eWallRunSide == E_WallRunDirection::eWRD_Right) { select = FVector(0.0f, 0.0f, 1.0f); }
+		else { select = FVector(0.0f, 0.0f, 0.0f); }
+
+		launchDirection = UKismetMathLibrary::Cross_VectorVector(_WallRunDirection, select);
+	}
+	launchDirection += FVector(0.0f, 0.0f, 1.0f);
+	return UKismetMathLibrary::Multiply_VectorFloat(launchDirection, movementComponent->JumpZVelocity);
+}
+
+/*
+*
+*/
+void AArenaCharacter::WallRunJump()
+{
+	// Set _bIsJumping = TRUE
+	if (GetLocalRole() == ROLE_Authority)
+	{ _bIsJumping = true; } else
+	{ Server_Reliable_SetJumping(true); }
+
+	// Action jump
+	FVector launchVelocity = GetWallRunLaunchVelocity();
+	if (GetLocalRole() == ROLE_Authority)
+	{ Multicast_Reliable_LaunchCharacter(launchVelocity, _bWallRunJumpXYOverride, true); }
+	else
+	{ Server_Reliable_LaunchCharacter(launchVelocity, _bWallRunJumpXYOverride, true); }
+
+	///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, launchVelocity.ToString());
+
+	// Play feedback(s) [Camera shakes / Gamepad Rumbles]
+	OwningClient_PlayCameraShake(_CameraShakeJumpStart, 1.0f);
+	OwningClient_GamepadRumble(_fJumpGamepadRumbleIntensity, _fJumpGamepadRumbleDuration,
+		_fJumpGamepadRumbleAffectsLeftLarge, _fJumpGamepadRumbleAffectsLeftSmall,
+		_fJumpGamepadRumbleAffectsRightLarge, _fJumpGamepadRumbleAffectsRightSmall);
+
+	///_bIsTryingToWallJump = false;
 }

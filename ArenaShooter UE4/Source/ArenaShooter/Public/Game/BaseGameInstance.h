@@ -133,7 +133,15 @@ protected:
 	// Main Menu ******************************************************************************************************************************
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
-		E_MainMenu _MenuState = E_MainMenu::eGT_Splash;
+		E_MainMenuPage _MenuState = E_MainMenuPage::eGT_Splash;
+
+	// States *********************************************************************************************************************************
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+		E_GameStates _CurrentGameState = E_GameStates::eGS_Menu;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+		E_MatchmakingState _CurrentMatchmakingState = E_MatchmakingState::eMS_Idle;
 
 	// Sessions *******************************************************************************************************************************
 
@@ -568,12 +576,22 @@ public:
 	// Main Menu ******************************************************************************************************************************
 
 	UFUNCTION()
-		void SetMenuState(E_MainMenu State) { _MenuState = State; }
+		void SetMenuState(E_MainMenuPage State) { _MenuState = State; }
 
 	///////////////////////////////////////////////
 
 	UFUNCTION(BlueprintPure)
-		E_MainMenu GetMenuState() { return _MenuState; }
+		E_MainMenuPage GetMenuState() { return _MenuState; }
+
+	// States *********************************************************************************************************************************
+
+	UFUNCTION()
+		void SetCurrentGameState(E_GameStates State) { _CurrentGameState = State; }
+
+	///////////////////////////////////////////////
+
+	UFUNCTION(BlueprintPure)
+		E_GameStates GetCurrentGameState() { return _CurrentGameState; }
 
 	// Matchmaking *****************************************************************************************************************************
 

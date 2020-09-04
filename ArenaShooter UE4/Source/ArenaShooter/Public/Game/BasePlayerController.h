@@ -319,7 +319,17 @@ protected:
 	/*
 	*
 	*/
-	void Ability();
+	void DashEnter();
+
+	/*
+	*
+	*/
+	void GrappleHookEnter();
+
+	/*
+	*
+	*/
+	void GrappleHookExit();
 
 	// Movement | Clamber *********************************************************************************************************************
 

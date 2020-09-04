@@ -23,6 +23,13 @@ enum class E_Direction : uint8
 	eGA_Idle UMETA(DisplayName = "Idle")
 };
 
+UENUM(BlueprintType)
+enum class E_Abilities : uint8
+{
+	eGA_Dash UMETA(DisplayName = "Dash"),
+	eGA_GrappleHook UMETA(DisplayName = "Grapple Hook")
+};
+
 // *** STRUCTS
 
 USTRUCT(BlueprintType)
@@ -56,12 +63,15 @@ public:
 	*/
 	TSubclassOf<class UCameraShake> GetCameraShakeClass()
 	{ return _CameraShake; }
+
 };
 
 // *** EVENT DISPATCHERS / DELEGATES
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FDashAnimDelegate, E_Direction, Direction);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWallRunAnimDelegate, E_WallRunDirection, WallRunSide);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FGrappleHookEnterDelegate);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FGrappleHookExitDelegate);
 
 // *** CLASSES
 
@@ -123,6 +133,22 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
 		meta = (EditCondition = "_bDashEnabled"))
 		int _iDashStaminaChannel = 1;
+
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDoubleJumpEnabled"))
+		bool _bDashDrainsStaminaCompletely = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDashEnabled && !_bDashDrainsStaminaCompletely",
+			ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+		float _fDashStaminaPercentageCost = 0.5f;
 
 	/*
 	*
@@ -236,13 +262,77 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
 		meta = (EditCondition = "_bDashEnabled"))
-		float _fDashDuration = 2.0f;
+		float _fDashDuration = 0.5f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDashEnabled"))
+		float _fDashGravityScale = 0.25f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDashEnabled"))
+		float _fDashExitDuration = 0.35f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDashEnabled"))
+		bool _bSeparateDashExitSpeed = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Dash",
+		meta = (EditCondition = "_bDashEnabled && _bSeparateDashExitSpeed"))
+		float _fDashExitSpeed = 100.0f;
 
 	/*
 	*	A timer handle used for referencing the dash.
 	*/
 	UPROPERTY()
 		FTimerHandle _fDashHandle;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Dash")
+		bool _bCanExitDash = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Dash", Replicated)
+		bool _bDashExiting = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Dash", Replicated)
+		FVector _DashExitVelocityStart = FVector::ZeroVector;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Dash", Replicated)
+		FVector _DashExitVelocityEnd = FVector::ZeroVector;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Dash")
+		float _fVelocityZeroingTime = 0.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Dash")
+		bool _bWasDashingWhenSlideInputWasPressed = false;
 
 	// Movement | Double Jump ************************************************************************************************************************
 
@@ -271,7 +361,29 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Double Jump",
 		meta = (EditCondition = "_bDoubleJumpEnabled"))
-		float _fDoubleJumpForce = 820.0f;
+		bool _bDoubleJumpDrainsStaminaCompletely = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Double Jump",
+		meta = (EditCondition = "_bDoubleJumpEnabled && !_bDoubleJumpDrainsStaminaCompletely",
+		ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+		float _fDoubleJumpStaminaCost = 0.3f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Double Jump",
+		meta = (EditCondition = "_bDoubleJumpEnabled"))
+		float _fDoubleJumpZForce = 820.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Double Jump",
+		meta = (EditCondition = "_bDoubleJumpEnabled"))
+		float _fDoubleJumpDirectionalForce = 200.0f;
 
 	/*
 	*
@@ -292,6 +404,26 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Double Jump", Replicated)
 		bool _bIsDoubleJumping = false;
 
+	// Movement | Grapple Hook ****************************************************************************************************************
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Abilities | Grapple Hook")
+		bool _bGrappleHookEnabled = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintAssignable, Category = "Movement | Abilities | Grapple Hook")
+		FGrappleHookEnterDelegate _fOnGrappleHook;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintAssignable, Category = "Movement | Abilities | Grapple Hook")
+		FGrappleHookExitDelegate _fOnGrappleHookRelease;
+
 	// Movement | Hover ***********************************************************************************************************************
 
 	/*
@@ -303,7 +435,36 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Hover")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Hover",
+		meta = (EditCondition = "_bHoverEnabled"))
+		bool _bHoverRequiresStamina = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Hover",
+		meta = (EditCondition = "_bHoverEnabled && _bHoverRequiresStamina"))
+		int _iHoverStaminaChannel = 2;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Hover",
+		meta = (EditCondition = "_bHoverEnabled && _bHoverRequiresStamina"))
+		bool _bHoverCustomDrainRate = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Hover",
+		meta = (EditCondition = "_bHoverEnabled && _bHoverRequiresStamina && _bHoverCustomDrainRate"))
+		float _fHoverStaminaDrainRate = 1.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Hover",
+		meta = (EditCondition = "_bHoverEnabled && !_bHoverRequiresStamina"))
 		float _fHoverDuration = 3.0f;
 
 	/*
@@ -446,6 +607,12 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
 		float _fSlideBrakingDeceleration = 600.0f;
 
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		bool _bOverrideSlideVelocityFromDash = true;
+
 	// Movement | Slide Jump ************************************************************************************************************************
 
 	/*
@@ -457,37 +624,43 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump",
+		meta = (EditCondition = "_bSlideJumpEnabled"))
 		bool _bSlideJumpRequiresStamina = false;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump",
+		meta = (EditCondition = "_bSlideJumpEnabled && _bSlideJumpRequiresStamina"))
 		int _iSlideJumpStaminaChannel = 2;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump",
+		meta = (EditCondition = "_bSlideJumpEnabled"))
 		float _fSlideJumpLaunchXForce = 100.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump",
+		meta = (EditCondition = "_bSlideJumpEnabled"))
 		float _fSlideJumpLaunchZForce = 700.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump",
+		meta = (EditCondition = "_bSlideJumpEnabled"))
 		bool _fSlideJumpLaunchXYOverride = true;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide Jump",
+		meta = (EditCondition = "_bSlideJumpEnabled"))
 		bool _fSlideJumpLaunchZOverride = true;
 
 	/*
@@ -502,6 +675,14 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide Jump", Replicated)
 		bool _bIsSlideJumping = false;
 
+	// Movement | Speed ***********************************************************************************************************************
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Speed")
+		float _fMovementSpeedWallRunning = 625.0f;
+
 	// Movement | Wall Running **********************************************************************************************************************
 
 	/*
@@ -513,19 +694,50 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Running")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Running",
+		meta = (EditCondition = "_bWallRunEnabled"))
+		bool _bWallRunningRequiresStamina = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Running",
+		meta = (EditCondition = "_bWallRunEnabled && _bWallRunningRequiresStamina"))
 		int _iWallRunStaminaChannel = 1.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Running")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Running",
+		meta = (EditCondition = "_bWallRunEnabled"))
+		bool _bWallRunningCustomDrainRate = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Running",
+		meta = (EditCondition = "_bWallRunEnabled && _bWallRunningRequiresStamina && _bWallRunningCustomDrainRate"))
+		float _fWallRunStaminaDrainRate = 1.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Running",
+		meta = (EditCondition = "_bWallRunEnabled"))
+		float _fWallRunningVerticalSlip = 1.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Running",
+		meta = (EditCondition = "_bWallRunEnabled"))
 		float _fWallRunningOriginAdditive = 1.0f;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Running")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Running",
+		meta = (EditCondition = "_bWallRunEnabled"))
 		float _fWallRunningRollMaximum = 20.0f;
 
 	/*
@@ -557,14 +769,27 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Wall Run Jump")
-		bool _bIsTryingToWallJump = false;
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Run Jump")
+		bool _bWallRunJumpingRequiresStamina = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Run Jump",
+		meta = (EditCondition = "_bWallRunJumpingRequiresStamina"))
+		int _iWallRunJumpStaminaChannel = 1.0f;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Run Jump")
 		bool _bWallRunJumpXYOverride = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Run Jump")
+		bool _bWallRunJumpZOverride = true;
 
 	/*
 	*
@@ -584,6 +809,12 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Wall Run Jump")
 		float _fWallRunJumpLaunchZForce = 700.0f;
 
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Wall Run Jump")
+		bool _bIsTryingToWallJump = false;
+
 public:
 
 	// ****************************************************************************************************************************************
@@ -600,6 +831,17 @@ public:
 	* @return:	virtual void
 	*/
 	virtual void Tick(float DeltaTime) override;
+
+	///////////////////////////////////////////////
+
+	/*
+	* @summary:	Called every frame (if _bIsWallRunning == true)
+	*
+	* @param:	DeltaTime	- The delta of the frame.
+	*
+	* @return:	void
+	*/
+	void Tick_WallRunning(float DeltaTime);
 
 	///////////////////////////////////////////////
 
@@ -657,6 +899,20 @@ public:
 	UFUNCTION(NetMulticast, Reliable, WithValidation)
 		void Multicast_Reliable_SetMovementMode(EMovementMode NewMovementMode, uint8 NewCustomMode = 0);
 
+	// Movement | Grapple Hook ****************************************************************************************************************
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Movement | Grapple Hook")
+		void GrappleHookEnter();
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Movement | Grapple Hook")
+		void GrappleHookExit();
+
 	// Movement | Dash ************************************************************************************************************************
 
 	/*
@@ -684,6 +940,14 @@ public:
 	///////////////////////////////////////////////
 
 	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Movement | Dash")
+		FVector DirectionalInputToVector();
+
+	///////////////////////////////////////////////
+
+	/*
 
 	*/
 	UFUNCTION(Server, Reliable, WithValidation, Category = "Movement | Dash")
@@ -703,7 +967,7 @@ public:
 	*
 	*/
 	UFUNCTION()
-		void StopDashing();
+		void StopDashing(FVector LaunchVelocity);
 
 	///////////////////////////////////////////////
 
@@ -712,6 +976,30 @@ public:
 	*/
 	UFUNCTION()
 		void DetermineFinalLaunchVelocity(FVector& LaunchVelocity, FVector InitialLaunchDirection);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation, Category = "Movement | Dash")
+		void Server_Reliable_SetDashExiting(bool DashExiting);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation, Category = "Movement | Dash")
+		void Server_Reliable_SetDashExitingStartVelocity(FVector Velocity);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation, Category = "Movement | Dash")
+		void Server_Reliable_SetDashExitingEndVelocity(FVector Velocity);
 
 	// Movement | Hover ***********************************************************************************************************************
 
@@ -863,7 +1151,7 @@ public:
 	*
 	*/
 	UFUNCTION()
-		void Slide();
+		void Slide(bool WasDashing);
 
 	///////////////////////////////////////////////
 
@@ -879,13 +1167,13 @@ public:
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
-		void Server_Reliable_InitiateSlide();
+		void Server_Reliable_InitiateSlide(bool WasDashing);
 
 	/*
 	*
 	*/
 	UFUNCTION(NetMulticast, Reliable, WithValidation)
-		void Multicast_Reliable_InitiateSlide();
+		void Multicast_Reliable_InitiateSlide(bool WasDashing);
 
 	///////////////////////////////////////////////
 
@@ -997,12 +1285,6 @@ public:
 	*
 	*/
 	UFUNCTION()
-		FVector GetWallRunLaunchVelocity();
-
-	/*
-	*
-	*/
-	UFUNCTION()
 		void StartWallRun();
 
 	/*
@@ -1010,12 +1292,6 @@ public:
 	*/
 	UFUNCTION()
 		void EndWallRun();
-
-	/*
-	*
-	*/
-	UFUNCTION()
-		void Tick_WallRunning();
 
 	/*
 	*
@@ -1028,5 +1304,19 @@ public:
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetWallRunDirection(E_WallRunDirection WallRunDirection);
+
+	// Movement | Wall Run Jump *********************************************************************************************************************
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		FVector GetWallRunLaunchVelocity();
+	
+	/*
+	*
+	*/
+	UFUNCTION()
+		void WallRunJump();
 
 };

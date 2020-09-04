@@ -81,20 +81,20 @@ void ABasePlayerState::Server_Reliable_SetHost_Implementation(bool Hosting)
 		UGameInstance* gi = GetWorld()->GetGameInstance();
 		UBaseGameInstance* gameInstance = Cast<UBaseGameInstance>(gi);
 
-		E_MainMenu menuState = gameInstance->GetMenuState();
+		E_MainMenuPage menuState = gameInstance->GetMenuState();
 		switch (menuState)
 		{
-		case E_MainMenu::eGT_Splash:
+		case E_MainMenuPage::eGT_Splash:
 		{
 			OwningClient_Reliable_ShowLobbyMainMenu(Hosting);
 			break;
 		}
-		case E_MainMenu::eGT_MainMenu:
+		case E_MainMenuPage::eGT_MainMenu:
 		{
 			OwningClient_Reliable_ShowLobbyMainMenu(Hosting);
 			break;
 		}
-		case E_MainMenu::eGT_CreateMatch:
+		case E_MainMenuPage::eGT_CreateMatch:
 		{
 			OwningClient_Reliable_ShowLobbyPreMatch(Hosting);
 			break;

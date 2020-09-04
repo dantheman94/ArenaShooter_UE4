@@ -1345,13 +1345,13 @@ public:
 	*
 	*/
 	UFUNCTION()
-		void AimWeaponEnter();
+		virtual void AimWeaponEnter();
 
 	/*
 	*
 	*/
 	UFUNCTION()
-		void AimWeaponExit();
+		virtual void AimWeaponExit();
 
 	// Inventory | Weapon | Primary ***********************************************************************************************************
 

@@ -66,13 +66,15 @@ bool AImpactEffectManager::Server_Reliable_SpawnImpactEffect_Validate(FHitResult
 { return true; }
 
 void AImpactEffectManager::Server_Reliable_SpawnImpactEffect_Implementation(FHitResult HitResult)
-{	
+{
 	// Get physics material
 	TWeakObjectPtr<UPhysicalMaterial> physicsMat = HitResult.PhysMaterial;
 	EPhysicalSurface surfaceType;
 	if (physicsMat == NULL) { return; }
 	surfaceType = physicsMat->SurfaceType;
-	if (surfaceType == NULL) {
+	if (surfaceType == NULL)
+	{
+		if (_ImpactEffectGroups.Num() == 0) { return; }
 
 		// Play default effect
 		EPhysicalSurface defaultSurface = EPhysicalSurface::SurfaceType1;
