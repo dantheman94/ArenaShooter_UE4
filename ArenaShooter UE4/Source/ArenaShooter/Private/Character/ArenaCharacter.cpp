@@ -1313,11 +1313,35 @@ void AArenaCharacter::InputJumpExit()
 /*
 *
 */
+bool AArenaCharacter::Server_Reliable_LaunchCharacter_Validate(FVector LaunchVelocity, bool XYOverride, bool ZOverride)
+{ return true; }
+
+void AArenaCharacter::Server_Reliable_LaunchCharacter_Implementation(FVector LaunchVelocity, bool XYOverride, bool ZOverride)
+{
+	Multicast_Reliable_LaunchCharacter(LaunchVelocity, XYOverride, ZOverride);
+}
+
+/*
+*
+*/
+bool AArenaCharacter::Multicast_Reliable_LaunchCharacter_Validate(FVector LaunchVelocity, bool XYOverride, bool ZOverride)
+{ return true; }
+
+void AArenaCharacter::Multicast_Reliable_LaunchCharacter_Implementation(FVector LaunchVelocity, bool XYOverride, bool ZOverride)
+{
+	LaunchCharacter(LaunchVelocity, XYOverride, ZOverride);
+}
+
+// Movement | Double Jump *****************************************************************************************************************
+
+/*
+*
+*/
 void AArenaCharacter::InputDoubleJump()
 {
 	InputVault();
 
-	if (_bDoubleJumpEnabled && _bCanDoubleJump &&  !IsTryingToVault() && _uStaminaComponents.Num() > 0)
+	if (_bDoubleJumpEnabled && _bCanDoubleJump && !IsTryingToVault() && _uStaminaComponents.Num() > 0)
 	{
 		// Get relevant stamina via matching channel
 		UStamina* stamina = NULL;
@@ -1333,9 +1357,14 @@ void AArenaCharacter::InputDoubleJump()
 				}
 			}
 		}
+		else
+		{
+			return;
+		}
 
 		// Valid stamina channel found
-		if (stamina != NULL) { 
+		if (stamina != NULL)
+		{
 
 			// Determine if the current stamina value as a % is greater than the threshold needed to perform the action
 			float currentStamina = stamina->GetStamina();
@@ -1343,8 +1372,7 @@ void AArenaCharacter::InputDoubleJump()
 			float percent = currentStamina / maxStamina;
 			canDoubleJump = percent > _fDoubleJumpStaminaCost;
 			///canDoubleJump = stamina->IsFullyRecharged(); 
-		}
-		else
+		} else
 		{
 			// Didn't find a valid stamina channel & we require one
 			if (_bDoubleJumpRequiresStamina)
@@ -1362,7 +1390,7 @@ void AArenaCharacter::InputDoubleJump()
 			{
 				// Stamina is full?
 				if (stamina->IsFullyRecharged())
-				{		
+				{
 					// Determine amount to subtract from stamina
 					float maxStamina = stamina->GetMaxStaminaAmount();
 					float deductAmount = maxStamina * _fDoubleJumpStaminaCost;
@@ -1408,30 +1436,6 @@ void AArenaCharacter::InputDoubleJump()
 }
 
 ///////////////////////////////////////////////
-
-/*
-*
-*/
-bool AArenaCharacter::Server_Reliable_LaunchCharacter_Validate(FVector LaunchVelocity, bool XYOverride, bool ZOverride)
-{ return true; }
-
-void AArenaCharacter::Server_Reliable_LaunchCharacter_Implementation(FVector LaunchVelocity, bool XYOverride, bool ZOverride)
-{
-	Multicast_Reliable_LaunchCharacter(LaunchVelocity, XYOverride, ZOverride);
-}
-
-/*
-*
-*/
-bool AArenaCharacter::Multicast_Reliable_LaunchCharacter_Validate(FVector LaunchVelocity, bool XYOverride, bool ZOverride)
-{ return true; }
-
-void AArenaCharacter::Multicast_Reliable_LaunchCharacter_Implementation(FVector LaunchVelocity, bool XYOverride, bool ZOverride)
-{
-	LaunchCharacter(LaunchVelocity, XYOverride, ZOverride);
-}
-
-// Movement | Jump ************************************************************************************************************************
 
 bool AArenaCharacter::Server_Reliable_SetDoubleJumping_Validate(bool DoubleJumping)
 { return true; }
