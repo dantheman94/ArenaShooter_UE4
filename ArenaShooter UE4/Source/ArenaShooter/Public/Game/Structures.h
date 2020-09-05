@@ -8,6 +8,7 @@
 #include "GameFramework/PlayerInput.h"
 #include "InputCoreTypes.h"
 #include "Interactable.h"
+#include "Weapon.h"
 
 #include "Structures.generated.h"
 
@@ -128,6 +129,9 @@ enum class E_ItemType : uint8
 	eWBT_Equipment UMETA(DisplayName = "Equipment")
 };
 
+/*
+*	Represents the different grenades
+*/
 UENUM(BlueprintType)
 enum class E_GrenadeType : uint8
 {
@@ -137,6 +141,9 @@ enum class E_GrenadeType : uint8
 	eWBT_EMP UMETA(DisplayName = "EMP Grenade")
 };
 
+/*
+*	Represents the different equipments
+*/
 UENUM(BlueprintType)
 enum class E_EquipmentType : uint8
 {
@@ -156,6 +163,9 @@ enum class E_WeaponEngagementType : uint8
 	eWBT_Long UMETA(DisplayName = "Long Range")
 };
 
+/*
+*	Represents a different WeaponBarrel attachments
+*/
 UENUM(BlueprintType)
 enum class E_WeaponBarrelType : uint8
 {
@@ -165,6 +175,9 @@ enum class E_WeaponBarrelType : uint8
 	eWBT_HeavyBarrel UMETA(DisplayName = "Heavy Barrel", ToolTip = "Decreases bullet drop.")
 };
 
+/*
+*	Represents a different WeaponScope attachments
+*/
 UENUM(BlueprintType)
 enum class E_WeaponScopeType : uint8
 {
@@ -205,6 +218,9 @@ enum class E_ItemStatsType : uint8
 	eWST_EffectTime UMETA(DisplayName = "Effect Time"),
 };
 
+/*
+*	Represents a PlayerState's state within a session (an ingame match)
+*/
 UENUM(BlueprintType)
 enum class E_SessionState : uint8
 {
@@ -316,6 +332,27 @@ public:
 	ABasePlayerState* GetPlayerState() { return _PlayerState; }
 
 	ABasePlayerController* GetPlayerController() { return _PlayerController; }
+
+};
+
+/*
+*	Entry which represents a specific weapon animation montage and the origin transform that will
+*	used when the animation montage is being played.
+*/
+USTRUCT(BlueprintType)
+struct FWeaponAnimation
+{
+	GENERATED_BODY()
+
+		FWeaponAnimation() {}
+
+public:
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		UAnimMontage* _Anim_FirstPickup = NULL;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		FTransform _AnimationTransform;
 
 };
 
@@ -442,6 +479,10 @@ public:
 		float StatPercent = NULL;
 };
 
+/*
+*	DataTable structure which represents an entry for a Purchasable item
+*	(used in the "BuyMenu")
+*/
 USTRUCT(BlueprintType)
 struct FItemInfo : public FTableRowBase
 {
@@ -471,6 +512,10 @@ public:
 		TSubclassOf<AInteractable> InteractableClass;
 };
 
+/*
+*	DataTable structure which represents an entry for a Weapon scope
+*	(used in the "BuyMenu")
+*/
 USTRUCT(BlueprintType)
 struct FWeaponScopeInfo : public FItemInfo
 {
@@ -492,6 +537,10 @@ public:
 	}
 };
 
+/*
+*	DataTable structure which represents an entry for a Weapon barrel
+*	(used in the "BuyMenu")
+*/
 USTRUCT(BlueprintType)
 struct FWeaponBarrelInfo : public FItemInfo
 {
@@ -513,6 +562,10 @@ public:
 	}
 };
 
+/*
+*	DataTable structure which represents an entry for a Weapon accessory
+*	(used in the "BuyMenu")
+*/
 USTRUCT(BlueprintType)
 struct FWeaponAccessoryInfo : public FItemInfo
 {
@@ -534,6 +587,10 @@ public:
 	}
 };
 
+/*
+*	DataTable structure which represents an entry for a Weapon base
+*	(used in the "BuyMenu")
+*/
 USTRUCT(BlueprintType)
 struct FWeaponItemInfo : public FItemInfo
 {
@@ -564,6 +621,10 @@ public:
 	}
 };
 
+/*
+*	DataTable structure which represents an entry for a Grenade
+*	(used in the "BuyMenu")
+*/
 USTRUCT(BlueprintType)
 struct FGrenadeItemInfo : public FItemInfo
 {
@@ -582,6 +643,10 @@ public:
 	}
 };
 
+/*
+*	DataTable structure which represents an entry for an Equipment
+*	(used in the "BuyMenu")
+*/
 USTRUCT(BlueprintType)
 struct FEquipmentItemInfo : public FItemInfo
 {
@@ -598,4 +663,21 @@ public:
 		ItemType = E_ItemType::eWBT_Equipment;
 		ItemAwardModifer = 1.0f;
 	}
+};
+
+/*
+*	DataTable structure which represents an entry in the LootPod pool
+*/
+USTRUCT(BlueprintType)
+struct FLootPodItem : public FTableRowBase
+{
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
+		TSubclassOf<AWeapon> WeaponClass;
+
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, meta = (ClampMin = "0", ClampMax = "100", UIMin = "0", UIMax = "100"))
+		int SpawnWeight = 50;
 };
