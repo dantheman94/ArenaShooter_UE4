@@ -32,6 +32,10 @@ enum class E_Abilities : uint8
 
 // *** STRUCTS
 
+/*
+*	Structure which represents a single instance of a Dash action with its relative camera shake
+*	(Based on Dash-direction).
+*/
 USTRUCT(BlueprintType)
 struct FDashCameraShakeStruct
 {

@@ -447,10 +447,29 @@ protected:
 		bool _bIsTryingToFirePrimary = false;
 
 	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Primary")
+		bool _bHasReleasedPrimaryTrigger = true;
+
+	/*
 	*	Returns reference to the previous primary weapon of the character (Used for toggling weapons) (REPLICATED).
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Primary")
 		AWeapon* _OldPrimaryWeapon = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Weapon | Primary")
+		bool _bDebugDrawPrimaryWeaponCameraTrace = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Weapon | Primary",
+		meta = (EditCondition = "!_bDebugDrawPrimaryWeaponCameraTrace"))
+		FColor _fPrimaryWeaponCameraTraceColour = FColor::Red;
 
 	// Inventory | Weapon | Secondary *********************************************************************************************************
 
@@ -484,6 +503,12 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Secondary")
 		bool _bCanFireSecondary = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Secondary")
+		bool _bHasReleasedSecondaryTrigger = true;
 
 	// Inventory | Weapon | Reserve ***********************************************************************************************************
 
@@ -539,7 +564,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Grenade")
 		int _iMaximumGrenadeCount = 2;
 
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | renade")
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Grenade")
 		E_GrenadeType _eCurrentGrenadeType = E_GrenadeType::eWBT_Frag;
 
 	// Interaction ****************************************************************************************************************************
@@ -1293,7 +1318,25 @@ public:
 	*
 	*/
 	UFUNCTION()
-		void FireTraceFullAuto();
+		void FireWeaponTraceFullAuto(AWeapon* Weapon);
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void FireWeaponTraceSemiAuto(AWeapon* Weapon);
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void FireWeaponTraceBurst(AWeapon* Weapon);
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void FireWeaponTraceSpread(AWeapon* Weapon);
 
 	/*
 	*

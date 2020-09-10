@@ -844,9 +844,83 @@ void ABaseCharacter::Server_Reliable_CreateStartingLoadout_Implementation()
 /*
 *
 */
-void ABaseCharacter::FireTraceFullAuto()
+void ABaseCharacter::FireWeaponTraceFullAuto(AWeapon* Weapon)
 {
+	// Fire delay complete?
+	if (Weapon->GetCurrentFireMode()->FireDelayComplete())
+	{
+		// Fire
+		if (Weapon->IsOwnersPrimaryWeapon())
+		{ OwningClient_Reliable_PrimaryWeaponCameraTrace(); } 
+		else if (Weapon->IsOwnersSecondaryWeapon())
+		{ /*OwningClient_Reliable_SecondaryWeaponCameraTrace*/ } 
+		else { return; }
+	}
+}
 
+/*
+*
+*/
+void ABaseCharacter::FireWeaponTraceSemiAuto(AWeapon* Weapon)
+{
+	// Fire delay complete?
+	if (Weapon->GetCurrentFireMode()->FireDelayComplete())
+	{
+		if (_bHasReleasedPrimaryTrigger)
+		{
+			// Fire
+			if (Weapon->IsOwnersPrimaryWeapon())
+			{ OwningClient_Reliable_PrimaryWeaponCameraTrace(); } 
+			else if (Weapon->IsOwnersSecondaryWeapon())
+			{ /*OwningClient_Reliable_SecondaryWeaponCameraTrace*/ } 
+			else { return; }
+		}
+	}
+}
+
+/*
+*
+*/
+void ABaseCharacter::FireWeaponTraceBurst(AWeapon* Weapon)
+{
+	// Fire delay complete? (Are we mid-burst or?)
+	if (Weapon->GetCurrentFireMode()->IsMidBurst())
+	{
+
+	}
+	else
+	{
+
+	}
+	if (Weapon->GetCurrentFireMode()->FireDelayComplete())
+	{
+		// Fire
+		if (Weapon->IsOwnersPrimaryWeapon())
+		{ OwningClient_Reliable_PrimaryWeaponCameraTrace(); } 
+		else if (Weapon->IsOwnersSecondaryWeapon())
+		{ /*OwningClient_Reliable_SecondaryWeaponCameraTrace*/ } 
+		else { return; }
+	}
+}
+
+/*
+*
+*/
+void ABaseCharacter::FireWeaponTraceSpread(AWeapon* Weapon)
+{
+	// Fire delay complete?
+	if (Weapon->GetCurrentFireMode()->FireDelayComplete())
+	{
+		// Fire
+		for (int i = 0; i < Weapon->GetCurrentFireMode()->GetProjectileCountPerSpread(); i++)
+		{
+			if (Weapon->IsOwnersPrimaryWeapon())
+			{ OwningClient_Reliable_PrimaryWeaponCameraTrace(); }
+			else if (Weapon->IsOwnersSecondaryWeapon())
+			{ /*OwningClient_Reliable_SecondaryWeaponCameraTrace*/ } 
+			else { return; }
+		}
+	}
 }
 
 /*
@@ -1187,11 +1261,13 @@ void ABaseCharacter::InitFirePrimaryWeapon()
 	// Weapon does NOT require charge to fire
 	else
 	{
-		// Fire delay complete?
-		if (_PrimaryWeapon->GetCurrentFireMode()->FireDelayComplete())
+		switch (_PrimaryWeapon->GetCurrentFireMode()->GetFiringType())
 		{
-			// Fire
-			OwningClient_Reliable_PrimaryWeaponCameraTrace();
+		case E_FiringModeType::eFMT_FullAuto: FireWeaponTraceFullAuto(_PrimaryWeapon); break;
+		case E_FiringModeType::eFMT_Burst: FireWeaponTraceBurst(_PrimaryWeapon); break;
+		case E_FiringModeType::eFMT_SemiAuto: FireWeaponTraceSemiAuto(_PrimaryWeapon); break;
+		case E_FiringModeType::eFMT_Spread: FireWeaponTraceSpread(_PrimaryWeapon); break;
+		default: break;
 		}
 	}
 }
@@ -1227,7 +1303,11 @@ void ABaseCharacter::OwningClient_Reliable_PrimaryWeaponCameraTrace_Implementati
 	params.bTraceComplex = false;
 	params.AddIgnoredActor(this);
 	GetWorld()->LineTraceSingleByChannel(hitResult, worldLocation, traceEnd, ECollisionChannel::ECC_Camera, params);
-	///DrawDebugLine(GetWorld(), worldLocation, traceEnd, FColor::Red, false, 1.0f);
+
+	if (_bDebugDrawPrimaryWeaponCameraTrace)
+	{
+		DrawDebugLine(GetWorld(), worldLocation, traceEnd, _fPrimaryWeaponCameraTraceColour, false, 1.0f);
+	}
 
 	Server_Reliable_PrimaryWeaponCameraTrace(hitResult);
 }
@@ -1394,9 +1474,15 @@ void ABaseCharacter::InputPrimaryFirePress()
 	
 	// Only true if the trigger type is press enter
 	if (_PrimaryWeapon->GetCurrentFireMode()->GetFiringTriggerType() == E_FiringTriggerType::eFTT_Press)
-	{ _bIsTryingToFirePrimary = true; }
+	{
+		_bIsTryingToFirePrimary = true;
+		_bHasReleasedPrimaryTrigger = false;
+	}
 	else 
-	{ _bIsTryingToFirePrimary = false; }
+	{
+		_bIsTryingToFirePrimary = false;
+		_bHasReleasedPrimaryTrigger = true;
+	}
 }
 
 void ABaseCharacter::InputPrimaryFireRelease()
@@ -1408,9 +1494,15 @@ void ABaseCharacter::InputPrimaryFireRelease()
 
 	// Only true if the trigger type is press exit
 	if (_PrimaryWeapon->GetCurrentFireMode()->GetFiringTriggerType() == E_FiringTriggerType::eFTT_Release)
-	{ _bIsTryingToFirePrimary = true; }
+	{ 
+		_bIsTryingToFirePrimary = true; 
+		_bHasReleasedPrimaryTrigger = false;
+	}
 	else
-	{ _bIsTryingToFirePrimary = false; }
+	{
+		_bIsTryingToFirePrimary = false;
+		_bHasReleasedPrimaryTrigger = true;
+	}
 }
 
 bool ABaseCharacter::OwningClient_PlayPrimaryWeaponFPAnimation_Validate(float PlayRate, bool FreezeMontageAtLastFrame,

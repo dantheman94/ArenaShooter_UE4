@@ -88,6 +88,7 @@ void UFireMode::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 	DOREPLIFETIME(UFireMode, _eReloadStage);
 	DOREPLIFETIME(UFireMode, _fHeatDecreaseMultiplier);
 	DOREPLIFETIME(UFireMode, _fProjectileSpread);
+	DOREPLIFETIME(UFireMode, _iCurrentBurstShot);
 	DOREPLIFETIME(UFireMode, _ImpactEffectManager);
 }
 
@@ -513,9 +514,8 @@ void UFireMode::Fire(FHitResult HitResult, FVector CameraRotationXVector, USkele
 					// Has been chambered?
 					if (_bHasBeenChambered && _bIsRoundInChamber)
 					{
-						// Fire projectile (per spread)
-						for (int i = 0; i < _iShotsFiredPerSpread; i++)
-						{ FireProjectile(HitResult, CameraRotationXVector, SkCharWepMeshFirstP, SkCharWepMeshThirdP); }
+						// Fire projectile
+						FireProjectile(HitResult, CameraRotationXVector, SkCharWepMeshFirstP, SkCharWepMeshThirdP);
 					}
 				}
 
@@ -525,9 +525,8 @@ void UFireMode::Fire(FHitResult HitResult, FVector CameraRotationXVector, USkele
 					// Round in chamber?
 					if (_pAmmoPool->IsRoundInChamber())
 					{
-						// Fire projectile (per spread)
-						for (int i = 0; i < _iShotsFiredPerSpread; i++)
-						{ FireProjectile(HitResult, CameraRotationXVector, SkCharWepMeshFirstP, SkCharWepMeshThirdP); }
+						// Fire projectile
+						FireProjectile(HitResult, CameraRotationXVector, SkCharWepMeshFirstP, SkCharWepMeshThirdP);
 					}
 					else
 					{
@@ -645,12 +644,21 @@ void UFireMode::Fire(FHitResult HitResult, FVector CameraRotationXVector, USkele
 	OwningClient_SetFireDelayComplete(false);
 
 	// Empty mag? Means no round in the chamber
-	if (_pAmmoPool->GetMagazineAmmo() == 0 && _pAmmoPool->IsRoundInChamber() == true) { _pAmmoPool->Server_Reliable_SetRoundInChamber(false); }
+	if (_pAmmoPool->GetMagazineAmmo() == 0 && _pAmmoPool->IsRoundInChamber() == true) 
+	{ _pAmmoPool->Server_Reliable_SetRoundInChamber(false); }
 
 	// Start fire delay for re-chambering round
+	float firingDelay = _fFiringDelay;
+	if (_FiringType == E_FiringModeType::eFMT_Burst)
+	{
+		if (_iCurrentBurstShot < _iBurstFireShotCount) { _iBurstFireShotCount++; }
+		else { return; }
+		firingDelay = _fBurstFireShotDelay;
+	}
+
 	FTimerDelegate fireDelayDelegate;
 	fireDelayDelegate.BindUFunction(this, FName("OwningClient_SetFireDelayComplete"), true);
-	GetWorld()->GetTimerManager().SetTimer(_fFireDelayHandle, fireDelayDelegate, 1.0f, false, _fFiringDelay);
+	GetWorld()->GetTimerManager().SetTimer(_fFireDelayHandle, fireDelayDelegate, 1.0f, false, firingDelay);
 
 	// Update spread
 	IncreaseSpread();
@@ -830,9 +838,13 @@ void UFireMode::Server_Reliable_FireProjectileTrace_Implementation(APawn* Pawn, 
 	queryParams.AddIgnoredActor(Pawn);
 	queryParams.bReturnPhysicalMaterial = true;
 	GetWorld()->LineTraceSingleByChannel(traceHitOut, muzzleLaunchPointFP, traceEnd, collisionChannel, queryParams);
-	///DrawDebugLine(GetWorld(), muzzleLaunchPointFP, traceEnd, FColor::Blue, false, 1.0f);
-	///OwningClient_Unreliable_DebugFireTrace(muzzleLaunchPointFP, traceEnd);
 	
+	if (_bDebugDrawProjectileTrace)
+	{
+		DrawDebugLine(GetWorld(), muzzleLaunchPointFP, traceEnd, _fProjectileTraceColour, false, 1.0f);
+		OwningClient_Unreliable_DebugFireTrace(muzzleLaunchPointFP, traceEnd);
+	}
+
 	// Passed max distance threshold?
 	if (traceHitOut.Distance <= _fMaxRangeThreshold)
 	{
@@ -948,7 +960,7 @@ bool UFireMode::OwningClient_Unreliable_DebugFireTrace_Validate(FVector StartPoi
 { return true; }
 
 void UFireMode::OwningClient_Unreliable_DebugFireTrace_Implementation(FVector StartPoint, FVector EndPoint)
-{ DrawDebugLine(GetWorld(), StartPoint, EndPoint, FColor::Blue, false, 1.0f); }
+{ DrawDebugLine(GetWorld(), StartPoint, EndPoint, _fProjectileTraceColour, false, 1.0f); }
 
 ///////////////////////////////////////////////
 

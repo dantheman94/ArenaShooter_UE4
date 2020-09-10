@@ -159,6 +159,13 @@ protected:
 	/*
 	*
 	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Burst", Replicated,
+		meta = (EditCondition = "!_bUseDataTable"))
+		int _iCurrentBurstShot = 0;
+
+	/*
+	*
+	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current", Replicated)
 		int _iBatteryCapacity = 0;
 
@@ -443,7 +450,7 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Burst",
 		meta = (EditCondition = "!_bUseDataTable"))
-		int _iBurstFireShotCount = 0.0f;
+		int _iBurstFireShotCount = 0;
 
 	/*
 	*
@@ -764,6 +771,19 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Firing")
 		bool _bGamepadRumbleFiringAffectsRightSmall_DuelSecondary = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Firing")
+		bool _bDebugDrawProjectileTrace = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Firing",
+		meta = (EditCondition = "!_bDebugDrawPrimaryWeaponCameraTrace"))
+		FColor _fProjectileTraceColour = FColor::Red;
 
 	// Heat ***********************************************************************************************************************************
 
@@ -1241,6 +1261,14 @@ public:
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetMisfired(bool Misfired);
+
+	///////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		bool IsMidBurst() { return _iCurrentBurstShot < _iBurstFireShotCount; }
 
 	///////////////////////////////////////////////
 
@@ -1819,6 +1847,14 @@ public:
 	*/
 	UFUNCTION(BlueprintPure)
 		float GetSpreadAimingMaximum() { return _fSpreadAimingMaximum; }
+
+	// Spread Fire ****************************************************************************************************************************
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		float GetProjectileCountPerSpread() { return _iShotsFiredPerSpread; }
 
 	// UMG ************************************************************************************************************************************
 
