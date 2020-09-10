@@ -8,13 +8,13 @@
 #include "GameFramework/PlayerInput.h"
 #include "InputCoreTypes.h"
 #include "Interactable.h"
-#include "Weapon.h"
 
 #include "Structures.generated.h"
 
 class ABaseGameMode;
 class ABasePlayerController;
 class ABasePlayerState;
+class AWeapon;
 
 UENUM(BlueprintType)
 enum class E_GameStates : uint8
@@ -676,7 +676,7 @@ struct FLootPodItem : public FTableRowBase
 public:
 
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
-		TSubclassOf<AWeapon> WeaponClass;
+		TSubclassOf<class AWeapon> WeaponClass;
 
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, meta = (ClampMin = "0", ClampMax = "100", UIMin = "0", UIMax = "100"))
 		int SpawnWeight = 50;
