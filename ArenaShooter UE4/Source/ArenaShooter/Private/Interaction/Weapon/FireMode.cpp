@@ -20,7 +20,11 @@
 #include "UnrealNetwork.h"
 #include "UserWidget.h"
 
-// Startup ********************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Startup 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
 * @summary:	Sets default values for this component's properties.
@@ -36,8 +40,6 @@ UFireMode::UFireMode()
 	// Component replicates
 	SetIsReplicatedByDefault(true);
 }
-
-///////////////////////////////////////////////
 
 /**
 * @summary:	Called when the game starts or when spawned.
@@ -74,8 +76,6 @@ void UFireMode::BeginPlay()
 	}
 }
 
-///////////////////////////////////////////////
-
 void UFireMode::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -92,8 +92,6 @@ void UFireMode::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 	DOREPLIFETIME(UFireMode, _ImpactEffectManager);
 }
 
-///////////////////////////////////////////////
-
 bool UFireMode::Server_Reliable_CreateImpactManager_Validate()
 { return true; }
 
@@ -108,7 +106,11 @@ void UFireMode::Server_Reliable_CreateImpactManager_Implementation()
 	_ImpactEffectManager = GetWorld()->SpawnActor<AImpactEffectManager>(_ImpactEffectManagerClass, location, rotation, spawnInfo);
 }
 
-// Current Frame **************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Current Frame 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
 * @summary:	Called every frame.
@@ -121,15 +123,16 @@ void UFireMode::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompon
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	// First person muzzle position tick
+	// First person muzzle position tick (updates transform so that it keeps up with a moving weapon mesh)
 	if (_pLocalMuzzleEffect != NULL)
 	{
 		AActor* owner = _WeaponParentAttached->GetPawnOwner();
 		ABaseCharacter* character = Cast<ABaseCharacter>(owner);
 		if (character != NULL)
 		{
-			// Primary weapon
-			USkeletalMeshComponent* weaponskeletal = character->GetFirstPersonPrimaryWeaponMesh();
+			// Play on the right skeletal mesh weapon
+			bool secondaryWep = _WeaponParentAttached->IsOwnersSecondaryWeapon();
+			USkeletalMeshComponent* weaponskeletal = !secondaryWep ? character->GetFirstPersonPrimaryWeaponMesh() : character->GetFirstPersonSecondaryWeaponMesh();
 			if (weaponskeletal != NULL)
 			{
 				// Update position to muzzle socket position in the character's first person mesh
@@ -144,7 +147,7 @@ void UFireMode::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompon
 		}
 	}
 
-	// Third person muzzle position tick
+	// Third person muzzle position tick (updates transform so that it keeps up with a moving weapon mesh)
 	if (_pThirdPersonMuzzleEffect != NULL)
 	{
 		AActor* owner = _WeaponParentAttached->GetPawnOwner();
@@ -152,7 +155,8 @@ void UFireMode::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompon
 		if (character != NULL)
 		{
 			// Primary weapon
-			USkeletalMeshComponent* weaponskeletal = character->GetThirdPersonPrimaryWeaponMesh();
+			bool secondaryWep = _WeaponParentAttached->IsOwnersSecondaryWeapon();
+			USkeletalMeshComponent* weaponskeletal = !secondaryWep ? character->GetThirdPersonPrimaryWeaponMesh() : character->GetThirdPersonSecondaryWeaponMesh();
 			if (weaponskeletal != NULL)
 			{
 				// Update position to muzzle socket position in the character's third person mesh
@@ -199,8 +203,6 @@ void UFireMode::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompon
 	if (_bUpdateRecoilInterpolation) { RecoilInterpolationUpdate(); }
 }
 
-///////////////////////////////////////////////
-
 /**
 * @summary:	Sets whether this firemode is currently misfired or not.
 *
@@ -215,8 +217,6 @@ bool UFireMode::Server_Reliable_SetMisfired_Validate(bool Misfired)
 
 void UFireMode::Server_Reliable_SetMisfired_Implementation(bool Misfired)
 { _bIsMisfired = Misfired; }
-
-///////////////////////////////////////////////
 
 /**
 * @summary:	Sets whether there is a magazine in or not for this firemode.
@@ -233,8 +233,6 @@ bool UFireMode::Server_Reliable_SetMagazineInWeapon_Validate(bool MagIn)
 void UFireMode::Server_Reliable_SetMagazineInWeapon_Implementation(bool MagIn)
 { _bIsMagazineInWeapon = MagIn; }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -243,8 +241,6 @@ bool UFireMode::Server_Reliable_SetWeaponAttached_Validate(AWeapon* Weapon)
 
 void UFireMode::Server_Reliable_SetWeaponAttached_Implementation(AWeapon* Weapon)
 { _WeaponParentAttached = Weapon; }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -271,7 +267,11 @@ void UFireMode::Server_Reliable_SetIsFiring_Implementation(bool Firing)
 	SetIsFiring(Firing);
 }
 
-// Animation ******************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Animation 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -293,8 +293,6 @@ void UFireMode::DetermineAmmoPool()
 	}
 }
 
-///////////////////////////////////////////////
-
 /**
 * @summary:	Returns reference to an animation montage used on the weapon owner's first person mesh.
 *
@@ -309,11 +307,17 @@ UAnimMontage* UFireMode::GetArmAnimation(E_HandAnimation AnimationEnum)
 	case E_HandAnimation::eHA_FirstPickup:				return _AnimationMontageListHands._Anim_FirstPickup;
 	case E_HandAnimation::eHA_Equip:					return _AnimationMontageListHands._Anim_Equip;
 	case E_HandAnimation::eHA_Unequip:					return _AnimationMontageListHands._Anim_Unequip;
+	case E_HandAnimation::eHA_EquipDuelLeft:			return _AnimationMontageListHands._Anim_EquipDuelLeft;
+	case E_HandAnimation::eHA_UnequipDuelLeft:			return _AnimationMontageListHands._Anim_UnequipDuelLeft;
+	case E_HandAnimation::eHA_EquipDuelRight:			return _AnimationMontageListHands._Anim_EquipDuelRight;
+	case E_HandAnimation::eHA_UnequipDuelRight:			return _AnimationMontageListHands._Anim_UnequipDuelRight;
 	case E_HandAnimation::eHA_Inspect:					return _AnimationMontageListHands._Anim_Inspect;
 	case E_HandAnimation::eHA_ReloadFullNotEmpty:		return _AnimationMontageListHands._Anim_ReloadFullNotEmpty;
 	case E_HandAnimation::eHA_ReloadFullEmpty:			return _AnimationMontageListHands._Anim_ReloadFullEmpty;
-	case E_HandAnimation::eHA_ReloadDuelRight:			return _AnimationMontageListHands._Anim_ReloadDuelRight;
-	case E_HandAnimation::eHA_ReloadDuelLeft:			return _AnimationMontageListHands._Anim_ReloadDuelLeft;
+	case E_HandAnimation::eHA_ReloadDuelRightLower:		return _AnimationMontageListHands._Anim_ReloadDuelRightLower;
+	case E_HandAnimation::eHA_ReloadDuelRightRaise:		return _AnimationMontageListHands._Anim_ReloadDuelRightRaise;
+	case E_HandAnimation::eHA_ReloadDuelLeftLower:		return _AnimationMontageListHands._Anim_ReloadDuelLeftLower;
+	case E_HandAnimation::eHA_ReloadDuelLeftRaise:		return _AnimationMontageListHands._Anim_ReloadDuelLeftRaise;
 	case E_HandAnimation::eHA_FireProjectileHipfire:	return _AnimationMontageListHands._Anim_FireProjectileHipfire;
 	case E_HandAnimation::eHA_FireProjectileAiming:		return _AnimationMontageListHands._Anim_FireProjectileADS;
 	case E_HandAnimation::eHA_ProjectileMisfire:		return _AnimationMontageListHands._Anim_ProjectileMisfire;
@@ -325,8 +329,6 @@ UAnimMontage* UFireMode::GetArmAnimation(E_HandAnimation AnimationEnum)
 	}
 	return NULL;
 }
-
-///////////////////////////////////////////////
 
 /**
 * @summary:	Returns reference to an animation montage used on the weapon's mesh.
@@ -343,8 +345,10 @@ UAnimMontage* UFireMode::GetGunAnimation(E_GunAnimation AnimationEnum)
 	case E_GunAnimation::eGA_Inspect:					return _AnimationMontageListWeapon._Anim_Inspect;
 	case E_GunAnimation::eGA_ReloadFullNotEmpty:		return _AnimationMontageListWeapon._Anim_ReloadFullNotEmpty;
 	case E_GunAnimation::eGA_ReloadFullEmpty:			return _AnimationMontageListWeapon._Anim_ReloadFullEmpty;
-	case E_GunAnimation::eGA_ReloadDuelRight:			return _AnimationMontageListWeapon._Anim_ReloadDuelRight;
-	case E_GunAnimation::eGA_ReloadDuelLeft:			return _AnimationMontageListWeapon._Anim_ReloadDuelLeft;
+	case E_GunAnimation::eGA_ReloadDuelRightLower:		return _AnimationMontageListWeapon._Anim_ReloadDuelRightLower;
+	case E_GunAnimation::eGA_ReloadDuelRightRaise:		return _AnimationMontageListWeapon._Anim_ReloadDuelRightRaise;
+	case E_GunAnimation::eGA_ReloadDuelLeftLower:		return _AnimationMontageListWeapon._Anim_ReloadDuelLeftLower;
+	case E_GunAnimation::eGA_ReloadDuelLeftRaise:		return _AnimationMontageListWeapon._Anim_ReloadDuelLeftRaise;
 	case E_GunAnimation::eGA_FireProjectileHipfire:		return _AnimationMontageListWeapon._Anim_FireProjectileHipfire;
 	case E_GunAnimation::eGA_FireProjectileAiming:		return _AnimationMontageListWeapon._Anim_FireProjectileADS;
 	case E_GunAnimation::eGA_ProjectileMisfire:			return _AnimationMontageListWeapon._Anim_ProjectileMisfire;
@@ -357,7 +361,11 @@ UAnimMontage* UFireMode::GetGunAnimation(E_GunAnimation AnimationEnum)
 	return NULL;
 }
 
-// Contrail *******************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Contrail 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -394,8 +402,6 @@ void UFireMode::Multicast_Unreliable_PlayThirdPersonContrail_Implementation(FHit
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -429,7 +435,11 @@ void UFireMode::OwningClient_Unreliable_PlayFirstPersonContrail_Implementation(F
 	}
 }
 
-// Damage *********************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Damage 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -461,8 +471,6 @@ float UFireMode::GetDamageByPawnHitComponent(UPrimitiveComponent* ComponentHit)
 	return damage;
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -482,7 +490,11 @@ void UFireMode::ApplyPointDamage(AActor* DamagedActor, float DamageToCause, USke
 	UGameplayStatics::ApplyPointDamage(DamagedActor, DamageToCause, hitDirection, HitResult, instigator, _WeaponParentAttached, NULL);
 }
 
-// Firing *********************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Firing 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -499,7 +511,8 @@ void UFireMode::Fire(FHitResult HitResult, FVector CameraRotationXVector, USkele
 	{
 
 	}
-	else
+
+	else // Not overheated
 	{		
 		switch (_pAmmoPool->GetAmmoType())
 		{
@@ -528,7 +541,7 @@ void UFireMode::Fire(FHitResult HitResult, FVector CameraRotationXVector, USkele
 						// Fire projectile
 						FireProjectile(HitResult, CameraRotationXVector, SkCharWepMeshFirstP, SkCharWepMeshThirdP);
 					}
-					else
+					else // Round ISNT in chamber
 					{
 						///FString Message = TEXT("ROUND ISNT IN CHAMBER");
 						///GEngine->AddOnScreenDebugMessage(20, 5.0f, FColor::Red, Message);
@@ -540,7 +553,7 @@ void UFireMode::Fire(FHitResult HitResult, FVector CameraRotationXVector, USkele
 						// Play animation
 						uint8 handAnim = (uint8)E_HandAnimation::eHA_ReloadFullEmpty;
 						uint8 gunAnim = (uint8)E_GunAnimation::eGA_ReloadFullEmpty;
-						character->OwningClient_PlayPrimaryWeaponFPAnimation(character->GetGlobalReloadPlayRate(), false, true, handAnim, _fStartingTimeChamberRound, true, gunAnim, _fStartingTimeChamberRound);
+						character->OwningClient_PlayPrimaryWeaponFPAnimation(character->_FirstPerson_Arms, character->GetGlobalReloadPlayRate(), false, true, handAnim, _fStartingTimeChamberRound, true, gunAnim, _fStartingTimeChamberRound);
 
 						shouldReturn = true;
 					}
@@ -556,10 +569,8 @@ void UFireMode::Fire(FHitResult HitResult, FVector CameraRotationXVector, USkele
 					// Fire projectile (per spread)
 					for (int i = 0; i < _iShotsFiredPerSpread; i++)
 					{ FireProjectile(HitResult, CameraRotationXVector, SkCharWepMeshFirstP, SkCharWepMeshThirdP); }
-				} 
-				
-				// Round isnt in chamber
-				else
+				}
+				else // Round isnt in chamber
 				{
 					// Auto reload weapon?
 					if (_pAmmoPool->GetReserveAmmo() > 0 && _bAutomaticallyReloadOnEmptyMagazine)
@@ -634,16 +645,17 @@ void UFireMode::Fire(FHitResult HitResult, FVector CameraRotationXVector, USkele
 		default: break;
 		}
 	}
-
 	if (shouldReturn) { return; }
 	
-	SetIsFiring(true);
+	// Set _bIsFiring to TRUE
+	if (_WeaponParentAttached->GetLocalRole() == ROLE_Authority) { SetIsFiring(true); }
+	else { Server_Reliable_SetIsFiring(true); }
 
 	// Deduct ammo and re-chamber new bullet
 	_pAmmoPool->Server_Reliable_DeductAmmo(1);
 	OwningClient_SetFireDelayComplete(false);
 
-	// Empty mag? Means no round in the chamber
+	// Empty mag? Means no round in the chamber (dont want to send an RPC call for every bullet being shot, to rechamber a round)
 	if (_pAmmoPool->GetMagazineAmmo() == 0 && _pAmmoPool->IsRoundInChamber() == true) 
 	{ _pAmmoPool->Server_Reliable_SetRoundInChamber(false); }
 
@@ -683,20 +695,34 @@ void UFireMode::Fire(FHitResult HitResult, FVector CameraRotationXVector, USkele
 	ABaseCharacter* character = Cast<ABaseCharacter>(_WeaponParentAttached->GetPawnOwner());
 	if (character != NULL)
 	{
+		bool bduelWielding = character->IsDuelWielding();
+
 		// Enum animation to byte (aim or hipfire?)
 		uint8 handByte;
 		uint8 gunByte;
-		if (_bAimDownSightEnabled && character->IsAiming())
+		if (!bduelWielding)
 		{
-			handByte = (uint8)E_HandAnimation::eHA_FireProjectileAiming;
-			gunByte = (uint8)E_GunAnimation::eGA_FireProjectileAiming;
-		} else
+			if (_bAimDownSightEnabled && character->IsAiming())
+			{
+				handByte = (uint8)E_HandAnimation::eHA_FireProjectileAiming;
+				gunByte = (uint8)E_GunAnimation::eGA_FireProjectileAiming;
+			} else
+			{
+				handByte = (uint8)E_HandAnimation::eHA_FireProjectileHipfire;
+				gunByte = (uint8)E_GunAnimation::eGA_FireProjectileHipfire;
+			}
+		}
+		else // bduelWielding == true
 		{
+			// Right now i technically dont have dedicated duel wielding variants of the firing animations, so the standard hipfire ones work for now
+			// but when a proper animator comes onboard and creates a proper animation, use that instead...
 			handByte = (uint8)E_HandAnimation::eHA_FireProjectileHipfire;
 			gunByte = (uint8)E_GunAnimation::eGA_FireProjectileHipfire;
-		}		
+		}
 
-		character->OwningClient_PlayPrimaryWeaponFPAnimation(1.0f, false, true, handByte, 0.0f, true, gunByte, 0.0f);
+		// Play animation on the right mesh (fps arms OR fps duel arm left/right)
+		USkeletalMeshComponent* armsMesh = !bduelWielding ? character->_FirstPerson_Arms : _WeaponParentAttached->IsOwnersPrimaryWeapon() ? character->_FirstPerson_ArmsDuelRight : character->_FirstPerson_ArmsDuelLeft;
+		character->OwningClient_PlayPrimaryWeaponFPAnimation(armsMesh, 1.0f, false, true, handByte, 0.0f, true, gunByte, 0.0f);
 	}
 
 	// Camera shake
@@ -782,8 +808,6 @@ void UFireMode::Fire(FHitResult HitResult, FVector CameraRotationXVector, USkele
 	arenaController->GamepadRumble(_fGamepadRumbleFiringIntensity, _fGamepadRumbleFiringDuration, affectsLeftLarge, affectsLeftSmall, affectsRightLarge, affectsRightSmall);
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -807,8 +831,6 @@ void UFireMode::FireProjectile(FHitResult hitResult, FVector CameraRotationXVec,
 	default: break;
 	}
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -951,8 +973,6 @@ void UFireMode::Server_Reliable_FireProjectileTrace_Implementation(APawn* Pawn, 
 	Multicast_Unreliable_PlayThirdPersonContrail(traceHitOut, muzzleLaunchPointTP);
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -961,8 +981,6 @@ bool UFireMode::OwningClient_Unreliable_DebugFireTrace_Validate(FVector StartPoi
 
 void UFireMode::OwningClient_Unreliable_DebugFireTrace_Implementation(FVector StartPoint, FVector EndPoint)
 { DrawDebugLine(GetWorld(), StartPoint, EndPoint, _fProjectileTraceColour, false, 1.0f); }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -988,8 +1006,6 @@ void UFireMode::Server_Reliable_FireProjectilePhysics_Implementation(APawn* Pawn
 	projectile->Init(hitResult.GetActor());
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -1002,7 +1018,11 @@ void UFireMode::OwningClient_SetFireDelayComplete_Implementation(bool Complete)
 	if (Complete) { Server_Reliable_SetMisfired(false); }
 }
 
-// Heat ***********************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Heat 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
 * @summary:	Sets whether this firemode is currently overheated or not.
@@ -1034,7 +1054,11 @@ void UFireMode::Server_Reliable_SetOverheated_Implementation(bool Overheated)
 	}
 }
 
-// Muzzle Effect **************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Muzzle Effect 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -1047,7 +1071,7 @@ void UFireMode::Multicast_Unreliable_PlayThirdPersonMuzzle_Implementation(USkele
 	// Play contrail effect on all non-local clients (owner no see)
 	if (!_WeaponParentAttached->GetPawnOwner()->IsLocallyControlled())
 	{
-		if (_pMuzzleEffectParticleSystem != NULL && _WeaponParentAttached->GetLocalRole() < ROLE_Authority)
+		if (_pMuzzleEffectParticleSystem != NULL && _WeaponParentAttached->GetLocalRole() != ROLE_Authority)
 		{
 			// Spawn muzzle effect
 			FVector position = SkCharWepMeshThirdP->GetSocketLocation(_MuzzleSocketName);
@@ -1056,8 +1080,6 @@ void UFireMode::Multicast_Unreliable_PlayThirdPersonMuzzle_Implementation(USkele
 		}
 	}
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -1077,7 +1099,11 @@ void UFireMode::OwningClient_Unreliable_PlayFirstPersonMuzzle_Implementation(USk
 	}
 }
 
-// Recoil *********************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Recoil 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -1141,8 +1167,6 @@ void UFireMode::OwningClient_Reliable_RecoilCamera_Implementation()
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -1156,8 +1180,6 @@ void UFireMode::OwningClient_Reliable_StartRecoilInterpolation_Implementation()
 	_bUpdateRecoilInterpolation = true;
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -1170,8 +1192,6 @@ void UFireMode::OwningClient_Reliable_StopRecoilInterpolation_Implementation()
 	_fFiringTime = 0.0f;
 	_bUpdateRecoilInterpolation = false;
 }
-
-///////////////////////////////////////////////
 
 void UFireMode::RecoilInterpolationUpdate()
 {
@@ -1192,7 +1212,11 @@ void UFireMode::RecoilInterpolationUpdate()
 	_fCurrentRecoilInterpolationSpeed = lerp;
 }
 
-// Reload *********************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Reload 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -1201,9 +1225,9 @@ bool UFireMode::Server_Reliable_SetReloadComplete_Validate(bool ReloadComplete)
 { return true; }
 
 void UFireMode::Server_Reliable_SetReloadComplete_Implementation(bool ReloadComplete)
-{_bReloadComplete = ReloadComplete; }
-
-///////////////////////////////////////////////
+{ 
+	SetReloadAnimationComplete(ReloadComplete);
+}
 
 /*
 *
@@ -1227,8 +1251,6 @@ void UFireMode::Server_Reliable_EjectMagazine_Implementation()
 	_eReloadStage = E_ReloadStage::eRS_NewMagazine;
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -1244,8 +1266,6 @@ void UFireMode::Server_Reliable_NewMagazine_Implementation()
 	if (_bIsRoundInChamber) { _eReloadStage = E_ReloadStage::eRS_Ready; }
 	else { _eReloadStage = E_ReloadStage::eRS_ChamberRound; }
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -1263,8 +1283,6 @@ void UFireMode::Server_Reliable_ChamberRound_Implementation()
 	_eReloadStage = E_ReloadStage::eRS_Ready;
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -1276,7 +1294,11 @@ void UFireMode::Server_Reliable_SetReloadStage_Implementation(E_ReloadStage Relo
 	_eReloadStage = ReloadStage;
 }
 
-///////////////////////////////////////////////
+void UFireMode::SetReloadAnimationComplete(bool Complete)
+{
+	if (_WeaponParentAttached->GetLocalRole() == ROLE_Authority) { _bReloadComplete = Complete; }
+	else Server_Reliable_SetReloadComplete(Complete);
+}
 
 /*
 *
@@ -1287,11 +1309,10 @@ float UFireMode::GetReloadStartingTime()
 
 	switch (_eReloadStage)
 	{
-	case E_ReloadStage::eRS_Ready: time = 0.0f; break;
-	case E_ReloadStage::eRS_EjectMagazine: time = _fStartingTimeEjectMagazine; break;
-	case E_ReloadStage::eRS_NewMagazine: time = _fStartingTimeNewMagazine; break;
-	case E_ReloadStage::eRS_ChamberRound: time = _fStartingTimeChamberRound; break;
-
+	case E_ReloadStage::eRS_Ready:				time = 0.0f; break;
+	case E_ReloadStage::eRS_EjectMagazine:		time = _fStartingTimeEjectMagazine; break;
+	case E_ReloadStage::eRS_NewMagazine:		time = _fStartingTimeNewMagazine; break;
+	case E_ReloadStage::eRS_ChamberRound:		time = _fStartingTimeChamberRound; break;
 	default: break;
 	}
 
@@ -1301,7 +1322,11 @@ float UFireMode::GetReloadStartingTime()
 	return time;
 }
 
-// Spread *********************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Spread 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -1323,8 +1348,6 @@ float UFireMode::IncreaseSpread()
 	return _fProjectileSpread;
 }
 
-///////////////////////////////////////////////
-
 void UFireMode::UpdateSpreadToMinimum(bool Aiming)
 {
 	// If the current projectile spread is less than the minimum specified, then update the current spread to match the minimum value
@@ -1332,8 +1355,6 @@ void UFireMode::UpdateSpreadToMinimum(bool Aiming)
 	if (GetCurrentProjectileSpread() < minimumSpread)
 	{ _fProjectileSpread = minimumSpread; }
 }
-
-///////////////////////////////////////////////
 
 /**
 * @summary:	Sets the current projectile spread of the firemode.
@@ -1353,8 +1374,6 @@ void UFireMode::Server_Reliable_AddToSpread_Implementation(float Additive, float
 	_fProjectileSpread += Additive;
 	_fProjectileSpread = FMath::Clamp(_fProjectileSpread, ClampMinimum, ClampMaximum);
 }
-
-///////////////////////////////////////////////
 
 /**
 * @summary:	Subtracts to the current projectile spread of the firemode.

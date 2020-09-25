@@ -340,6 +340,48 @@ public:
 *	used when the animation montage is being played.
 */
 USTRUCT(BlueprintType)
+struct FRumbleInfo
+{
+	GENERATED_BODY()
+
+		FRumbleInfo() {}
+
+public:
+
+	FRumbleInfo(float fIntensity, float fDuration, bool AffectsLargeLeftMotor, bool AffectsLargeRightMotor, bool AffectsSmallLeftMotor, bool AffectsSmallRightMotor)
+	{
+		Intensity = fIntensity;
+		Duration = fDuration;
+		bAffectsLargeLeftMotor = AffectsLargeLeftMotor;
+		bAffectsLargeRightMotor = AffectsLargeRightMotor;
+		bAffectsSmallLeftMotor = AffectsSmallLeftMotor;
+		bAffectsSmallRightMotor = AffectsSmallRightMotor;
+	}
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		float Intensity;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		float Duration;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		bool bAffectsLargeLeftMotor;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		bool bAffectsLargeRightMotor;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		bool bAffectsSmallLeftMotor;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		bool bAffectsSmallRightMotor;
+};
+
+/*
+*	Entry which represents a specific weapon animation montage and the origin transform that will
+*	used when the animation montage is being played.
+*/
+USTRUCT(BlueprintType)
 struct FWeaponAnimation
 {
 	GENERATED_BODY()
@@ -375,6 +417,18 @@ public:
 		UAnimMontage* _Anim_Unequip = NULL;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		UAnimMontage* _Anim_EquipDuelLeft = NULL;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		UAnimMontage* _Anim_UnequipDuelLeft = NULL;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		UAnimMontage* _Anim_EquipDuelRight = NULL;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		UAnimMontage* _Anim_UnequipDuelRight = NULL;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		UAnimMontage* _Anim_Inspect = NULL;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -384,10 +438,16 @@ public:
 		UAnimMontage* _Anim_ReloadFullEmpty = NULL;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		UAnimMontage* _Anim_ReloadDuelRight = NULL;
+		UAnimMontage* _Anim_ReloadDuelRightRaise = NULL;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		UAnimMontage* _Anim_ReloadDuelLeft = NULL;
+		UAnimMontage* _Anim_ReloadDuelRightLower = NULL;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		UAnimMontage* _Anim_ReloadDuelLeftRaise = NULL;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		UAnimMontage* _Anim_ReloadDuelLeftLower = NULL;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		UAnimMontage* _Anim_FireProjectileHipfire = NULL;
@@ -434,10 +494,16 @@ public:
 		UAnimMontage* _Anim_ReloadFullEmpty = NULL;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		UAnimMontage* _Anim_ReloadDuelRight = NULL;
+		UAnimMontage* _Anim_ReloadDuelRightRaise = NULL;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		UAnimMontage* _Anim_ReloadDuelLeft = NULL;
+		UAnimMontage* _Anim_ReloadDuelRightLower = NULL;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		UAnimMontage* _Anim_ReloadDuelLeftRaise = NULL;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		UAnimMontage* _Anim_ReloadDuelLeftLower = NULL;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		UAnimMontage* _Anim_FireProjectileHipfire = NULL;

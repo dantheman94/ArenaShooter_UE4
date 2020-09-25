@@ -27,7 +27,7 @@ AWeapon::AWeapon()
 	// Get all firing mode components as reference
 	///this->GetComponents<UFireMode>(_uFiringModes);
 	
-	///FString _Message = TEXT("Firemode iter: ") + FString::FromInt(this->GetFireModeIterator()) +
+	///FString _Message = TEXT("Firemode iter: ") + FString::FromIntm(this->GetFireModeIterator()) +
 	///	TEXT(" / firemode size: ") + FString::FromInt(this->_uFiringModes.Num());
 	///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, _Message);
 }
@@ -75,7 +75,7 @@ bool AWeapon::Server_Reliable_SetNewOwner_Validate(APawn* NewOwner)
 
 void AWeapon::Server_Reliable_SetNewOwner_Implementation(APawn* NewOwner)
 {
-	_PawnOwner = NewOwner;
+	SetNewOwner(NewOwner);
 }
 
 ///////////////////////////////////////////////
@@ -85,7 +85,7 @@ bool AWeapon::Server_Reliable_SetOwnersPrimaryWeapon_Validate(bool IsPrimaryWeap
 
 void AWeapon::Server_Reliable_SetOwnersPrimaryWeapon_Implementation(bool IsPrimaryWeapon)
 {
-	_bIsPawnOwnersPrimaryWeapon = IsPrimaryWeapon;
+	SetOwnersPrimaryWeapon(IsPrimaryWeapon);
 
 	// If this is the owners primary weapon, then it cant be their secondary weapon too
 	if (IsPrimaryWeapon) { _bIsPawnOwnersSecondaryWeapon = false; }
@@ -104,10 +104,10 @@ bool AWeapon::Server_Reliable_SetOwnersSecondaryWeapon_Validate(bool IsSecondary
 
 void AWeapon::Server_Reliable_SetOwnersSecondaryWeapon_Implementation(bool IsSecondaryWeapon)
 {
-	_bIsPawnOwnersSecondaryWeapon = IsSecondaryWeapon;
+	SetOwnersSecondaryWeapon(IsSecondaryWeapon);
 
 	// If this is the owners secondary weapon, then it cant be their primary weapon too
-	if (IsSecondaryWeapon) { _bIsPawnOwnersPrimaryWeapon = false; }
+	if (IsSecondaryWeapon) { SetOwnersPrimaryWeapon(false); }
 
 	// Create UMG crosshair widgets
 	///for (int i = 0; i < _uFiringModes.Num(); ++i)

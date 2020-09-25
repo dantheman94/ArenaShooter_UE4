@@ -17,14 +17,20 @@ enum class E_HandAnimation : uint8
 	eHA_FirstPickup UMETA(DisplayName = "First Pickup"),
 	eHA_Equip UMETA(DisplayName = "Equip"),
 	eHA_Unequip UMETA(DisplayName = "Unequip"),
+	eHA_EquipDuelLeft UMETA(DisplayName = "Equip Duelwielding Left"),
+	eHA_UnequipDuelLeft UMETA(DisplayName = "Unequip Duelwielding Left"),
+	eHA_EquipDuelRight UMETA(DisplayName = "Equip Duelwielding Right"),
+	eHA_UnequipDuelRight UMETA(DisplayName = "Unequip Duelwielding Right"),
 	eHA_Inspect UMETA(DisplayName = "Inspect"),
 	eHA_ReloadEjectMag UMETA(DisplayName = "Reload Eject Magazine"),
 	eHA_ReloadNewMag UMETA(DisplayName = "Reload New Magazine"),
 	eHA_ReloadChamberRound UMETA(DisplayName = "Reload Chamber Round"),
 	eHA_ReloadFullNotEmpty UMETA(DisplayName = "Full Reload Not Empty"),
 	eHA_ReloadFullEmpty UMETA(DisplayName = "Full Reload Empty"),
-	eHA_ReloadDuelRight UMETA(DisplayName = "Reload Duel Right"),
-	eHA_ReloadDuelLeft  UMETA(DisplayName = "Reload Duel Left"),
+	eHA_ReloadDuelRightLower UMETA(DisplayName = "Reload Duel Right Lower"),
+	eHA_ReloadDuelRightRaise UMETA(DisplayName = "Reload Duel Right Raise"),
+	eHA_ReloadDuelLeftLower  UMETA(DisplayName = "Reload Duel Left Lower"),
+	eHA_ReloadDuelLeftRaise  UMETA(DisplayName = "Reload Duel Left Raise"),
 	eHA_FireProjectileHipfire UMETA(DisplayName = "Fire Projectile Hipfire"),
 	eHA_FireProjectileAiming UMETA(DisplayName = "Fire Projectile Aiming"),
 	eHA_ProjectileMisfire UMETA(DisplayName = "Projectile Misfire"),
@@ -44,8 +50,10 @@ enum class E_GunAnimation : uint8
 	eGA_ReloadChamberRound UMETA(DisplayName = "Reload Chamber Round"),
 	eGA_ReloadFullNotEmpty UMETA(DisplayName = "Full Reload Not Empty"),
 	eGA_ReloadFullEmpty UMETA(DisplayName = "Full Reload Empty"),
-	eGA_ReloadDuelRight UMETA(DisplayName = "Reload Duel Right"),
-	eGA_ReloadDuelLeft  UMETA(DisplayName = "Reload Duel Left"),
+	eGA_ReloadDuelRightLower UMETA(DisplayName = "Reload Duel Right Lower"),
+	eGA_ReloadDuelRightRaise UMETA(DisplayName = "Reload Duel Right Raise"),
+	eGA_ReloadDuelLeftLower  UMETA(DisplayName = "Reload Duel Left Lower"),
+	eGA_ReloadDuelLeftRaise  UMETA(DisplayName = "Reload Duel Left Raise"),
 	eGA_FireProjectileHipfire UMETA(DisplayName = "Fire Projectile Hipfire"),
 	eGA_FireProjectileAiming UMETA(DisplayName = "Fire Projectile Aiming"),
 	eGA_ProjectileMisfire UMETA(DisplayName = "Projectile Misfire"),
@@ -68,20 +76,15 @@ class ARENASHOOTER_API AWeapon : public AActor
 {
 	GENERATED_BODY()
 
-public:
-
-	// Startup **************************************************************
-
-	// Sets default values for this actor's properties
-	AWeapon();
-
-	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
+#pragma region Protected Variables
 
 protected:
 
-	// Startup ********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	// Startup
 
-	// *** FUNCTIONS
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
 	* @summary:	Called when the game starts or when spawned.
@@ -90,9 +93,11 @@ protected:
 	*/
 	virtual void BeginPlay() override;
 
-	// *** VARIABLES
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	// Current Frame 
 
-	// Current Frame **************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -142,19 +147,23 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current", Replicated)
 		APawn* _PawnOwner = NULL;
 
-	// Animation ******************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	// Animation
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Animation")
-		FTransform _tOriginHands;
+		FTransform _tOriginArms;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Animation")
-		FTransform _tOriginGun;
+		FTransform _tOriginWeapon;
 
 	/*
 	*
@@ -166,13 +175,20 @@ protected:
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Animation")
-		TSubclassOf<UAnimInstance> _AnimationBPFirstPersonHands = NULL;
+		TSubclassOf<UAnimInstance> _AnimationBPFirstPersonArmsStandard = NULL;
 
 	/*
 	*
 	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Animation",
+		meta = (EditCondition = "_bCanBeDuelWielded"))
+		TSubclassOf<UAnimInstance> _AnimationBPFirstPersonArmsDuelWielding = NULL;
+	
+	/*
+	*
+	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Animation")
-		TSubclassOf<UAnimInstance> _AnimationBPFirstPersonGun = NULL;
+		TSubclassOf<UAnimInstance> _AnimationBPFirstPersonWeapon = NULL;
 
 	/*
 	*
@@ -180,7 +196,11 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Animation")
 		TSubclassOf<UAnimInstance> _AnimationBPThirdPersonCharacter = NULL;
 
-	// Attachments | Scope ********************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	// Attachments | Scope
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -200,7 +220,11 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Attachments | Scope")
 		FName _ScopeAttachmentSocket = TEXT("SightAttachmentPoint");
 
-	// Attachments | Flashlight ***************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	// Attachments | Flashlight
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -220,7 +244,11 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Attachments | Flashlight")
 		FName _FlashlightAttachmentSocket = TEXT("FlashlightAttachmentPoint");
 
-	// Duel Wielding **************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	// Duel Wielding
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -233,16 +261,41 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Duel Wielding",
 		meta = (EditCondition = "_bCanBeDuelWielded"))
-		FTransform _tDuelOriginPrimary;
+		float _fDuelWieldingReloadTime = 1.0f;
 
 	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Duel Wielding",
 		meta = (EditCondition = "_bCanBeDuelWielded"))
-		FTransform _tDuelOriginSecondary;
+		FTransform _tDuelOriginPrimaryArms;
 
-	// Interaction ****************************************************************************************************************************
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Duel Wielding",
+		meta = (EditCondition = "_bCanBeDuelWielded"))
+		FTransform _tDuelOriginPrimaryWeapon;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Duel Wielding",
+		meta = (EditCondition = "_bCanBeDuelWielded"))
+		FTransform _tDuelOriginSecondaryArms;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Duel Wielding",
+		meta = (EditCondition = "_bCanBeDuelWielded"))
+		FTransform _tDuelOriginSecondaryWeapon;
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	// Interaction
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -250,7 +303,11 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Interaction")
 		TSubclassOf<AActor> _OnDroppedActor = NULL;
 
-	// Properties *****************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	// Properties
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -267,11 +324,28 @@ protected:
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Properties")
 		TArray<UAmmo*> _pAmmoPools;
 
+#pragma endregion Protected Variables
+
+#pragma region Public Functions
+
 public:
 
-	// *** FUNCTIONS
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	// Startup
 
-	// Current Frame **************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Sets default values for this actor's properties
+	AWeapon();
+
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	// Current Frame
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
 	* @summary:	Called every frame.
@@ -282,20 +356,14 @@ public:
 	*/
 	virtual void Tick(float DeltaTime) override;
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetPawnOwnerIsAiming(bool Aiming);
 
-	///////////////////////////////////////////////
-
 	UFUNCTION(BlueprintPure)
-		bool GetIsAiming() { return _bIsPawnOwnerAiming; }
-
-	///////////////////////////////////////////////
+		bool GetIsAiming() const { return _bIsPawnOwnerAiming; }
 
 	/*
 	*
@@ -303,31 +371,29 @@ public:
 	UFUNCTION(BlueprintPure)
 		int GetFireModeIterator() { return _iFiringModeIterator; }
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintPure)
 		TArray<UFireMode*> GetFireModes() { return _uFiringModes; }
 
-	///////////////////////////////////////////////
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		UFireMode* GetCurrentFireMode() const { return _uFiringModes[_iFiringModeIterator]; }
 
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintPure)
-		UFireMode* GetCurrentFireMode() { return _uFiringModes[_iFiringModeIterator]; }
-
-	///////////////////////////////////////////////
+		bool IsThereValidFireModeCount() const { return _uFiringModes.Num() >= 1 && _uFiringModes.Num() >= _iFiringModeIterator; }
 
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
-		bool IsThereValidFireModeCount() { return _uFiringModes.Num() >= 1 && _uFiringModes.Num() >= _iFiringModeIterator; }
-
-	///////////////////////////////////////////////
+	UFUNCTION()
+		void SetOwnersPrimaryWeapon(bool IsPrimaryWeapon) { _bIsPawnOwnersPrimaryWeapon = IsPrimaryWeapon; }
 
 	/*
 	*
@@ -335,7 +401,17 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetOwnersPrimaryWeapon(bool IsPrimaryWeapon);
 
-	///////////////////////////////////////////////
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		bool IsOwnersPrimaryWeapon() { return _bIsPawnOwnersPrimaryWeapon; }
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void SetOwnersSecondaryWeapon(bool IsSecondaryWeapon) { _bIsPawnOwnersSecondaryWeapon = IsSecondaryWeapon; }
 
 	/*
 	*
@@ -343,31 +419,17 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetOwnersSecondaryWeapon(bool IsSecondaryWeapon);
 
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		bool IsOwnersPrimaryWeapon() { return _bIsPawnOwnersPrimaryWeapon; }
-
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintPure)
 		bool IsOwnersSecondaryWeapon() { return _bIsPawnOwnersSecondaryWeapon; }
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
-		bool CanBeDuelWielded() { return _bCanBeDuelWielded; }
-
-	///////////////////////////////////////////////
+	UFUNCTION()
+		void SetNewOwner(APawn* NewOwner) { _PawnOwner = NewOwner; }
 
 	/*
 	*
@@ -375,15 +437,11 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetNewOwner(APawn* NewOwner);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintPure)
 		APawn* GetPawnOwner() { return _PawnOwner; }
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -391,63 +449,47 @@ public:
 	UFUNCTION()
 		TArray<UAmmo*> GetAmmoPool() { return _pAmmoPools; }
 
-	// Animation ******************************************************************************************************************************
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		bool CanBeDuelWielded() const { return _bCanBeDuelWielded; }
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	// Animation 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
 	*/
 	UFUNCTION()
-		FTransform GetTransformOriginHands() { return _tOriginHands; }
-
-	///////////////////////////////////////////////
+		FTransform GetTransformOriginArms() const { return _tOriginArms; }
 
 	/*
 	*
 	*/
 	UFUNCTION()
-		FTransform GetTransformOriginGun() { return _tOriginGun; }
-
-	///////////////////////////////////////////////
+		FTransform GetTransformOriginWeapon() const { return _tOriginWeapon; }
 
 	/*
 	*
 	*/
 	UFUNCTION()
-		FTransform GetTransformOriginDuelPrimary() { return _tDuelOriginPrimary; }
-
-	///////////////////////////////////////////////
+		TSubclassOf<UAnimInstance> GetAnimInstanceFirstPersonHands() { return _AnimationBPFirstPersonArmsStandard; }
 
 	/*
 	*
 	*/
 	UFUNCTION()
-		FTransform GetTransformOriginDuelSecondary() { return _tDuelOriginSecondary; }
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION()
-		TSubclassOf<UAnimInstance> GetAnimInstanceFirstPersonHands() { return _AnimationBPFirstPersonHands; }
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION()
-		TSubclassOf<UAnimInstance> GetAnimInstanceFirstPersonGun() { return _AnimationBPFirstPersonGun; }
-
-	///////////////////////////////////////////////
+		TSubclassOf<UAnimInstance> GetAnimInstanceFirstPersonGun() { return _AnimationBPFirstPersonWeapon; }
 
 	/*
 	*
 	*/
 	UFUNCTION()
 		TSubclassOf<UAnimInstance> GetAnimInstanceThirdPersonCharacter() { return _AnimationBPThirdPersonCharacter; }
-
-	///////////////////////////////////////////////
 
 	/**
 	* @summary:	Returns reference to an animation montage used on the weapon owner's first person mesh.
@@ -459,8 +501,6 @@ public:
 	UFUNCTION()
 		UAnimMontage* GetArmAnimation(E_HandAnimation AnimationEnum);
 
-	///////////////////////////////////////////////
-
 	/**
 	* @summary:	Returns reference to an animation montage used on the weapon's mesh.
 	*
@@ -471,23 +511,23 @@ public:
 	UFUNCTION()
 		UAnimMontage* GetGunAnimation(E_GunAnimation AnimationEnum);
 
-	// Properties *****************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	// Properties
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
 	*/
 	UFUNCTION()
-		USkeletalMesh* GetFirstPersonMesh() { return _FirstPersonMesh; }
-
-	///////////////////////////////////////////////
+		USkeletalMesh* GetFirstPersonMesh() const { return _FirstPersonMesh; }
 
 	/*
 	*
 	*/
 	UFUNCTION()
-		USkeletalMesh* GetThirdPersonMesh() { return _ThirdPersonMesh; }
-
-	///////////////////////////////////////////////
+		USkeletalMesh* GetThirdPersonMesh() const { return _ThirdPersonMesh; }
 
 	/*
 	*
@@ -495,23 +535,23 @@ public:
 	UFUNCTION()
 		TSubclassOf<AActor> GetOnDroppedActor() { return _OnDroppedActor; }
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintPure)
-		FTransform GetOriginHands() { return _tOriginHands; }
+		FTransform GetOriginHands() const { return _tOriginArms; }
 
-	// Attachments | Scope ********************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	// Attachments | Scope
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintGetter)
-		bool IsScopeAttachmentEnabled() { return _bScopeEnabled; }
-
-	///////////////////////////////////////////////
+		bool IsScopeAttachmentEnabled() const { return _bScopeEnabled; }
 
 	/*
 	*
@@ -519,20 +559,60 @@ public:
 	UFUNCTION(BlueprintGetter)
 		UStaticMesh* GetSightMesh() { return _uScopeMesh; }
 
-	///////////////////////////////////////////////
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintGetter)
+		FName GetSightAttachmentName() const { return _ScopeAttachmentSocket; }
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Attachments | Flashlight
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintGetter)
-		FName GetSightAttachmentName() { return _ScopeAttachmentSocket; }
+		FName GetFlashlightAttachmentName() const { return _FlashlightAttachmentSocket; }
 
-	///////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Duel Wielding
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintGetter)
-		FName GetFlashlightAttachmentName() { return _FlashlightAttachmentSocket; }
+	UFUNCTION(BlueprintPure)
+		float GetDuelWieldingReloadTime() const { return _fDuelWieldingReloadTime; }
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		FTransform GetTransformOriginDuelPrimaryArms() const { return _tDuelOriginPrimaryArms; }
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		FTransform GetTransformOriginDuelSecondaryArms() const { return _tDuelOriginSecondaryArms; }
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		FTransform GetTransformOriginDuelPrimaryWeapon() const { return _tDuelOriginPrimaryWeapon; }
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		FTransform GetTransformOriginDuelSecondaryWeapon() const { return _tDuelOriginSecondaryWeapon; }
+
+#pragma endregion Public Functions
 
 };

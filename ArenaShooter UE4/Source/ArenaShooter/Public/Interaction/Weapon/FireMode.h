@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Weapon.h"
+
 #include "FireMode.generated.h"
 
 // *** DEFINITIONS
@@ -83,60 +84,15 @@ class ARENASHOOTER_API UFireMode : public UActorComponent
 {
 	GENERATED_BODY()
 
-public:
-
-	// ****************************************************************************************************************************************
-	// ************************************ FUNCTIONS *****************************************************************************************
-	// ****************************************************************************************************************************************
-
-	// Startup ********************************************************************************************************************************
-
-	/**
-	* @summary:	Sets default values for this component's properties.
-	*
-	* @return:	Constructor
-	*/
-	UFireMode();
+#pragma region Protected Variables
 
 protected:
 
-	// ****************************************************************************************************************************************
-	// ************************************ FUNCTIONS *****************************************************************************************
-	// ****************************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	// Startup ********************************************************************************************************************************
+	// Current Frame 
 
-	/**
-	* @summary:	Called when the game starts or when spawned.
-	*
-	* @return:	virtual void
-	*/
-	virtual void BeginPlay() override;
-
-	///////////////////////////////////////////////
-
-	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const;
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(Server, Reliable, WithValidation)
-		void Server_Reliable_CreateImpactManager();
-
-	// Firing *********************************************************************************************************************************
-	
-	/*
-	*
-	*/
-	void FireProjectile(FHitResult hitResult, FVector CameraRotationXVector, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP);
-
-	// ****************************************************************************************************************************************
-	// ************************************ VARIABLES *****************************************************************************************
-	// ****************************************************************************************************************************************
-
-	// Current Frame **************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -159,8 +115,7 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Burst", Replicated,
-		meta = (EditCondition = "!_bUseDataTable"))
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current", Replicated)
 		int _iCurrentBurstShot = 0;
 
 	/*
@@ -272,13 +227,13 @@ protected:
 		bool _bFireDelayComplete = true;
 
 	/*
-	*	A timer handle used for referencing the firing delay.
+	*
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current")
 		FTimerHandle _fFireDelayHandle;
 
 	/*
-	*	A timer handle used for referencing the projectile spread.
+	*
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current")
 		FTimerHandle _fProjectileSpreadHandle;
@@ -302,12 +257,16 @@ protected:
 		E_ReloadStage _eReloadStage = E_ReloadStage::eRS_Ready;
 
 	/*
-	*	A timer handle used for referencing the reload stage.
+	*
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current")
 		FTimerHandle _fReloadStageHandle;
 
-	// Data Table *****************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Data Table 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -322,7 +281,11 @@ protected:
 		meta = (EditCondition = "_bUseDataTable"))
 		FString _sDataTableLocation;
 
-	// Activation *****************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Activation 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -336,7 +299,11 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Activation")
 		int _iFiringModeIterator = 0;
 
-	// Aim Assist *****************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Aim Assist 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -345,7 +312,11 @@ protected:
 		meta = (EditCondition = "!_bUseDataTable"))
 		float _BulletMagnetismTraceRadius = 0.0f;
 
-	// Aiming *********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Aiming 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -372,7 +343,11 @@ protected:
 		meta = (EditCondition = "_bAimDownSightEnabled"))
 		FTransform _tAdsOriginHands;
 
-	// Ammo ***********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Ammo 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -386,7 +361,11 @@ protected:
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Ammo")
 		UAmmo* _pAmmoPool = NULL;
 
-	// Animation ******************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Animation 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -400,7 +379,11 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Animation")
 		FAnimationListWeapon _AnimationMontageListWeapon;
 
-	// Burn **********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Burn 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -443,7 +426,11 @@ protected:
 		meta = (EditCondition = "!_bBurnUsesDataTable"))
 		float _fBurnStepDelay = 0.5;
 
-	// Burst **********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Burst 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -459,7 +446,11 @@ protected:
 		meta = (EditCondition = "!_bUseDataTable"))
 		float _fBurstFireShotDelay = 0.0f;
 
-	// Chambering *****************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Chambering 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -468,7 +459,11 @@ protected:
 		meta = (EditCondition = "!_bUseDataTable"))
 		bool _bEachFireRequiresChambering = false;
 
-	// Charging *******************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Charging 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -518,15 +513,29 @@ protected:
 		meta = (EditCondition = "!_bChargingUsesDataTables && _bWeaponMustBeChargedToFire"))
 		bool _bDisappatesOnFullCharge = false;
 
-	// Contrail *******************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	// Contrail 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/*
+	*
+	*/
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Contrail")
 		UParticleSystem* _pContrailParticleSystem = NULL;
 
+	/*
+	*
+	*/
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Contrail")
 		FName _fContrailName;
 
-	// Damage *********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Damage 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -618,7 +627,11 @@ protected:
 		meta = (EditCondition = "!_bDamageUsesDataTable"))
 		float _fDamageBase = 0.0f;
 
-	// Delay **********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Delay 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -668,7 +681,11 @@ protected:
 		meta = (EditCondition = "!_bDelayUsesDataTable"))
 		float _fFiringDelayResetRate = 1.0f;
 
-	// Firing *********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Firing 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -785,7 +802,11 @@ protected:
 		meta = (EditCondition = "!_bDebugDrawPrimaryWeaponCameraTrace"))
 		FColor _fProjectileTraceColour = FColor::Red;
 
-	// Heat ***********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Heat 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -850,7 +871,11 @@ protected:
 			ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
 		float _fCoolingVentRangeMinimum = 0.4f;
 
-	// Impact Effects *************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Impact Effects 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -858,24 +883,47 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Impact Effects")
 		TSubclassOf<class AImpactEffectManager> _ImpactEffectManagerClass = NULL;
 
+	/*
+	*
+	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Impact Effects", Replicated)
 		AImpactEffectManager* _ImpactEffectManager = NULL;
 
-	// Muzzle Effect **************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	// Muzzle Effect 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/*
+	*
+	*/
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Muzzle Effect")
 		UParticleSystem* _pMuzzleEffectParticleSystem = NULL;
 
+	/*
+	*
+	*/
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Muzzle Effect")
 		FName _MuzzleSocketName = TEXT("MuzzleLaunchPoint");
 
+	/*
+	*
+	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Muzzle Effect")
 		UParticleSystemComponent* _pLocalMuzzleEffect = NULL;
 
+	/*
+	*
+	*/
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Muzzle Effect")
 		UParticleSystemComponent* _pThirdPersonMuzzleEffect = NULL;
 
-	// Projectile *****************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Projectile 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -889,7 +937,11 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Projectile")
 		TSubclassOf<AProjectile> _uProjectileClass = NULL;
 
-	// Projectile Spread **********************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Projectile Spread 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -974,7 +1026,11 @@ protected:
 		meta = (EditCondition = "!_bSpreadUsesDataTable"))
 		float _fSpreadDecreaseMultiplierWhenFiringComplete = 0.0f;
 
-	// Recoil *********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Recoil 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -1146,7 +1202,11 @@ protected:
 		meta = (EditCondition = "!_bRecoilUsesDataTable && !_bRandomYawRecoil", ClampMin = -15.0f, ClampMax = 15.0f))
 		float _fCameraAimingRecoilYaw = 0.0f;
 
-	// Reload *********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Reload 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -1202,7 +1262,11 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Reload")
 		float _fTimeChamberRound = 0.0f;
 
-	// Spread Fire ****************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Spread Fire 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -1217,7 +1281,11 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Spread Fire")
 		bool _bIsUpdatingSpread = false;
 
-	// UMG ************************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// UMG 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -1231,24 +1299,50 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "UMG")
 		UCrosshair* _CrosshairInstance = NULL;
 
+#pragma endregion Protected Variables
+
+#pragma region Protected Functions
+
+protected:
+
+	/// Startup /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Called when the game starts or when spawned.
+	virtual void BeginPlay() override;
+
+	//
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const;
+
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_CreateImpactManager();
+
+	//
+	UFUNCTION()
+		void FireProjectile(FHitResult hitResult, FVector CameraRotationXVector, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP);
+
+#pragma endregion Protected Functions
+
+#pragma region Public Functions
+
 public:
 
-	// ****************************************************************************************************************************************
-	// ************************************ FUNCTIONS *****************************************************************************************
-	// ****************************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	// Current Frame **************************************************************************************************************************
+	// Startup 
 
-	/**
-	* @summary:	Called every frame.
-	*
-	* @param:	float DeltaTime
-	*
-	* @return:	virtual void
-	*/
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Sets default values for this component's properties.
+	UFireMode();
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Current Frame 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
-	///////////////////////////////////////////////
 
 	/**
 	* @summary: Sets whether this firemode is currently misfired or not.
@@ -1262,23 +1356,11 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetMisfired(bool Misfired);
 
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		bool IsMidBurst() { return _iCurrentBurstShot < _iBurstFireShotCount; }
-
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetMagazineInWeapon(bool MagIn);
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1286,39 +1368,11 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetWeaponAttached(AWeapon* Weapon);
 
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		bool FireDelayComplete() { return _bFireDelayComplete; }
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		UAmmo* GetAmmoPool() { return _pAmmoPool; }
-
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintCallable)
 		void DetermineAmmoPool();
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		bool IsFiring() { return _bIsFiring; }
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1332,48 +1386,48 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetIsFiring(bool Firing);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Client, Reliable, WithValidation)
 		void OwningClient_SetFireDelayComplete(bool Complete);
 
-	// Aiming *********************************************************************************************************************************
+	// Returns if whether this current "fire burst" is still in progress
+	UFUNCTION(BlueprintPure) bool IsMidBurst() { return _iCurrentBurstShot < _iBurstFireShotCount; }
 
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure, Category = "Aiming")
-		float GetWeaponAimTime() { return _fAimTime; }
+	// Returns the value of _bFireDelayComplete
+	UFUNCTION(BlueprintPure) bool FireDelayComplete() { return _bFireDelayComplete; }
 
-	///////////////////////////////////////////////
+	// Returns the value of _pAmmoPool
+	UFUNCTION(BlueprintPure) UAmmo* GetAmmoPool() { return _pAmmoPool; }
 
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure, Category = "Aiming")
-		TArray<float> GetFovArray() { return _fFovAiming; }
+	// Returns the value of _bIsFiring
+	UFUNCTION(BlueprintPure) bool IsFiring() { return _bIsFiring; }
 
-	///////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure, Category = "Aiming")
-		bool IsAimDownSightEnabled() { return _bAimDownSightEnabled; }
+	// Aiming 
 
-	///////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		FTransform GetOriginADS() { return _tAdsOriginHands; }
+	// Returns the value of _fAimTime
+	UFUNCTION(BlueprintPure, Category = "Aiming") float GetWeaponAimTime() { return _fAimTime; }
 
-	// Animation ******************************************************************************************************************************
+	// Returns the value of _fFovAiming
+	UFUNCTION(BlueprintPure, Category = "Aiming") TArray<float> GetFovArray() { return _fFovAiming; }
 
+	// Returns the value of _bAimDownSightEnabled
+	UFUNCTION(BlueprintPure, Category = "Aiming") bool IsAimDownSightEnabled() { return _bAimDownSightEnabled; }
+
+	// Returns the value of _tAdsOriginHands
+	UFUNCTION(BlueprintPure) FTransform GetOriginADS() { return _tAdsOriginHands; }
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Animation
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
 	/**
 	* @summary:	Returns reference to an animation montage used on the weapon owner's first person mesh.
 	*
@@ -1383,8 +1437,6 @@ public:
 	*/
 	UFUNCTION()
 		UAnimMontage* GetArmAnimation(E_HandAnimation AnimationEnum);
-
-	///////////////////////////////////////////////
 
 	/**
 	* @summary:	Returns reference to an animation montage used on the weapon's mesh.
@@ -1396,31 +1448,20 @@ public:
 	UFUNCTION()
 		UAnimMontage* GetGunAnimation(E_GunAnimation AnimationEnum);
 
-	///////////////////////////////////////////////
+	// Returns the value of _bWeaponMustBeChargedToFire
+	UFUNCTION() bool GetWeaponMustBeChargedToFire() { return _bWeaponMustBeChargedToFire; }
 
-	/*
-	*
-	*/
-	UFUNCTION()
-		bool GetWeaponMustBeChargedToFire() { return _bWeaponMustBeChargedToFire; }
+	// Returns the value of _bIsFullyCharged
+	UFUNCTION() bool IsWeaponFullyCharged() { return _bIsFullyCharged; }
 
-	///////////////////////////////////////////////
+	// Returns the value of _FiringType
+	UFUNCTION() E_FiringModeType GetFiringType() { return _FiringType; }
 
-	/*
-	*
-	*/
-	UFUNCTION()
-		bool IsWeaponFullyCharged() { return _bIsFullyCharged; }
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	///////////////////////////////////////////////
+	// Contrail 
 
-	/*
-	*
-	*/
-	UFUNCTION()
-		E_FiringModeType GetFiringType() { return _FiringType; }
-
-	// Contrail *******************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -1428,23 +1469,17 @@ public:
 	UFUNCTION(NetMulticast, Unreliable, WithValidation)
 		void Multicast_Unreliable_PlayThirdPersonContrail(FHitResult HitResult, FVector StartLocation);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Client, Unreliable, WithValidation)
 		void OwningClient_Unreliable_PlayFirstPersonContrail(FHitResult HitResult, FVector StartLocation);
 
-	// Damage *********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure, Category = "Damage")
-		float GetMaxRangeThreshold() { return _fMaxRangeThreshold; }
+	// Damage 
 
-	///////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -1452,87 +1487,47 @@ public:
 	UFUNCTION()
 		float GetDamageByPawnHitComponent(UPrimitiveComponent* ComponentHit);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		void ApplyPointDamage(AActor* DamagedActor, float DamageToCause, USkeletalMeshComponent* SkCharWepMeshFirstP, FHitResult HitResult);
 
-	///////////////////////////////////////////////
+	// Returns the value of _fMaxRangeThreshold
+	UFUNCTION(BlueprintPure, Category = "Damage") float GetMaxRangeThreshold() { return _fMaxRangeThreshold; }
 
-	/*
-	*
-	*/
-	UFUNCTION()
-		float GetDamageFleshHead() { return _fDamageHead; }
+	// Returns the value of _fDamageHead
+	UFUNCTION() float GetDamageFleshHead() { return _fDamageHead; }
 
-	///////////////////////////////////////////////
+	// Returns the value of _fDamageTorso
+	UFUNCTION() float GetDamageFleshTorso() { return _fDamageTorso; }
 
-	/*
-	*
-	*/
-	UFUNCTION()
-		float GetDamageFleshTorso() { return _fDamageTorso; }
+	// Returns the value of _fDamageArms
+	UFUNCTION() float GetDamageFleshArms() { return _fDamageArms; }
 
-	///////////////////////////////////////////////
+	// Returns the value of _fDamageLegs
+	UFUNCTION() float GetDamageFleshLegs() { return _fDamageLegs; }
 
-	/*
-	*
-	*/
-	UFUNCTION()
-		float GetDamageFleshArms() { return _fDamageArms; }
+	// Returns the value of _fDamageBase
+	UFUNCTION() float GetDamageFleshBase() { return _fDamageBase; }
 
-	///////////////////////////////////////////////
+	// Returns the value of _fDamageShieldHead
+	UFUNCTION() float GetDamageShieldHead() { return _fDamageShieldHead; }
 
-	/*
-	*
-	*/
-	UFUNCTION()
-		float GetDamageFleshLegs() { return _fDamageLegs; }
+	// Returns the value of _fDamageShield
+	UFUNCTION() float GetDamageShieldBase() { return _fDamageShield; }
 
-	///////////////////////////////////////////////
+	// Returns the value of _bLosesDamageOverDistance
+	UFUNCTION() bool LosesDamageOverRange() { return _bLosesDamageOverDistance; }
 
-	/*
-	*
-	*/
-	UFUNCTION()
-		float GetDamageFleshBase() { return _fDamageBase; }
+	// Returns the value of _cDamageDistanceCurve
+	UFUNCTION() UCurveFloat* GetDamageCurve() { return _cDamageDistanceCurve; }
 
-	///////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	/*
-	*
-	*/
-	UFUNCTION()
-		float GetDamageShieldHead() { return _fDamageShieldHead; }
+	// Firing 
 
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION()
-		float GetDamageShieldBase() { return _fDamageShield; }
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION()
-		bool LosesDamageOverRange() { return _bLosesDamageOverDistance; }
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION()
-		UCurveFloat* GetDamageCurve() { return _cDamageDistanceCurve; }
-
-	// Firing *********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -1540,15 +1535,11 @@ public:
 	UFUNCTION()
 		void Fire(FHitResult hitResult, FVector CameraRotationXVector, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_FireProjectileTrace(APawn* Pawn, FHitResult hitResult, FVector CameraRotationXVector, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP);
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1556,23 +1547,20 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_FireProjectilePhysics(APawn* Pawn, FHitResult hitResult, FVector CameraRotationXVector, USkeletalMeshComponent* SkCharWepMeshFirstP, USkeletalMeshComponent* SkCharWepMeshThirdP);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Client, Unreliable, WithValidation)
 		void OwningClient_Unreliable_DebugFireTrace(FVector StartPoint, FVector EndPoint);
 
-	///////////////////////////////////////////////
+	// Returns the value of _FiringTrigger
+	UFUNCTION(BlueprintPure) E_FiringTriggerType GetFiringTriggerType() { return _FiringTrigger; }
 
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		E_FiringTriggerType GetFiringTriggerType() { return _FiringTrigger; }
-	
-	// Heat ***********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Heat 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
 	* @summary:	Sets whether this firemode is currently overheated or not.
@@ -1586,15 +1574,20 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetOverheated(bool Overheated);
 
-	// Impact Effects *************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		AImpactEffectManager* GetImpactEffectManager() { return _ImpactEffectManager; }
+	// Impact Effect 
 
-	// Muzzle Effect **************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Returns the value of _ImpactEffectManager
+	UFUNCTION(BlueprintPure) AImpactEffectManager* GetImpactEffectManager() { return _ImpactEffectManager; }
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Muzzle Effect 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -1602,15 +1595,13 @@ public:
 	UFUNCTION(NetMulticast, Unreliable, WithValidation)
 		void Multicast_Unreliable_PlayThirdPersonMuzzle(USkeletalMeshComponent* SkCharWepMeshThirdP);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Client, Unreliable, WithValidation)
 		void OwningClient_Unreliable_PlayFirstPersonMuzzle(USkeletalMeshComponent* SkCharWepMeshFirstP);
 
-	// Recoil *********************************************************************************************************************************
+	/// Recoil /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -1618,15 +1609,11 @@ public:
 	UFUNCTION(Client, Reliable, WithValidation)
 		void OwningClient_Reliable_RecoilCamera();
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Client, Reliable, WithValidation)
 		void OwningClient_Reliable_StartRecoilInterpolation();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1634,31 +1621,17 @@ public:
 	UFUNCTION(Client, Reliable, WithValidation)
 		void OwningClient_Reliable_StopRecoilInterpolation();
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION()
 		void RecoilInterpolationUpdate();
 
-	// Reload *********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintGetter)
-		E_ReloadType GetReloadType() { return _eReloadType; }
+	// Reload 
 
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		FTimerHandle GetReloadTimerHandle()	{ return _fReloadStageHandle; }
-
-	///////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -1666,15 +1639,11 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetReloadComplete(bool ReloadComplete);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable)
 		void Server_Reliable_EjectMagazine();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1682,23 +1651,11 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable)
 		void Server_Reliable_NewMagazine();
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable)
 		void Server_Reliable_ChamberRound();
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintGetter)
-		bool GetReloadComplete() { return _bReloadComplete; }
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -1706,47 +1663,11 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetReloadStage(E_ReloadStage ReloadStage);
 
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintGetter)
-		E_ReloadStage GetCurrentReloadState() { return _eReloadStage; }
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		float GetReloadStartingTimeEjectMagazine() { return _fStartingTimeEjectMagazine; }
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		float GetReloadStartingTimeNewMagazine() { return _fStartingTimeNewMagazine; }
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		float GetReloadStartingTimeChamberRound() { return _fStartingTimeChamberRound; }
-
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintCallable)
-		void SetReloadAnimationComplete(bool Complete) { _bReloadComplete = Complete; }
-
-	///////////////////////////////////////////////
+		void SetReloadAnimationComplete(bool Complete);
 
 	/*
 	*
@@ -1754,114 +1675,80 @@ public:
 	UFUNCTION(BlueprintPure)
 		float GetReloadStartingTime();
 
-	// Spread *********************************************************************************************************************************
+	// Returns the value of _eReloadType
+	UFUNCTION(BlueprintGetter) E_ReloadType GetReloadType() { return _eReloadType; }
 
-	/*
-	*
-	*/
+	// Returns the value of _fReloadStageHandle
+	UFUNCTION(BlueprintPure) FTimerHandle GetReloadTimerHandle() { return _fReloadStageHandle; }
+
+	// Returns the value of _bReloadComplete
+	UFUNCTION(BlueprintGetter) bool GetReloadComplete() { return _bReloadComplete; }
+
+	// Returns the value of _eReloadStage
+	UFUNCTION(BlueprintGetter) E_ReloadStage GetCurrentReloadState() { return _eReloadStage; }
+
+	// Returns the value of _fStartingTimeEjectMagazine
+	UFUNCTION(BlueprintPure) float GetReloadStartingTimeEjectMagazine() { return _fStartingTimeEjectMagazine; }
+
+	// Returns the value of _fStartingTimeNewMagazine
+	UFUNCTION(BlueprintPure) float GetReloadStartingTimeNewMagazine() { return _fStartingTimeNewMagazine; }
+
+	// Returns the value of _fStartingTimeChamberRound
+	UFUNCTION(BlueprintPure) float GetReloadStartingTimeChamberRound() { return _fStartingTimeChamberRound; }
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Spread 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//
 	UFUNCTION()
 		float IncreaseSpread();
 
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
+	//
 	UFUNCTION()
 		void StartDecreasingSpread() { _bCanDeductSpread = true; }
 
-	///////////////////////////////////////////////
-
-	/**
-	* @summary:	Adds to the current projectile spread of the firemode.
-	*
-	* @networking:	Runs on server
-	*
-	* @param:	float Additive
-	* @param:	float ClampMaximum
-	*
-	* @return:	void
-	*/
+	// Adds to the current projectile spread of the firemode.
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_AddToSpread(float Additive, float ClampMinimum, float ClampMaximum);
 
-	///////////////////////////////////////////////
-
-	/**
-	* @summary:	Subtracts to the current projectile spread of the firemode.
-	*
-	* @networking:	Runs on server
-	*
-	* @param:	float Subtractive
-	* @param:	float ClampMinimum
-	*
-	* @return:	void
-	*/
+	// Subtracts to the current projectile spread of the firemode.
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_DeductFromSpread(float Subtractive, float ClampMinimum, float ClampMaximum);
 
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
+	//
 	UFUNCTION()
 		void UpdateSpreadToMinimum(bool Aiming);
 
-	///////////////////////////////////////////////
+	// Returns the value of _fSpreadHipMinimum
+	UFUNCTION(BlueprintPure) float GetCurrentProjectileSpread() { return _fProjectileSpread; }
 
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		float GetCurrentProjectileSpread() { return _fProjectileSpread; }
+	// Returns the value of _fSpreadHipMinimum
+	UFUNCTION(BlueprintPure) float GetSpreadHipMinimum() { return _fSpreadHipMinimum; }
 
-	///////////////////////////////////////////////
+	// Returns the value of _fSpreadAimingMinimum
+	UFUNCTION(BlueprintPure) float GetSpreadAimingMinimum() { return _fSpreadAimingMinimum; }
 
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		float GetSpreadHipMinimum() { return _fSpreadHipMinimum; }
+	// Returns the value of _fSpreadHipMaximum
+	UFUNCTION(BlueprintPure) float GetSpreadHipMaximum() { return _fSpreadHipMaximum; }
 
-	///////////////////////////////////////////////
+	// Returns the value of _fSpreadAimingMaximum
+	UFUNCTION(BlueprintPure) float GetSpreadAimingMaximum() { return _fSpreadAimingMaximum; }
 
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		float GetSpreadAimingMinimum() { return _fSpreadAimingMinimum; }
+	// Returns the value of _iShotsFiredPerSpread
+	UFUNCTION(BlueprintPure) float GetProjectileCountPerSpread() { return _iShotsFiredPerSpread; }
 
-	///////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		float GetSpreadHipMaximum() { return _fSpreadHipMaximum; }
+	// UMG 
 
-	///////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		float GetSpreadAimingMaximum() { return _fSpreadAimingMaximum; }
+	// Returns the value of _CrosshairUMG
+	UFUNCTION(BlueprintPure, Category = "UMG") TSubclassOf<class UCrosshair> GetCrosshairClass() { return _CrosshairUMG; }
 
-	// Spread Fire ****************************************************************************************************************************
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		float GetProjectileCountPerSpread() { return _iShotsFiredPerSpread; }
-
-	// UMG ************************************************************************************************************************************
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure, Category = "UMG")
-		TSubclassOf<class UCrosshair> GetCrosshairClass() { return _CrosshairUMG; }
+#pragma endregion Public Functions
 
 };

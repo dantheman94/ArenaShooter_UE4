@@ -129,7 +129,7 @@ void AArenaCharacter::Tick(float DeltaTime)
 			// Determine origin transform
 			bool ads = _PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled();
 			FTransform adsOrigin = _PrimaryWeapon->GetCurrentFireMode()->GetOriginADS();
-			FTransform hipOrigin = _PrimaryWeapon->GetTransformOriginHands();
+			FTransform hipOrigin = _PrimaryWeapon->GetTransformOriginArms();
 			FTransform originTransform = UKismetMathLibrary::SelectTransform(adsOrigin, hipOrigin, _bIsAiming && ads);
 
 			// Get slide/unslide origins
