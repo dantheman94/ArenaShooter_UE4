@@ -11,7 +11,11 @@
 #include "BaseCharacter.h"
 #include "BaseHUD.h"
 
-// Startup ********************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Startup 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
 * @summary:	Sets default values for this actor's properties.
@@ -36,9 +40,11 @@ AInteractable::AInteractable()
 	_FocusMesh_Static->SetupAttachment(_InteractionTrigger);
 	_FocusMesh_Skeletal = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FocusMesh_Skeletal"));
 	_FocusMesh_Skeletal->SetupAttachment(_InteractionTrigger);
-}
 
-///////////////////////////////////////////////
+	///UInteractionInterface* interactionListener = NewObject<UInteractionInterface>(); // Instantiating the UInteractionInterface
+	///_InteractionInterface.SetObject(interactionListener); // _InteractionInterface is of type TScriptInterface
+	///_InteractionInterface.SetInterface(Cast<IInteractionInterface>(interactionListener));
+}
 
 void AInteractable::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const
 {
@@ -46,8 +52,6 @@ void AInteractable::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLi
 
 	DOREPLIFETIME(AInteractable, _bInteractable);
 }
-
-///////////////////////////////////////////////
 
 /**
 * @summary:	Called when the game starts or when spawned.
@@ -61,9 +65,22 @@ void AInteractable::BeginPlay()
 	// Add overlap events
 	_InteractionTrigger->OnComponentBeginOverlap.AddDynamic(this, &AInteractable::OnOverlapBegin);
 	_InteractionTrigger->OnComponentEndOverlap.AddDynamic(this, &AInteractable::OnOverlapEnd);
+
+	if (_OverwriteInteractionTrigger != NULL)
+	{
+		_OverwriteInteractionTrigger->OnComponentBeginOverlap.AddDynamic(this, &AInteractable::OnOverlapBegin);
+		_OverwriteInteractionTrigger->OnComponentEndOverlap.AddDynamic(this, &AInteractable::OnOverlapEnd);
+	}
+
+	///UObject* interactionInterfaceObject = _InteractionInterface.GetObject();
+	///IInteractionInterface::Execute_OnBeginPlay(interactionInterfaceObject);
 }
 
-// Current Frame **************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Current Frame 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
 * @summary:	Called every frame.
@@ -78,7 +95,11 @@ void AInteractable::Tick(float DeltaTime)
 
 }
 
-// Interaction ****************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Interaction 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -112,8 +133,6 @@ void AInteractable::OnOverlapBegin(class UPrimitiveComponent* OverlappedComp, cl
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -136,8 +155,6 @@ void AInteractable::OnOverlapEnd(class UPrimitiveComponent* OverlappedComp, clas
 	hud->SetWidgetInteractable(interactable);
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -154,8 +171,6 @@ void AInteractable::Server_Reliable_OnInteract_Implementation(ABaseCharacter* Ba
 	if (Destroy) { this->Destroy(); }
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -167,3 +182,8 @@ void AInteractable::SetIsInteractable_Implementation(bool IsInteractable)
 	_bInteractable = IsInteractable;
 }
 
+//
+void AInteractable::OnBeginPlay_Implementation()
+{
+
+}
