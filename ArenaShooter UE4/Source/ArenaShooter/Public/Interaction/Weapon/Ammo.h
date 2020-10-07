@@ -29,41 +29,15 @@ class ARENASHOOTER_API UAmmo : public UActorComponent
 {
 	GENERATED_BODY()
 
-public:	
-
-	// Startup ********************************************************************************************************************************
-
-	/**
-	* @summary:	Sets default values for this component's properties.
-	*
-	* @return:	Constructor
-	*/
-	UAmmo();
+#pragma region Protected Variables
 
 protected:
 
-	// ****************************************************************************************************************************************
-	// ************************************ FUNCTIONS *****************************************************************************************
-	// ****************************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	// Startup ********************************************************************************************************************************
+	// Current Frame 
 
-	/**
-	* @summary:	Called when the game starts or when spawned.
-	*
-	* @return:	virtual void
-	*/
-	virtual void BeginPlay() override;
-
-	///////////////////////////////////////////////
-
-	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const;
-
-	// ****************************************************************************************************************************************
-	// ************************************ VARIABLES *****************************************************************************************
-	// ****************************************************************************************************************************************
-
-	// Current Frame **************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -101,7 +75,11 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current")
 		FTimerHandle _fReloadHandle;
 
-	// Properties *****************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Properties 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*	The channel identifier used for this ammo component.
@@ -124,7 +102,11 @@ protected:
 		meta = (EditCondition = "_bUseDataTable"))
 		FString _sDataTableLocation;
 
-	// Ammo ***********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Ammo 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -195,7 +177,11 @@ protected:
 		meta = (EditCondition = "!_bUseDataTable"))
 		int _iStartingReserveAmmo = _MAX_RESERVE_AMMO;
 
-	// Reload *********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Reload
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -209,13 +195,39 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Current", Replicated)
 		int _iShotsFiredBeforeReload = 0;
 
+#pragma endregion Protected Variables
+
+#pragma region Public Functions
+
 public:	
 
-	// ****************************************************************************************************************************************
-	// ************************************ FUNCTIONS *****************************************************************************************
-	// ****************************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	// Current Frame **************************************************************************************************************************
+	// Startup
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	* @summary:	Sets default values for this component's properties.
+	*
+	* @return:	Constructor
+	*/
+	UAmmo();
+
+	/**
+	* @summary:	Called when the game starts or when spawned.
+	*
+	* @return:	virtual void
+	*/
+	virtual void BeginPlay() override;
+
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const;
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Current Frame 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
 	* @summary:	Called every frame.
@@ -226,31 +238,32 @@ public:
 	*/
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	// Ammo ***********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Ammo 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
-		void Server_Reliable_SetMagazineCount(int StartingMagazineCount);
-
-	///////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UFUNCTION(Server, Reliable, WithValidation)
-		void Server_Reliable_SetReserveCount(int StartingReserveCount);
-
-	///////////////////////////////////////////////
+		void Server_Reliable_SetMagazineCount(int Value);
+	void SetMagazineCount(int Value);
 
 	/*
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
-		void Server_Reliable_SetBatteryAmmo(int StartingBatteryAmmo);
+		void Server_Reliable_SetReserveCount(int Value);
+	void SetReserveCount(int Value);
 
-	///////////////////////////////////////////////
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_SetBatteryAmmo(int Value);
+	void SetBatteryAmmo(int Value);
 
 	/*
 	*
@@ -258,15 +271,11 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_DeductAmmo(int DeductionAmount);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetRoundInChamber(bool InChamber);
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -274,119 +283,81 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_DetermineIfBulletShouldBeInChamber();
 
-	///////////////////////////////////////////////
+	/*
+	*
+	*/
+	UFUNCTION() int GetAmmoChannel() { return _iAmmoChannel; }
 
 	/*
 	*
 	*/
-	UFUNCTION()
-		int GetAmmoChannel() { return _iAmmoChannel; }
-
-	///////////////////////////////////////////////
+	UFUNCTION(BlueprintPure) E_AmmoType GetAmmoType() const { return _eAmmoType; }
 
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
-		E_AmmoType GetAmmoType() { return _eAmmoType; }
-
-	///////////////////////////////////////////////
+	UFUNCTION(BlueprintPure) int GetStartingMagazineAmmo() const { return _iStartingMagazineAmmo; }
 
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
-		int GetStartingMagazineAmmo() { return _iStartingMagazineAmmo; }
-
-	///////////////////////////////////////////////
+	UFUNCTION(BlueprintPure) int GetMagazineAmmo() const { return _iMagazineAmmoCount; }
 
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
-		int GetMagazineAmmo() { return _iMagazineAmmoCount; }
-
-	///////////////////////////////////////////////
+	UFUNCTION(BlueprintPure) int GetMaximumMagazineAmmo() const { return _iMaximumMagazineAmmo; }
 
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
-		int GetMaximumMagazineAmmo() { return _iMaximumMagazineAmmo; }
-
-	///////////////////////////////////////////////
+	UFUNCTION(BlueprintPure) int GetStartingReserveAmmo() const { return _iStartingReserveAmmo; }
 
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
-		int GetStartingReserveAmmo() { return _iStartingReserveAmmo; }
-
-	///////////////////////////////////////////////
+	UFUNCTION(BlueprintPure) int GetReserveAmmo() const { return _iReserveAmmoCount; }
 
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
-		int GetReserveAmmo() { return _iReserveAmmoCount; }
-
-	///////////////////////////////////////////////
+	UFUNCTION(BlueprintPure) int GetMaximumReserveAmmo() const { return _iMaximumReserveAmmo; }
 
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
-		int GetMaximumReserveAmmo() { return _iMaximumReserveAmmo; }
-
-	///////////////////////////////////////////////
+	UFUNCTION(BlueprintPure) int GetStartingBatteryAmmo() const { return _iStartingBatteryCapacity; }
 
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
-		int GetStartingBatteryAmmo() { return _iStartingBatteryCapacity; }
-
-	///////////////////////////////////////////////
+	UFUNCTION(BlueprintPure) int GetBatteryAmmo() const { return _iBatteryAmmo; }
 
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
-		int GetBatteryAmmo() { return _iBatteryAmmo; }
-
-	///////////////////////////////////////////////
+	UFUNCTION(BlueprintPure) int GetBatteryCapacity() const { return _iMaximumBatteryCapacity; }
 
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
-		int GetBatteryCapacity() { return _iMaximumBatteryCapacity; }
-
-	///////////////////////////////////////////////
+	UFUNCTION(BlueprintPure) int GetBatteryMisfireThreshold() const { return _iBatteryMisfireThreshold; }
 
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
-		int GetBatteryMisfireThreshold() { return _iBatteryMisfireThreshold; }
-
-	///////////////////////////////////////////////
+	UFUNCTION(BlueprintPure) int GetTotalAmmo() const { return _iMagazineAmmoCount + _iReserveAmmoCount; }
 
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
-		int GetTotalAmmo() { return _iMagazineAmmoCount + _iReserveAmmoCount; }
+	UFUNCTION(BlueprintPure) bool IsRoundInChamber() const { return _bRoundInChamber; }
 
-	///////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		bool IsRoundInChamber() { return _bRoundInChamber; }
+	// Reload
 
-	// Reload *********************************************************************************************************************************
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -394,17 +365,15 @@ public:
 	UFUNCTION()
 		void DelayedReload(float DelayTime);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_Reload();
 
-	///////////////////////////////////////////////
-
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetShotsFiredBeforeReload(int ShotsFired);
+
+#pragma endregion Public Functions
 
 };
