@@ -4,7 +4,17 @@
 
 #include "UnrealNetwork.h"
 
-// Sets default values for this component's properties
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Startup
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+	* @summary:	Sets default values for this component's properties.
+	*
+	* @return:	Constructor
+	*/
 UAmmo::UAmmo()
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
@@ -15,8 +25,11 @@ UAmmo::UAmmo()
 	SetIsReplicatedByDefault(true);
 }
 
-
-// Called when the game starts
+/**
+* @summary:	Called when the game starts or when spawned.
+*
+* @return:	virtual void
+*/
 void UAmmo::BeginPlay()
 {
 	Super::BeginPlay();
@@ -39,9 +52,19 @@ void UAmmo::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimePr
 	DOREPLIFETIME(UAmmo, _iShotsFiredBeforeReload);
 }
 
-// Current Frame **************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Called every frame
+// Current Frame 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+* @summary:	Called every frame.
+*
+* @param:	float DeltaTime
+*
+* @return:	virtual void
+*/
 void UAmmo::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -49,43 +72,56 @@ void UAmmo::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentT
 	// ...
 }
 
-///////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool UAmmo::Server_Reliable_SetBatteryAmmo_Validate(int StartingBatteryAmmo)
-{ return true; }
+// Ammo 
 
-void UAmmo::Server_Reliable_SetBatteryAmmo_Implementation(int StartingBatteryAmmo)
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+*
+*/
+bool UAmmo::Server_Reliable_SetMagazineCount_Validate(int Value) { return true; }
+void UAmmo::Server_Reliable_SetMagazineCount_Implementation(int Value) { SetMagazineCount(Value); }
+void UAmmo::SetMagazineCount(int Value)
 {
-	_iBatteryAmmo = StartingBatteryAmmo;
+	if (GetOwnerRole() == ROLE_Authority)
+		_iMagazineAmmoCount = Value;
+	else
+		Server_Reliable_SetMagazineCount(Value);
 }
 
-///////////////////////////////////////////////
 
-bool UAmmo::Server_Reliable_SetMagazineCount_Validate(int StartingMagazineCount)
-{ return true; }
-
-void UAmmo::Server_Reliable_SetMagazineCount_Implementation(int StartingMagazineCount)
-{
-	_iMagazineAmmoCount = StartingMagazineCount;
+/*
+*
+*/
+bool UAmmo::Server_Reliable_SetReserveCount_Validate(int Value) { return true; }
+void UAmmo::Server_Reliable_SetReserveCount_Implementation(int Value) { SetReserveCount(Value); }
+void UAmmo::SetReserveCount(int Value)
+{	
+	if (GetOwnerRole() == ROLE_Authority)
+		_iReserveAmmoCount = Value;
+	else
+		Server_Reliable_SetReserveCount(Value);
 }
 
-///////////////////////////////////////////////
-
-bool UAmmo::Server_Reliable_SetReserveCount_Validate(int StartingReserveCount)
-{ return true; }
-
-void UAmmo::Server_Reliable_SetReserveCount_Implementation(int StartingReserveCount)
+/*
+*
+*/
+bool UAmmo::Server_Reliable_SetBatteryAmmo_Validate(int Value) { return true; }
+void UAmmo::Server_Reliable_SetBatteryAmmo_Implementation(int Value) { SetBatteryAmmo(Value); }
+void UAmmo::SetBatteryAmmo(int Value)
 {
-	_iReserveAmmoCount = StartingReserveCount;
+	if (GetOwnerRole() == ROLE_Authority)
+		_iBatteryAmmo = Value;
+	else
+		Server_Reliable_SetBatteryAmmo(Value);
 }
 
-// Ammo ***********************************************************************************************************************************
-
-///////////////////////////////////////////////
-
-bool UAmmo::Server_Reliable_DeductAmmo_Validate(int DeductionAmount)
-{ return true; }
-
+/*
+*
+*/
+bool UAmmo::Server_Reliable_DeductAmmo_Validate(int DeductionAmount) { return true; }
 void UAmmo::Server_Reliable_DeductAmmo_Implementation(int DeductionAmount)
 {
 	switch (_eAmmoType)
@@ -115,11 +151,10 @@ void UAmmo::Server_Reliable_DeductAmmo_Implementation(int DeductionAmount)
 	}
 }
 
-///////////////////////////////////////////////
-
-bool UAmmo::Server_Reliable_DetermineIfBulletShouldBeInChamber_Validate()
-{ return true; }
-
+/*
+*
+*/
+bool UAmmo::Server_Reliable_DetermineIfBulletShouldBeInChamber_Validate() { return true; }
 void UAmmo::Server_Reliable_DetermineIfBulletShouldBeInChamber_Implementation()
 {
 	// Skip over if there is already a new chamber in the round (Ie: reloaded when the magazine still had ammo in it)
@@ -129,17 +164,20 @@ void UAmmo::Server_Reliable_DetermineIfBulletShouldBeInChamber_Implementation()
 	_bRoundInChamber = _iMagazineAmmoCount > 0;
 }
 
-///////////////////////////////////////////////
-
-bool UAmmo::Server_Reliable_SetRoundInChamber_Validate(bool InChamber)
-{ return true; }
-
+/*
+*
+*/
+bool UAmmo::Server_Reliable_SetRoundInChamber_Validate(bool InChamber) { return true; }
 void UAmmo::Server_Reliable_SetRoundInChamber_Implementation(bool InChamber)
 {
 	_bRoundInChamber = InChamber;
 }
 
-// Reload *********************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Reload
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -155,14 +193,10 @@ void UAmmo::DelayedReload(float DelayTime)
 	GetWorld()->GetTimerManager().SetTimer(_fReloadHandle, reloadDelegate, 1.0f, false, DelayTime);
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
-bool UAmmo::Server_Reliable_Reload_Validate()
-{ return true; }
-
+bool UAmmo::Server_Reliable_Reload_Validate() { return true; }
 void UAmmo::Server_Reliable_Reload_Implementation()
 {
 	// Replace magazine entirely
@@ -248,11 +282,10 @@ void UAmmo::Server_Reliable_Reload_Implementation()
 	///	_bReloadComplete = true;
 }
 
-///////////////////////////////////////////////
-
-bool UAmmo::Server_Reliable_SetShotsFiredBeforeReload_Validate(int ShotsFired)
-{ return true; }
-
+/*
+*
+*/
+bool UAmmo::Server_Reliable_SetShotsFiredBeforeReload_Validate(int ShotsFired) { return true; }
 void UAmmo::Server_Reliable_SetShotsFiredBeforeReload_Implementation(int ShotsFired)
 {
 	_iShotsFiredBeforeReload = ShotsFired;
