@@ -1,9 +1,13 @@
 # UE4 Project directories to ignore
+ArenaShooter UE4/.vs/
 ArenaShooter UE4/Binaries/
+ArenaShooter UE4/Builds/
 ArenaShooter UE4/DerivedDataCache/
 ArenaShooter UE4/Intermediate/
 ArenaShooter UE4/Saved/
 ArenaShooter UE4/Build/
+ArenaShooter UE4/Plugins/GameModeEditor/Binaries/
+ArenaShooter UE4/Plugins/GameModeEditor/Intermediate/
  
 # Visual Studio solutions
 *.sln
@@ -11,16 +15,21 @@ ArenaShooter UE4/Build/
 *.opensdf
 *.suo
 
-# Assets to ignore
-ArenaShooter UE4/.vs/
-ArenaShooter UE4/Builds/
-ArenaShooter UE4/Content/
+# Content assets to ignore
+ArenaShooter UE4/Content/ArenaShooter/Animations
+ArenaShooter UE4/Content/ArenaShooter/Effects
+ArenaShooter UE4/Content/ArenaShooter/Levels
+ArenaShooter UE4/Content/ArenaShooter/Materials
+ArenaShooter UE4/Content/ArenaShooter/Meshes
+ArenaShooter UE4/Content/ArenaShooter/Textures
+ArenaShooter UE4/Content/ArenaShooter/UMG
+ArenaShooter UE4/Content/External
 
 ArenaShooter/ArenaShooter.png
 *.rar
 *.uproject
 *.db
 # *.ini
-ArenaShooter UE4/Content/Blueprints/Environmental/Planet/
+
 Data/
 Builds/
