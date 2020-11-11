@@ -20,7 +20,7 @@ ArenaShooter UE4/Content/ArenaShooter/Animations
 ArenaShooter UE4/Content/ArenaShooter/Effects
 ArenaShooter UE4/Content/ArenaShooter/Levels
 ArenaShooter UE4/Content/ArenaShooter/Materials
-ArenaShooter UE4/Content/ArenaShooter/Meshes
+ArenaShooter UE4/Content/ArenaShooter/Meshes/
 ArenaShooter UE4/Content/ArenaShooter/Textures
 ArenaShooter UE4/Content/ArenaShooter/UMG
 ArenaShooter UE4/Content/External
@@ -33,3 +33,6 @@ ArenaShooter/ArenaShooter.png
 
 Data/
 Builds/
+ArenaShooter UE4/Plugins/CustomPlaceCategory/Binaries/
+ArenaShooter UE4/Plugins/CustomPlaceCategory/Intermediate/
+ArenaShooter UE4/Plugins/CustomPlaceCategory/
