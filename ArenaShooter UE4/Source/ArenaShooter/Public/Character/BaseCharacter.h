@@ -23,6 +23,30 @@ enum class E_AimDirection : uint8
 	ePT_ZoomOut UMETA(DisplayName = "ZoomOut")
 };
 
+UENUM(BlueprintType)
+enum class E_CharacterStates : uint8
+{
+	eCS_Idle UMETA(DisplayName = "Idle"),
+	eCS_Walking UMETA(DisplayName = "Walking"),
+	eCS_Jogging UMETA(DisplayName = "Joggin"),
+	eCS_Sprinting UMETA(DisplayName = "Sprinting"),
+	eCS_Crouching UMETA(DisplayName = "Crouching"),
+	eCS_Sliding UMETA(DisplayName = "Sliding"),
+	eCS_Jumping UMETA(DisplayName = "Jumping"),
+	eCS_DoubleJumping UMETA(DisplayName = "DoubleJumping"),
+	eCS_Dashing UMETA(DisplayName = "Dashing"),
+	eCS_Hovering UMETA(DisplayName = "Hovering"),
+	eCS_Montage UMETA(DisplayName = "Playing Montage"),
+	eCS_Ragdoll UMETA(DisplayName = "Ragdolling")
+};
+
+UENUM(BlueprintType)
+enum class E_CombatStates : uint8
+{
+	ePT_Aiming UMETA(DisplayName = "ZoomIn"),
+	ePT_ZoomOut UMETA(DisplayName = "ZoomOut")
+};
+
 // *** EVENT DISPATCHERS / DELEGATES
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FADSAnimDelegate, bool, AimingEnter);
@@ -137,8 +161,17 @@ protected:
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	float _fDefaultCapsuleHalfHeight = 0.0f;
-	float _fCameraRotationLagSpeed = 0.0f;
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Default Settings")
+		float _fDefaultCapsuleHalfHeight = 0.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Default Settings")
+		float _fCameraRotationLagSpeed = 0.0f;
 
 	/*
 	*
@@ -196,6 +229,12 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Animation")
 		float _fGlobalReloadPlayRate = 1.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Animation")
+		UAnimMontage* _CurrentMontagePlaying = NULL;
 
 	/*
 	*
@@ -341,6 +380,54 @@ protected:
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	// Interaction 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Interaction")
+		TArray<UInteractionDataComponent*> _Interactables;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Interaction")
+		UInteractionDataComponent* _FocusInteractable = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Interaction")
+		float _fInteractionThresholdTime = 2.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Interaction")
+		bool _bIsTryingToInteractPrimary = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Interaction")
+		bool _bIsTryingToInteractSecondary = false;
+
+	/*
+	*
+	*/
+	UPROPERTY()
+		FTimerHandle _fInteractionHandle;
+
+	/*
+	*
+	*/
+	UPROPERTY()
+		FTimerHandle _fSetWeaponHandle;
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	// Inventory | Starting 
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -387,6 +474,18 @@ protected:
 	/*
 	*
 	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Weapon | Aiming")
+		FName _AimSocketName = TEXT("AimingCameraPoint");
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Weapon | Aiming")
+		float _fAimingSpringArmRotationLag = 40.0f;
+
+	/*
+	*
+	*/
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Aiming")
 		bool _bCanAim = true;
 
@@ -422,6 +521,24 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Aiming")
 		float _fFovTarget = 90.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Aiming")
+		FTransform _TargetOriginTransform = FTransform::Identity;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Aiming")
+		FTransform _StartingOriginTransform = FTransform::Identity;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Weapon | Aiming")
+		FVector _FpsArmOffset = FVector::ZeroVector;
 
 	/*
 	*
@@ -533,6 +650,12 @@ protected:
 		FColor _fPrimaryWeaponCameraTraceColour = FColor::Red;
 
 	/*
+	*	A timer handle used for referencing the primary weapon reloading timer (NOT DUEL WIELDING)
+	*/
+	UPROPERTY()
+		FTimerHandle _fPrimaryReloadHandle;
+
+	/*
 	*	A timer handle used for referencing the primary weapon reloading timer
 	*/
 	UPROPERTY()
@@ -588,6 +711,12 @@ protected:
 		bool _bHasReleasedSecondaryTrigger = true;
 
 	/*
+	*	
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Weapon | Secondary")
+		bool _bDuelWieldingIsMirrored = false;
+
+	/*
 	*
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Weapon | Secondary")
@@ -627,65 +756,29 @@ protected:
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Grenade", Replicated)
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Grenade", Replicated)
 		int _iFragmentationGrenadeCount = 0;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Grenade", Replicated)
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Grenade", Replicated)
 		int _iEMPGrenadeCount = 0;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Grenade", Replicated)
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Grenade", Replicated)
 		int _iIncendiaryGrenadeCount = 0;
 
 	/*
 	*
 	*/
-	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Grenade")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory | Grenade")
 		int _iMaximumGrenadeCount = 2;
 
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Inventory | Grenade")
 		E_GrenadeType _eCurrentGrenadeType = E_GrenadeType::eWBT_Frag;
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	// Interaction 
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	/*
-	*
-	*/
-	UPROPERTY()
-		TArray<AInteractable*> _Interactables;
-
-	/*
-	*
-	*/
-	UPROPERTY()
-		AInteractable* _FocusInteractable = NULL;
-
-	/*
-	*
-	*/
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Interaction")
-		float _fInteractionThresholdTime = 2.0f;
-
-	/*
-	*
-	*/
-	UPROPERTY()
-		FTimerHandle _fInteractionHandle;
-
-	/*
-	*
-	*/
-	UPROPERTY()
-		FTimerHandle _fSetWeaponHandle;
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -858,6 +951,132 @@ protected:
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	// Movement | Slide 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		bool _bSlideEnabled = true;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Movement | Slide")
+		TSubclassOf<class UCameraShake> _SlideStartCameraShake;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide")
+		UCameraShake* _SlideCameraShakeInstance = NULL;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide")
+		bool _bIsTryingToSlide = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide", Replicated)
+		bool _bIsSliding = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide")
+		bool _bLerpSlideCamera = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide")
+		bool _bSlideEnter = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide")
+		FTransform _tSlideEnterOrigin;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		float _fSlideForwardVelocityThreshold = 600.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		float _fSlideUpVelocityThreshold = -500.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		float _fSlideAirbourneGravityForce = 5.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		FTransform _tSlideWeaponOrigin;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		float _fSlideCameraLerpingDuration = 0.25f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Slide")
+		float _fSlideCameraLerpTime = 0.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		float _fSlideForce = 300.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		bool _fSlideLaunchXYOverride = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		bool _fSlideLaunchZOverride = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		float _fSlideBreakingFrictionFactor = 0.5f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		float _fSlideBrakingDeceleration = 600.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Slide")
+		bool _bOverrideSlideVelocityFromDash = true;
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	// Movement | Speed 
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -891,6 +1110,18 @@ protected:
 	*/
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Speed")
 		float _fMovementAccelerationRate = 100.0f;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Speed")
+		bool _bUsesStaminaToSprint = false;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Movement | Speed")
+		TSubclassOf<UStamina> _SprintStaminaComponent;
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1108,19 +1339,6 @@ protected:
 	UPROPERTY(BlueprintReadOnly, VisibleInstanceOnly, Category = "Movement | Vault")
 		int32 _NextUUID = 0;
 
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	// Startup
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	/**
-	* @summary:	Called when the game starts or when spawned.
-	*
-	* @return:	virtual void
-	*/
-	virtual void BeginPlay() override;
-
 #pragma endregion Protected Variables
 
 #pragma region Public Functions
@@ -1134,6 +1352,13 @@ public:
 	*/
 	ABaseCharacter();
 
+	/**
+	* @summary:	Called when the game starts or when spawned.
+	*
+	* @return:	virtual void
+	*/
+	virtual void BeginPlay() override;
+
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const;
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1145,26 +1370,37 @@ public:
 	/*
 	*
 	*/
-	UFUNCTION()
-		USkeletalMeshComponent* GetFirstPersonPrimaryWeaponMesh() { return _FirstPerson_PrimaryWeapon_SkeletalMesh; }
+	UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetFirstPersonArmsDuelLeftMesh() { return _FirstPerson_ArmsDuelLeft; }
 
 	/*
 	*
 	*/
-	UFUNCTION()
-		USkeletalMeshComponent* GetFirstPersonSecondaryWeaponMesh() { return _FirstPerson_SecondaryWeapon_SkeletalMesh; }
+	UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetFirstPersonArmsDuelRightMesh() { return _FirstPerson_ArmsDuelRight; }
 
 	/*
 	*
 	*/
-	UFUNCTION()
-		USkeletalMeshComponent* GetThirdPersonPrimaryWeaponMesh() { return _ThirdPerson_PrimaryWeapon_SkeletalMesh; }
+	UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetFirstPersonArmsMesh() { return _FirstPerson_Arms; }
 
 	/*
 	*
 	*/
-	UFUNCTION()
-		USkeletalMeshComponent* GetThirdPersonSecondaryWeaponMesh() { return _ThirdPerson_SecondaryWeapon_SkeletalMesh; }
+	UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetFirstPersonPrimaryWeaponMesh() { return _FirstPerson_PrimaryWeapon_SkeletalMesh; }
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetFirstPersonSecondaryWeaponMesh() { return _FirstPerson_SecondaryWeapon_SkeletalMesh; }
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetThirdPersonPrimaryWeaponMesh() { return _ThirdPerson_PrimaryWeapon_SkeletalMesh; }
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure) USkeletalMeshComponent* GetThirdPersonSecondaryWeaponMesh() { return _ThirdPerson_SecondaryWeapon_SkeletalMesh; }
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1175,14 +1411,13 @@ public:
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
-		float GetGlobalReloadPlayRate() { return _fGlobalReloadPlayRate; }
+	UFUNCTION()
+		void FreezeAnimation(USkeletalMeshComponent* ArmsMesh, UAnimMontage* MontageToFreeze, float EndFrame, bool bHideMeshOnFreeze);
 
 	/*
 	*
 	*/
-	UFUNCTION()
-		void FreezeAnimation(USkeletalMeshComponent* ArmsMesh, UAnimMontage* MontageToFreeze, float EndFrame, bool bHideMeshOnFreeze);
+	UFUNCTION(BlueprintPure) float GetGlobalReloadPlayRate() const { return _fGlobalReloadPlayRate; }
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1202,20 +1437,47 @@ public:
 	/*
 	*
 	*/
-	UFUNCTION()
-		virtual void OnGroundChecks();
+	virtual void OnGroundChecks(float DeltaTime);
 
 	/*
 	*
 	*/
-	UFUNCTION()
-		void UpdateReloadingPrimary();
+	void TickAiming(float DeltaTime);
 
 	/*
 	*
 	*/
-	UFUNCTION()
-		void UpdateReloadingSecondary();
+	void TickFiringPrimary(float DeltaTime);
+
+	/*
+	*
+	*/
+	void TickFiringSecondary(float DeltaTime);
+
+	/*
+	*
+	*/
+	void TickReloadingPrimary(float DeltaTime);
+
+	/*
+	*
+	*/
+	void TickReloadingSecondary(float DeltaTime);
+
+	/*
+	*
+	*/
+	void TickSprint(float DeltaTime);
+
+	/*
+	*
+	*/
+	void TickCrouch(float DeltaTime);
+
+	/*
+	*
+	*/
+	void TickShields(float DeltaTime);
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1388,9 +1650,7 @@ public:
 	UFUNCTION(BlueprintPure)
 		float GetCurrentFleshHealth() { return _fFleshHealth; }
 
-	/*
-	*
-	*/
+	// Returns the value of _MAX_FLESH_HEALTH
 	UFUNCTION(BlueprintPure)
 		float GetMaxFleshHealth() { return (float)_MAX_FLESH_HEALTH; }
 
@@ -1413,30 +1673,6 @@ public:
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
-		bool IsShieldDepleted() { return _fShield <= 0.0f; }
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		float GetCurrentShield() { return _fShield; }
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		float GetMaxShield() { return (float)_MAX_SHIELD; }
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		float GetShieldRechargeDelayTime() { return _fShieldRechargeDelay; }
-
-	/*
-	*
-	*/
 	UFUNCTION()
 		void ResetShieldRecharge();
 
@@ -1447,10 +1683,29 @@ public:
 		void StartRechargingShields();
 
 	/*
-	*
+	*	Returns if _fShield <= 0
 	*/
-	UFUNCTION(BlueprintPure)
-		FTimerHandle GetShieldRechargeDelayTimerHandle() { return _fShieldRechargeDelayHandle;}
+	UFUNCTION(BlueprintPure) bool IsShieldDepleted() { return _fShield <= 0.0f; }
+
+	/*
+	*	Returns the value of _fShield
+	*/
+	UFUNCTION(BlueprintPure) float GetCurrentShield() { return _fShield; }
+
+	/*
+	*	Returns the value of _MAX_SHIELD
+	*/
+	UFUNCTION(BlueprintPure) float GetMaxShield() { return (float)_MAX_SHIELD; }
+
+	/*
+	*	Returns the value of _fShieldRechargeDelay
+	*/
+	UFUNCTION(BlueprintPure) float GetShieldRechargeDelayTime() { return _fShieldRechargeDelay; }
+	
+	/*
+	*	Returns the value of _fShieldRechargeDelayHandle
+	*/
+	UFUNCTION(BlueprintPure) FTimerHandle GetShieldRechargeDelayTimerHandle() { return _fShieldRechargeDelayHandle;}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1462,19 +1717,19 @@ public:
 	*
 	*/
 	UFUNCTION(Category = "Interaction")
-		AInteractable* CalculateFocusInteractable();
+		UInteractionDataComponent* CalculatePrimaryFocusInteractable();
 
 	/*
 	*
 	*/
 	UFUNCTION(Category = "Interaction")
-		void AddToInteractablesArray(AInteractable* Interactable);
+		void AddToInteractablesArray(UInteractionDataComponent* Interactable);
 
 	/*
 	*
 	*/
 	UFUNCTION(Category = "Interaction")
-		void RemoveFromInteractablesArray(AInteractable* Interactable);
+		bool RemoveFromInteractablesArray(UInteractionDataComponent* Interactable);
 
 	/*
 	*
@@ -1488,22 +1743,46 @@ public:
 	UFUNCTION(Category = "Interaction")
 		void InteractSecondary();
 
-	UFUNCTION()
+	/*
+
+	*/
+	UFUNCTION(Category = "Interaction")
 		void CancelInteraction();
 
-	UFUNCTION()
+	/*
+
+	*/
+	UFUNCTION(Category = "Interaction")
 		void Interact(bool IsSecondary);
 
 	/*
-	*
+
 	*/
-	UFUNCTION(Category = "Interaction")
-		TArray<AInteractable*> GetInteractablesArray() { return _Interactables; }
+	UFUNCTION()
+		void FocusInteractableToHUD();
+
+	/*
+
+	*/
+	UFUNCTION()
+		void SetIsTryingToInteractPrimary(bool Interacting) { _bIsTryingToInteractPrimary = Interacting; }
+
+	/*
+
+	*/
+	UFUNCTION()
+		void SetIsTryingToInteractSecondary(bool Interacting) { _bIsTryingToInteractSecondary = Interacting; }
 
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
+	UFUNCTION(BlueprintPure, Category = "Interaction")
+		TArray<UInteractionDataComponent*> GetInteractablesArray() { return _Interactables; }
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure, Category = "Interaction")
 		FTimerHandle GetInteractionHandle() const { return _fInteractionHandle; }
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1540,25 +1819,70 @@ public:
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetIsAiming(bool aiming);
 
+	/*
+	*
+	*/
+	UFUNCTION()
+		virtual void InputAimEnter();
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		virtual void InputAimExit();
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void StopAiming();
+
 	/**
 	* @summary:	Returns whether the character is aiming or not.
 	*
 	* @return:	bool
 	*/
-	UFUNCTION(BlueprintPure)
-		bool IsAiming() { return _bIsAiming; }
+	UFUNCTION(BlueprintPure) bool IsAiming() { return _bIsAiming; }
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Inventory | Weapon | Duel Wielding
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
 	*/
 	UFUNCTION()
-		virtual void AimWeaponEnter();
+		void OnDuelWielding_PrimaryReloadComplete();
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_SetIsDuelWielding(bool bDuelWielding);
 
 	/*
 	*
 	*/
 	UFUNCTION()
-		virtual void AimWeaponExit();
+		void SetIsDuelWielding(bool bDuelWielding);
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		virtual void OnRep_DuelWielding();
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure) bool IsDuelWielding() const { return _bIsDuelWielding; }
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure) bool IsDuelWieldingMirrored() const { return _bDuelWieldingIsMirrored; }
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1656,6 +1980,12 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	/*
+	*
+	*/
+	UFUNCTION()
+		virtual void OnRep_PrimaryWeapon();
+
 	/**
 	* @summary:	Sets the character's primary weapon
 	*
@@ -1703,52 +2033,6 @@ public:
 	*
 	*/
 	UFUNCTION(Client, Reliable, WithValidation)
-		void OwningClient_Reliable_PrimaryWeaponCameraTrace();
-
-	UFUNCTION(Server, Reliable, WithValidation)
-		void Server_Reliable_PrimaryWeaponCameraTrace(FHitResult ClientHitResult);
-
-	/*
-	*
-	*/
-	virtual void InitFirePrimaryWeapon();
-
-	/*
-	*
-	*/
-	UFUNCTION()
-		virtual void OnRep_PrimaryWeapon();
-
-	/*
-	*
-	*/
-	UFUNCTION()
-		void InputPrimaryFirePress();
-
-	/*
-	*
-	*/
-	UFUNCTION()
-		void InputPrimaryFireRelease();
-
-	/**
-	* @summary:	Checks and initiates a reload of the character's primary weapon.
-	*
-	* @return:	virtual void
-	*/
-	UFUNCTION()
-		virtual void InputReloadPrimaryWeapon();
-
-	/*
-	*
-	*/
-	UFUNCTION()
-		void OnDuelWielding_PrimaryReloadComplete();
-
-	/*
-	*
-	*/
-	UFUNCTION(Client, Reliable, WithValidation)
 		void OwningClient_PlayPrimaryWeaponFPAnimation(USkeletalMeshComponent* ArmsMesh,
 			float PlayRate, bool FreezeMontageAtLastFrame,
 			bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame,
@@ -1766,14 +2050,81 @@ public:
 	/*
 	*
 	*/
-	UFUNCTION(Server, Reliable, WithValidation)
-		void Server_Reliable_SetIsReloadingPrimaryWeapon(bool ReloadingPrimary);
+	UFUNCTION(BlueprintPure)
+		AWeapon* GetPointerPrimaryWeapon() const { return _PrimaryWeapon; }
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	// Inventory | Weapon | Primary | Firing
+	
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
-		AWeapon* GetPointerPrimaryWeapon() const { return _PrimaryWeapon; }
+	virtual void InitFirePrimaryWeapon();
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void InputPrimaryFirePress();
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void InputPrimaryFireRelease();
+
+	/*
+	*
+	*/
+	UFUNCTION(Client, Reliable, WithValidation)
+		void OwningClient_Reliable_PrimarySetCanFireWeapon(bool bCanFire);
+
+	/*
+	*
+	*/
+	UFUNCTION(Client, Reliable, WithValidation)
+		void OwningClient_Reliable_PrimaryWeaponCameraTrace();
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_PrimaryWeaponCameraTrace(FHitResult ClientHitResult);
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Inventory | Weapon | Primary | Reload
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	* @summary:	Checks and initiates a reload of the character's primary weapon.
+	*
+	* @return:	virtual void
+	*/
+	UFUNCTION()
+		virtual void InputReloadPrimaryWeapon();
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void OnReloadComplete();
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		void SetIsReloadingPrimaryWeapon(bool IsReloading);
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_SetIsReloadingPrimaryWeapon(bool ReloadingPrimary);
 
 	/*
 	*
@@ -1786,6 +2137,12 @@ public:
 	// Inventory | Weapon | Secondary
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		virtual void OnRep_SecondaryWeapon();
 
 	/**
 	* @summary:	Sets the character's secondary weapon
@@ -1826,17 +2183,32 @@ public:
 	/*
 	*
 	*/
-	UFUNCTION()
-		virtual void OnRep_SecondaryWeapon();
+	UFUNCTION(Client, Reliable, WithValidation)
+		void OwningClient_PlaySecondaryWeaponFPAnimation(USkeletalMeshComponent* ArmsMesh,
+			float PlayRate, bool FreezeMontageAtLastFrame,
+			bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame,
+			bool PlayGunAnimation, uint8 GunAnimation, float GunAnimationStartingFrame);
 
 	/*
 	*
 	*/
-	UFUNCTION(Client, Reliable, WithValidation, Category = "Inventory | Weapon | Primary")
-		void OwningClient_Reliable_SecondaryWeaponCameraTrace();
+	UFUNCTION()
+		void PlaySecondaryWeaponFPAnimation(USkeletalMeshComponent* ArmsMesh,
+			float PlayRate, bool FreezeMontageAtLastFrame,
+			bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame,
+			bool PlayGunAnimation, uint8 GunAnimation, float GunAnimationStartingFrame);
 
-	UFUNCTION(Server, Reliable, WithValidation, Category = "Inventory | Weapon | Primary")
-		void Server_Reliable_SecondaryWeaponCameraTrace(FHitResult ClientHitResult);
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		AWeapon* GetPointerSecondaryWeapon() const { return _SecondaryWeapon; }
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Inventory | Weapon | Secondary | Firing
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/*
 	*
@@ -1856,6 +2228,27 @@ public:
 	UFUNCTION()
 		void InputSecondaryFireRelease();
 
+	/*
+	*
+	*/
+	UFUNCTION(Client, Reliable, WithValidation, Category = "Inventory | Weapon | Primary")
+		void OwningClient_Reliable_SecondaryWeaponCameraTrace();
+
+	UFUNCTION(Server, Reliable, WithValidation, Category = "Inventory | Weapon | Primary")
+		void Server_Reliable_SecondaryWeaponCameraTrace(FHitResult ClientHitResult);
+
+	/*
+	*
+	*/
+	UFUNCTION(Client, Reliable, WithValidation)
+		void OwningClient_Reliable_SecondarySetCanFireWeapon(bool bCanFire);
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Inventory | Weapon | Secondary | Reload
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	/**
 	* @summary:	Checks and initiates a reload of the character's secondary weapon.
 	*
@@ -1873,62 +2266,20 @@ public:
 	/*
 	*
 	*/
-	UFUNCTION(Client, Reliable, WithValidation)
-		void OwningClient_PlaySecondaryWeaponFPAnimation(USkeletalMeshComponent* ArmsMesh,
-			float PlayRate, bool FreezeMontageAtLastFrame,
-			bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame,
-			bool PlayGunAnimation, uint8 GunAnimation, float GunAnimationStartingFrame);
-
-	/*
-	*
-	*/
-	UFUNCTION()
-		void PlaySecondaryWeaponFPAnimation(USkeletalMeshComponent* ArmsMesh,
-			float PlayRate, bool FreezeMontageAtLastFrame,
-			bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame,
-			bool PlayGunAnimation, uint8 GunAnimation, float GunAnimationStartingFrame);
-
-	/*
-	*
-	*/
 	UFUNCTION(Server, Reliable, WithValidation)
 		void Server_Reliable_SetIsReloadingSecondaryWeapon(bool ReloadingSecondary);
 
 	/*
 	*
 	*/
-	UFUNCTION(BlueprintPure)
-		AWeapon* GetPointerSecondaryWeapon() const { return _SecondaryWeapon; }
+	UFUNCTION()
+		void SetIsReloadingSecondaryWeapon(bool IsReloading);
 
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintGetter)
 		bool IsSecondaryReloadCanceled() const { return _bSecondaryReloadCancelled; }
-
-	/*
-	*
-	*/
-	UFUNCTION(Server, Reliable, WithValidation)
-		void Server_Reliable_SetIsDuelWielding(bool bDuelWielding);
-
-	/*
-	*
-	*/
-	UFUNCTION()
-		void SetIsDuelWielding(bool bDuelWielding);
-
-	/*
-	*
-	*/
-	UFUNCTION()
-		virtual void OnRep_DuelWielding();
-
-	/*
-	*
-	*/
-	UFUNCTION(BlueprintPure)
-		bool IsDuelWielding() const { return _bIsDuelWielding; }
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2016,7 +2367,73 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	// Movement | Crouch 
+	// Movement | Properties | Gravity
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_SetGravityScale(float Scale);
+
+	/*
+	*
+	*/
+	UFUNCTION(NetMulticast, Reliable, WithValidation)
+		void Multicast_Reliable_SetGravityScale(float Scale);
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Movement | Properties | Speed
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable, Category = "Movement | Properties | Speed")
+		void SetMovingSpeed(float Speed);
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_SetMovingSpeed(float Speed);
+
+	/*
+	*
+	*/
+	UFUNCTION(NetMulticast, Reliable, WithValidation)
+		void Multicast_Reliable_SetMovingSpeed(float Speed);
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Movement | Properties | Stamina 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	* @summary:	Returns reference to the list of stamina components attached to this character
+	*
+	* @return:	TArray<UStamina*>
+	*/
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+		TArray<UStamina*> GetStaminaComponents() { return _uStaminaComponents; }
+
+	/**
+	* @summary:	Returns reference to the of stamina component attached to this character, specified by the channel.
+	*
+	* @param:	int Channel
+	*
+	* @return:	TArray<UStamina*>
+	*/
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+		UStamina* GetStaminaComponentByChannel(int Channel);
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Movement | States | Crouch 
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2024,19 +2441,19 @@ public:
 	*
 	*/
 	UFUNCTION()
-		virtual void CrouchToggle(bool Crouch);
+		virtual void InputCrouchToggle(bool Crouch);
 
 	/*
 	*
 	*/
 	UFUNCTION()
-		void EnterCrouch();
+		void InputCrouchEnter();
 
 	/*
 	*
 	*/
 	UFUNCTION()
-		void ExitCrouch();
+		void InputCrouchExit();
 
 	/*
 	*
@@ -2054,7 +2471,7 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	// Movement | Jump
+	// Movement | States | Jump
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2078,25 +2495,72 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	// Movement | Speed
+	// Movement | States | Slide
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		virtual void InputSlideEnter();
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		virtual void InputSlideExit();
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		virtual void InputSlideToggle(bool Sliding);
+
+	/*
+	*
+	*/
+	UFUNCTION()
+		virtual void Slide(bool WasDashing = false);
 
 	/*
 	*
 	*/
 	UFUNCTION(Server, Reliable, WithValidation)
-		void Server_Reliable_SetMovingSpeed(float Speed);
+		void Server_Reliable_SetIsSliding(bool Sliding);
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_InitiateSlide(bool WasDashing);
 
 	/*
 	*
 	*/
 	UFUNCTION(NetMulticast, Reliable, WithValidation)
-		void Multicast_Reliable_SetMovingSpeed(float Speed);
+		void Multicast_Reliable_InitiateSlide(bool WasDashing);
+
+	/*
+	*
+	*/
+	UFUNCTION(Server, Reliable, WithValidation)
+		void Server_Reliable_StopSlide();
+
+	/*
+	*
+	*/
+	UFUNCTION(NetMulticast, Reliable, WithValidation)
+		void Multicast_Reliable_StopSlide();
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure, Category = "Movement | Slide") bool IsSliding() const { return _bIsSliding; }
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	// Movement | Sprint
+	// Movement | States | Sprint
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2132,25 +2596,19 @@ public:
 	*
 	*/
 	UFUNCTION()
-		void SprintEnter();
+		void InputSprintEnter();
 
 	/*
 	*
 	*/
 	UFUNCTION()
-		void SprintExit();
+		void InputSprintExit();
 
 	/*
 	*
 	*/
 	UFUNCTION()
-		void SprintToggle(bool Sprint);
-
-	/*
-	*
-	*/
-	UFUNCTION()
-		void Tick_Sprint();
+		void InputSprintToggle(bool Sprint);
 
 	/*
 	*
@@ -2160,31 +2618,7 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	// Movement | Stamina 
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	/**
-	* @summary:	Returns reference to the list of stamina components attached to this character
-	*
-	* @return:	TArray<UStamina*> 
-	*/
-	UFUNCTION(BlueprintPure, Category = "Inventory")
-		TArray<UStamina*> GetStaminaComponents() { return _uStaminaComponents; }
-
-	/**
-	* @summary:	Returns reference to the of stamina component attached to this character, specified by the channel.
-	*
-	* @param:	int Channel
-	*
-	* @return:	TArray<UStamina*>
-	*/
-	UFUNCTION(BlueprintPure, Category = "Inventory")
-		UStamina* GetStaminaComponentByChannel(int Channel);
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	// Movement | Vault 
+	// Movement | States | Vault 
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

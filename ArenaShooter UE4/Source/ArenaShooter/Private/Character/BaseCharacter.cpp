@@ -4,7 +4,6 @@
 
 #include "Ammo.h"
 #include "ArenaCharacter.h"
-#include "BasePlayerController.h"
 #include "Camera/CameraComponent.h"
 #include "Camera/CameraShake.h"
 #include "Camera/PlayerCameraManager.h"
@@ -13,11 +12,16 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "DrawDebugHelpers.h"
 #include "FireMode.h"
+#include "Math.h"
 #include "GameFramework/InputSettings.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
-#include "Interactable.h"
+#include "IngamePlayerController.h"
+#include "IngameHUD.h"
+#include "InteractionDataComponent.h"
+#include "InteractableWeapon.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Runtime/Engine/Classes/Animation/AnimInstance.h"
@@ -242,6 +246,33 @@ ABaseCharacter::ABaseCharacter()
 	_fDefaultGroundFriction = GetCharacterMovement()->GroundFriction;
 	_fDefaultBrakingFrictionFactor = GetCharacterMovement()->BrakingFrictionFactor;
 	_fDefaultBrakingDecelerationWalking = GetCharacterMovement()->BrakingDecelerationWalking;
+	_FpsArmOffset = _FirstPerson_Arms->GetRelativeLocation();
+}
+
+/**
+* @summary:	Called when the game starts or when spawned.
+*
+* @return:	virtual void
+*/
+void ABaseCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// Get all stamina components as reference
+	this->GetComponents<UStamina>(_uStaminaComponents);
+
+	// Initialize starting loadout
+	if (HasAuthority()) 
+		Server_Reliable_CreateStartingLoadout();
+
+	// Mirror mesh when duel wielding?
+	if (_bDuelWieldingIsMirrored)
+	{
+		// Flip on the x axis
+		FVector scale = _FirstPerson_ArmsDuelLeft->GetRelativeScale3D();
+		scale = FVector(scale.X * -1, scale.Y, scale.Z);
+		_FirstPerson_ArmsDuelLeft->SetWorldScale3D(scale);
+	}
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -270,22 +301,6 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ABaseCharacter, _SecondaryWeapon);
 }
 
-/**
-* @summary:	Called when the game starts or when spawned.
-*
-* @return:	virtual void
-*/
-void ABaseCharacter::BeginPlay()
-{
-	Super::BeginPlay();
-
-	// Get all stamina components as reference
-	this->GetComponents<UStamina>(_uStaminaComponents);
-
-	// Initialize starting loadout
-	if (HasAuthority()) { Server_Reliable_CreateStartingLoadout(); }
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Animation
@@ -303,13 +318,14 @@ void ABaseCharacter::FreezeAnimation(USkeletalMeshComponent* SkeletalMesh, UAnim
 	///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Magenta, TEXT("Endframe: " + FString::SanitizeFloat(EndFrame)));
 
 	if (!_bCancelAnimation)
-	{ 
+	{
+		SkeletalMesh->bPauseAnims = false;
 		animInstance->Montage_Play(MontageToFreeze, 0.0f, EMontagePlayReturnType::MontageLength, EndFrame, true);
-		animInstance->Montage_Pause(MontageToFreeze);
+		animInstance->Montage_Pause();
 		if (SkeletalMesh != NULL)
 		{
 			SkeletalMesh->bPauseAnims = true;
-			///SkeletalMesh->SetHiddenInGame(bHideMeshOnFreeze, true);
+			SkeletalMesh->SetHiddenInGame(bHideMeshOnFreeze, true);
 		}
 	}
 	else { _bCancelAnimation = false; }
@@ -333,147 +349,30 @@ void ABaseCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	// If we're currently in the air and not doing any checks for landing on the ground, then start doing those checks
-	if (GetCharacterMovement()->IsFalling() && !_bIsPerformingGroundChecks) { _bIsPerformingGroundChecks; }
-	if (_bIsPerformingGroundChecks) { OnGroundChecks(); }
+	if (GetCharacterMovement()->IsFalling() && !_bIsPerformingGroundChecks) 
+		_bIsPerformingGroundChecks;
+	if (_bIsPerformingGroundChecks)
+		OnGroundChecks(DeltaTime);
 
-	// Recharging shields
-	if (_bRechargeShields && _fShield < _MAX_SHIELD && GetLocalRole() == ROLE_Authority)
-	{
-		_fShield += _fShieldRechargingRate * DeltaTime;
+	// Combat
+	TickAiming(DeltaTime);
+	TickFiringPrimary(DeltaTime);
+	TickFiringSecondary(DeltaTime);
+	TickReloadingPrimary(DeltaTime);
+	TickReloadingSecondary(DeltaTime);
 
-		// Clamp to max
-		if (_fShield >= _MAX_SHIELD)
-		{
-			_fShield = _MAX_SHIELD;
-			_bRechargeShields = false;
-		}
-	}
-	
-	// Aim FOV lerping
-	if (_bIsAimLerping && _PrimaryWeapon != NULL)
-	{
-		// Still lerping
-		if (_fAimTime < _PrimaryWeapon->GetCurrentFireMode()->GetWeaponAimTime())
-		{
-			// Add to time
-			_fAimTime += GetWorld()->GetDeltaSeconds();
+	// Movement
+	TickSprint(DeltaTime);
+	TickCrouch(DeltaTime);
 
-			// Update FOV to target
-			float alpha = _fAimTime / _PrimaryWeapon->GetCurrentFireMode()->GetWeaponAimTime();
-			_FirstPerson_Camera->SetFieldOfView(FMath::Lerp(_fFovStart, _fFovTarget, alpha));
-		}
-
-		// Lerp complete
-		else
-		{
-			if (_eAimDirection == E_AimDirection::ePT_ZoomIn)
-			{ _iCurrentFovStage += 1; }
-			else if (_eAimDirection == E_AimDirection::ePT_ZoomOut)
-			{ _iCurrentFovStage = 0; }
-
-			// Reset
-			_bIsAimLerping = false;
-			_fAimTime = 0.0f;
-		}
-	}
-	
-	// Trying to fire primary
-	if (_bIsTryingToFirePrimary) { InitFirePrimaryWeapon(); }
-	else // Stopped trying to fire primary
-	{
-		if (_PrimaryWeapon == NULL) { return; }
-		if (_PrimaryWeapon->GetFireModes().Num() == 0) { return; }
-		if (_PrimaryWeapon->GetCurrentFireMode()->IsFiring())
-		{
-			// Only setting to FALSE if _bIsFiring == true
-			_PrimaryWeapon->GetCurrentFireMode()->SetIsFiring(false);
-		}
-	}
-
-	// Trying to fire secondary
-	if (_bIsTryingToFireSecondary) { InitFireSecondaryWeapon(); } 
-	else // Stopped trying to fire Secondary
-	{
-		if (_SecondaryWeapon == NULL) { return; }
-		if (_SecondaryWeapon->GetFireModes().Num() == 0) { return; }
-		if (_SecondaryWeapon->GetCurrentFireMode()->IsFiring())
-		{
-			// Only setting to FALSE if _bIsFiring == true
-			_SecondaryWeapon->GetCurrentFireMode()->SetIsFiring(false);
-		}
-	}
-
-	// Reloading weapons
-	if (_bIsReloadingPrimaryWeapon)		{ UpdateReloadingPrimary(); }
-	if (_bIsReloadingSecondaryWeapon)	{ UpdateReloadingSecondary(); }
-
-	// Crouch camera lerping
-	if (_bLerpCrouchCamera)
-	{
-		if (_PrimaryWeapon == NULL) { return; }
-
-		// Add to lerp time
-		if (_fCrouchCameraLerpTime < _fCrouchLerpingDuration)
-		{
-			_fCrouchCameraLerpTime += DeltaTime;
-			
-			// Determine origin transform
-			bool ads = _PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled();
-			FTransform adsOrigin = _PrimaryWeapon->GetCurrentFireMode()->GetOriginADS();
-			FTransform hipOrigin = _PrimaryWeapon->GetTransformOriginArms();
-			FTransform originTransform = UKismetMathLibrary::SelectTransform(adsOrigin, hipOrigin, _bIsAiming && ads);
-
-			// Get crouch/uncrouch origins
-			FTransform crouchTransform = UKismetMathLibrary::SelectTransform(_tCrouchWeaponOrigin, originTransform, _bIsCrouching);
-			FTransform uncrouchTransform = UKismetMathLibrary::SelectTransform(originTransform, _tCrouchWeaponOrigin, _bIsCrouching);
-
-			// Current lerp transition origin between crouch/uncrouch
-			FTransform enter = UKismetMathLibrary::SelectTransform(crouchTransform, uncrouchTransform, _bCrouchEnter);
-			FTransform exit = UKismetMathLibrary::SelectTransform(crouchTransform, uncrouchTransform, !_bCrouchEnter);
-			FTransform lerpTransform = UKismetMathLibrary::TLerp(uncrouchTransform, crouchTransform, _fCrouchCameraLerpTime / _fCrouchLerpingDuration);
-
-			// Set lerp transform to first person arms
-			_FirstPerson_Arms->SetRelativeTransform(lerpTransform);
-		}
-
-		// Stop lerping
-		else
-		{ _bLerpCrouchCamera = false; }
-	}
-
-	// Crouch movement capsule lerping
-	if (_bLerpCrouchCapsule)
-	{
-		// Add to lerp time
-		if (_fCrouchCapsuleLerpTime < _fCrouchLerpingDuration)
-		{
-			_fCrouchCapsuleLerpTime += DeltaTime;
-
-			// Get capsule height values
-			float lerpA = UKismetMathLibrary::SelectFloat(_fDefaultCapsuleHalfHeight, GetCharacterMovement()->CrouchedHalfHeight, _bIsCrouching);
-			float lerpB = UKismetMathLibrary::SelectFloat(_fDefaultCapsuleHalfHeight, GetCharacterMovement()->CrouchedHalfHeight, !_bIsCrouching);
-
-			// Lerp between values over time
-			float currentLerpHeight = UKismetMathLibrary::Lerp(lerpA, lerpB, _fCrouchCapsuleLerpTime / _fCrouchLerpingDuration);
-			UCapsuleComponent* movementCapsule = GetCapsuleComponent();
-			if (movementCapsule == NULL) { return; }
-			movementCapsule->SetCapsuleHalfHeight(currentLerpHeight, true);
-		}
-	}
-
-	// Sprint
-	if (_bTryingToSprint) { Tick_Sprint(); }
-	else
-	{
-		if (_bIsSprinting) { StopSprinting(); }
-	}
-
+	// Health
+	TickShields(DeltaTime);
 }
 
 /*
 *
 */
-void ABaseCharacter::OnGroundChecks()
+void ABaseCharacter::OnGroundChecks(float DeltaTime)
 {
 	// Character has landed on the ground
 	if (GetCharacterMovement()->IsMovingOnGround())
@@ -500,8 +399,52 @@ void ABaseCharacter::OnGroundChecks()
 /*
 *
 */
-void ABaseCharacter::UpdateReloadingPrimary()
+void ABaseCharacter::TickFiringPrimary(float DeltaTime)
 {
+	// Trying to fire primary
+	if (_bIsTryingToFirePrimary && _bCanFirePrimary) 
+		InitFirePrimaryWeapon(); 
+	else
+	{ 
+		// Stopped trying to fire primary
+		if (_PrimaryWeapon == NULL) { return; }
+		if (_PrimaryWeapon->GetFireModes().Num() == 0) { return; }
+		if (_PrimaryWeapon->GetCurrentFireMode()->IsFiring())
+		{
+			// Only setting to FALSE if _bIsFiring == true
+			_PrimaryWeapon->GetCurrentFireMode()->SetIsFiring(false);
+		}
+	}
+}
+
+/*
+*
+*/
+void ABaseCharacter::TickFiringSecondary(float DeltaTime)
+{
+	// Trying to fire secondary
+	if (_bIsTryingToFireSecondary && _bCanFireSecondary)
+		InitFireSecondaryWeapon(); 
+	else 
+	{
+		// Stopped trying to fire Secondary
+		if (_SecondaryWeapon == NULL) { return; }
+		if (_SecondaryWeapon->GetFireModes().Num() == 0) { return; }
+		if (_SecondaryWeapon->GetCurrentFireMode()->IsFiring())
+		{
+			// Only setting to FALSE if _bIsFiring == true
+			_SecondaryWeapon->GetCurrentFireMode()->SetIsFiring(false);
+		}
+	}
+}
+
+/*
+*
+*/
+void ABaseCharacter::TickReloadingPrimary(float DeltaTime)
+{
+	if (!_bIsReloadingPrimaryWeapon) { return; }
+
 	// Sanity checks
 	if (_PrimaryWeapon == NULL) { return; }
 	if (_PrimaryWeapon->GetFireModes().Num() == 0) { return; }
@@ -510,10 +453,9 @@ void ABaseCharacter::UpdateReloadingPrimary()
 	// Reload hasn't been canceled yet
 	if (!_bPrimaryReloadCancelled)
 	{
-		// Ensure that _bIsReloadingPrimaryWeapon == true
-		if (_bIsReloadingPrimaryWeapon == false) { Server_Reliable_SetIsReloadingPrimaryWeapon(true); }
+		SetIsReloadingPrimaryWeapon(true);
 
-		// Ensure that we cannot fire this weapon whilst it is still being reloaded
+		// Ensure that we cannot fire this weapon whilst it is still being reloaded 
 		_bCanFirePrimary = false;
 	}
 
@@ -521,13 +463,14 @@ void ABaseCharacter::UpdateReloadingPrimary()
 	else
 	{
 		// Stop the reload timer
-		FTimerHandle timerHandle = _PrimaryWeapon->GetCurrentFireMode()->GetReloadTimerHandle();
+		FTimerHandle timerHandle = _PrimaryWeapon->GetCurrentFireMode()->GetReloadStageTimerHandle();
 		GetWorldTimerManager().ClearTimer(timerHandle);
+		GetWorldTimerManager().ClearTimer(_fPrimaryReloadHandle);
 
 		// Can (try) to shoot weapon again
 		_bCanFirePrimary = true;
-		Server_Reliable_SetIsReloadingPrimaryWeapon(false);
 		_bPrimaryReloadCancelled = false;
+		SetIsReloadingPrimaryWeapon(false);
 
 		// Stop montage
 		USkeletalMeshComponent* mesh = !_bIsDuelWielding ? _FirstPerson_Arms : _FirstPerson_ArmsDuelRight;
@@ -540,16 +483,18 @@ void ABaseCharacter::UpdateReloadingPrimary()
 	if (_PrimaryWeapon->GetCurrentFireMode()->GetReloadComplete())
 	{
 		_bCanFirePrimary = true;
-		Server_Reliable_SetIsReloadingPrimaryWeapon(false);
 		_bPrimaryReloadCancelled = false;
+		SetIsReloadingPrimaryWeapon(false);
 	}
 }
 
 /*
 *
 */
-void ABaseCharacter::UpdateReloadingSecondary()
+void ABaseCharacter::TickReloadingSecondary(float DeltaTime)
 {
+	if (!_bIsReloadingSecondaryWeapon) { return; }
+
 	// Sanity checks
 	if (_SecondaryWeapon == NULL) { return; }
 	if (_SecondaryWeapon->GetFireModes().Num() == 0) { return; }
@@ -558,8 +503,7 @@ void ABaseCharacter::UpdateReloadingSecondary()
 	// Reload hasn't been canceled yet
 	if (!_bSecondaryReloadCancelled)
 	{
-		// Ensure that _bIsReloadingSecondaryWeapon == true
-		if (_bIsReloadingSecondaryWeapon == false) { Server_Reliable_SetIsReloadingSecondaryWeapon(true); }
+		SetIsReloadingSecondaryWeapon(true);
 
 		// Ensure that we cannot fire this weapon whilst it is still being reloaded
 		_bCanFireSecondary = false;
@@ -569,13 +513,13 @@ void ABaseCharacter::UpdateReloadingSecondary()
 	else
 	{
 		// Stop the reload timer
-		FTimerHandle timerHandle = _SecondaryWeapon->GetCurrentFireMode()->GetReloadTimerHandle();
+		FTimerHandle timerHandle = _SecondaryWeapon->GetCurrentFireMode()->GetReloadStageTimerHandle();
 		GetWorldTimerManager().ClearTimer(timerHandle);
 
 		// Can (try) to shoot weapon again
 		_bCanFireSecondary = true;
-		Server_Reliable_SetIsReloadingSecondaryWeapon(false);
-		_bSecondaryReloadCancelled = false;
+		_bSecondaryReloadCancelled = false; 
+		SetIsReloadingSecondaryWeapon(false);
 
 		// Stop montage
 		UAnimInstance* animInstance = _FirstPerson_ArmsDuelLeft->GetAnimInstance();
@@ -587,8 +531,202 @@ void ABaseCharacter::UpdateReloadingSecondary()
 	if (_SecondaryWeapon->GetCurrentFireMode()->GetReloadComplete())
 	{
 		_bCanFireSecondary = true;
-		Server_Reliable_SetIsReloadingSecondaryWeapon(false);
 		_bSecondaryReloadCancelled = false;
+		SetIsReloadingSecondaryWeapon(false);
+	}
+}
+
+/*
+*
+*/
+void ABaseCharacter::TickAiming(float DeltaTime)
+{
+	if (_bIsAimLerping && _PrimaryWeapon != NULL)
+	{
+		// Still lerping
+		if (_fAimTime < _PrimaryWeapon->GetCurrentFireMode()->GetWeaponAimTime())
+		{
+			// Add to time
+			_fAimTime += GetWorld()->GetDeltaSeconds();
+			float alpha = FMath::Clamp(_fAimTime / _PrimaryWeapon->GetCurrentFireMode()->GetWeaponAimTime(), 0.0f, 1.0f);
+			
+			// Update FOV to target
+			_FirstPerson_Camera->SetFieldOfView(FMath::Lerp(_fFovStart, _fFovTarget, alpha));
+
+			// Update origin transform
+			FTransform lerpTransform = UKismetMathLibrary::TLerp(_StartingOriginTransform, _TargetOriginTransform, alpha, ELerpInterpolationMode::EulerInterp);
+			_FirstPerson_Arms->SetRelativeTransform(lerpTransform);
+		}
+
+		// Lerp complete
+		else
+		{
+			if (_eAimDirection == E_AimDirection::ePT_ZoomIn)
+			{ _iCurrentFovStage += 1; } 
+			else if (_eAimDirection == E_AimDirection::ePT_ZoomOut)
+			{ _iCurrentFovStage = 0; }
+
+			// Reset
+			_bIsAimLerping = false;
+			_fAimTime = 0.0f;
+		}
+	}
+}
+
+/*
+*
+*/
+void ABaseCharacter::TickSprint(float DeltaTime)
+{
+	if (!_bTryingToSprint)
+	{
+		if (_bIsSprinting) 
+			StopSprinting();		 
+		return;
+	}
+
+	UCharacterMovementComponent* characterMovement = GetCharacterMovement();
+	if (characterMovement == NULL) 
+		return;
+
+	// Check if forward input is being pressed in this frame
+	bool forward = false;
+	auto ctrl = Cast<ABasePlayerController>(this->GetController()); 
+	if (ctrl == NULL) 
+		return;
+
+	// Accounting for multiplatform controls
+	if (ctrl->GetControllerType() == E_ControllerType::eCT_Keyboard)
+		forward = ctrl->IsInputKeyDown(EKeys::W);
+	else if (ctrl->GetControllerType() == E_ControllerType::eCT_Xbox)
+		forward = ctrl->IsInputKeyDown(EKeys::Gamepad_LeftStick_Up);
+	else if (ctrl->GetControllerType() == E_ControllerType::eCT_PlayStation)
+		forward = ctrl->IsInputKeyDown(EKeys::Gamepad_LeftStick_Up);
+	else
+		StopSprinting(); // This is incase the forward input is released, the sprint should be forcibly stopped.
+
+	// Forward input is present this frame
+	if (forward)
+	{
+		// Moving on the ground
+		if (characterMovement->IsMovingOnGround())
+		{			
+			// Not aiming
+			if (_bIsAiming)
+				StopAiming();
+
+			// Set sprinting = true
+			if (!_bIsSprinting)
+			{
+				// Set _bIsSprinting on server for replication
+				if (HasAuthority())
+					_bIsSprinting = true;
+				else
+					Server_Reliable_SetSprinting(true);
+
+				_fOnSprintEnter.Broadcast(true);
+			}
+
+			// Set sprinting movement speed
+			if (characterMovement->GetMaxSpeed() != _fMovementSpeedSprint)
+			{
+				if (HasAuthority())
+					Multicast_Reliable_SetMovingSpeed(_fMovementSpeedSprint);
+				else
+					Server_Reliable_SetMovingSpeed(_fMovementSpeedSprint);
+			}
+
+			// Play any feedback(s) [Camera shakes / Gamepad Rumbles / Etc...]
+			OwningClient_PlayCameraShake(_CameraShakeSprint, 1.0f);
+		}
+		
+		// In the air
+		else 
+			StopSprinting(); 		
+	}
+
+	// Not pressing forward input anymore, stop sprinting bruh
+	else
+		StopSprinting();
+}
+
+/*
+*
+*/
+void ABaseCharacter::TickCrouch(float DeltaTime)
+{
+	// Crouch camera lerping
+	if (_bLerpCrouchCamera)
+	{
+		if (_PrimaryWeapon == NULL)
+			return;
+
+		// Add to lerp time
+		if (_fCrouchCameraLerpTime < _fCrouchLerpingDuration)
+		{
+			_fCrouchCameraLerpTime += DeltaTime;
+
+			// Determine origin transform
+			bool ads = _PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled();
+			FTransform adsOrigin = _PrimaryWeapon->GetCurrentFireMode()->GetOriginADS();
+			FTransform hipOrigin = _PrimaryWeapon->GetTransformOriginArms();
+			FTransform originTransform = UKismetMathLibrary::SelectTransform(adsOrigin, hipOrigin, _bIsAiming && ads);
+
+			// Get crouch/uncrouch origins
+			FTransform crouchTransform = UKismetMathLibrary::SelectTransform(_tCrouchWeaponOrigin, originTransform, _bIsCrouching);
+			FTransform uncrouchTransform = UKismetMathLibrary::SelectTransform(originTransform, _tCrouchWeaponOrigin, _bIsCrouching);
+
+			// Current lerp transition origin between crouch/uncrouch
+			FTransform enter = UKismetMathLibrary::SelectTransform(crouchTransform, uncrouchTransform, _bCrouchEnter);
+			FTransform exit = UKismetMathLibrary::SelectTransform(crouchTransform, uncrouchTransform, !_bCrouchEnter);
+			FTransform lerpTransform = UKismetMathLibrary::TLerp(uncrouchTransform, crouchTransform, _fCrouchCameraLerpTime / _fCrouchLerpingDuration);
+
+			// Set lerp transform to first person arms
+			_FirstPerson_Arms->SetRelativeTransform(lerpTransform);
+		}
+
+		// Stop lerping
+		else
+			_bLerpCrouchCamera = false;
+	}
+
+	// Crouch movement capsule lerping
+	if (_bLerpCrouchCapsule)
+	{
+		// Add to lerp time
+		if (_fCrouchCapsuleLerpTime < _fCrouchLerpingDuration)
+		{
+			_fCrouchCapsuleLerpTime += DeltaTime;
+
+			// Get capsule height values
+			float lerpA = UKismetMathLibrary::SelectFloat(_fDefaultCapsuleHalfHeight, GetCharacterMovement()->CrouchedHalfHeight, _bIsCrouching);
+			float lerpB = UKismetMathLibrary::SelectFloat(_fDefaultCapsuleHalfHeight, GetCharacterMovement()->CrouchedHalfHeight, !_bIsCrouching);
+
+			// Lerp between values over time
+			float currentLerpHeight = UKismetMathLibrary::Lerp(lerpA, lerpB, _fCrouchCapsuleLerpTime / _fCrouchLerpingDuration);
+			UCapsuleComponent* movementCapsule = GetCapsuleComponent();
+			if (movementCapsule == NULL) 
+				return;
+			movementCapsule->SetCapsuleHalfHeight(currentLerpHeight, true);
+		}
+	}
+}
+
+/*
+*
+*/
+void ABaseCharacter::TickShields(float DeltaTime)
+{
+	if (_bRechargeShields && _fShield < _MAX_SHIELD && GetLocalRole() == ROLE_Authority)
+	{
+		_fShield += _fShieldRechargingRate * DeltaTime;
+
+		// Clamp to max
+		if (_fShield >= _MAX_SHIELD)
+		{
+			_fShield = _MAX_SHIELD;
+			_bRechargeShields = false;
+		}
 	}
 }
 
@@ -598,9 +736,7 @@ void ABaseCharacter::UpdateReloadingSecondary()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool ABaseCharacter::OwningClient_PlayCameraShake_Validate(TSubclassOf<class UCameraShake>, float Scale = 1.0f)
-{ return GetController() != NULL; }
-
+bool ABaseCharacter::OwningClient_PlayCameraShake_Validate(TSubclassOf<class UCameraShake>, float Scale = 1.0f) { return GetController() != NULL; }
 void ABaseCharacter::OwningClient_PlayCameraShake_Implementation(TSubclassOf<class UCameraShake> ShakeClass, float Scale = 1.0f)
 {
 	APlayerController* playerController = Cast<APlayerController>(GetController());
@@ -642,20 +778,11 @@ void ABaseCharacter::OwningClient_GamepadRumble_Implementation(float Intensity, 
 	*
 	* @return:	void
 */
-bool ABaseCharacter::Server_SetUseControllerRotationYaw_Validate(bool useControllerRotationYaw)
-{ return true; }
-
+bool ABaseCharacter::Server_SetUseControllerRotationYaw_Validate(bool useControllerRotationYaw) { return true; }
 void ABaseCharacter::Server_SetUseControllerRotationYaw_Implementation(bool useControllerRotationYaw)
 {
-	if (HasAuthority()) { bUseControllerRotationYaw = useControllerRotationYaw; }
-}
-
-void ABaseCharacter::SetForwardInputScale(float ForwardInputScale)
-{
-	if (GetLocalRole() == ROLE_Authority)
-	{ _fForwardInputScale = ForwardInputScale; }
-	else 
-	{ Server_SetForwardInputScale(ForwardInputScale); }
+	if (HasAuthority()) 
+		bUseControllerRotationYaw = useControllerRotationYaw;
 }
 
 /**
@@ -667,20 +794,14 @@ void ABaseCharacter::SetForwardInputScale(float ForwardInputScale)
 *
 * @return:	void
 */
-bool ABaseCharacter::Server_SetForwardInputScale_Validate(float ForwardInputScale)
-{ return true; }
-
-void ABaseCharacter::Server_SetForwardInputScale_Implementation(float ForwardInputScale)
-{
-	SetForwardInputScale(ForwardInputScale);
-}
-
-void ABaseCharacter::SetRightInputScale(float RightInputScale)
+bool ABaseCharacter::Server_SetForwardInputScale_Validate(float ForwardInputScale) { return true; }
+void ABaseCharacter::Server_SetForwardInputScale_Implementation(float ForwardInputScale) { SetForwardInputScale(ForwardInputScale); }
+void ABaseCharacter::SetForwardInputScale(float ForwardInputScale)
 {
 	if (GetLocalRole() == ROLE_Authority)
-	{ _fRightInputScale = RightInputScale; }
-	else 
-	{ Server_SetRightInputScale(RightInputScale); }
+		_fForwardInputScale = ForwardInputScale;
+	else
+		Server_SetForwardInputScale(ForwardInputScale);
 }
 
 /**
@@ -692,12 +813,14 @@ void ABaseCharacter::SetRightInputScale(float RightInputScale)
 *
 * @return:	void
 */
-bool ABaseCharacter::Server_SetRightInputScale_Validate(float RightInputScale)
-{ return true; }
-
-void ABaseCharacter::Server_SetRightInputScale_Implementation(float RightInputScale)
+bool ABaseCharacter::Server_SetRightInputScale_Validate(float RightInputScale) { return true; }
+void ABaseCharacter::Server_SetRightInputScale_Implementation(float RightInputScale) { SetRightInputScale(RightInputScale); }
+void ABaseCharacter::SetRightInputScale(float RightInputScale)
 {
-	SetRightInputScale(RightInputScale);
+	if (GetLocalRole() == ROLE_Authority)
+		_fRightInputScale = RightInputScale;
+	else
+		Server_SetRightInputScale(RightInputScale);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -706,6 +829,8 @@ void ABaseCharacter::Server_SetRightInputScale_Implementation(float RightInputSc
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+bool ABaseCharacter::Server_Reliable_OnAnyDamage_Validate(AActor* Actor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser){ return true; }
+void ABaseCharacter::Server_Reliable_OnAnyDamage_Implementation(AActor* Actor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser) { OnAnyDamage(Actor, Damage, DamageType, InstigatedBy, DamageCauser); }
 void ABaseCharacter::OnAnyDamage(AActor* Actor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
 {
 	if (GetLocalRole() == ROLE_Authority)
@@ -718,11 +843,10 @@ void ABaseCharacter::OnAnyDamage(AActor* Actor, float Damage, const UDamageType*
 		if (GetCurrentShield() > 0.0f)
 		{
 			_fShield -= Damage;
-		}
-		else
+		} else
 		{
 			_fFleshHealth -= Damage;
-			
+
 			// Clamp to zero
 			if (_fFleshHealth < 0.0f) { _fFleshHealth = 0.0f; }
 		}
@@ -732,18 +856,10 @@ void ABaseCharacter::OnAnyDamage(AActor* Actor, float Damage, const UDamageType*
 		{
 		}
 	}
-	
+
 	// Ensure that the method only runs server-side
 	else
 	{ Server_Reliable_OnAnyDamage(Actor, Damage, DamageType, InstigatedBy, DamageCauser); }
-}
-
-bool ABaseCharacter::Server_Reliable_OnAnyDamage_Validate(AActor* Actor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
-{ return true; }
-
-void ABaseCharacter::Server_Reliable_OnAnyDamage_Implementation(AActor* Actor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
-{
-	OnAnyDamage(Actor, Damage, DamageType, InstigatedBy, DamageCauser);
 }
 
 void ABaseCharacter::OnPointDamage(float Damage)
@@ -756,6 +872,8 @@ void ABaseCharacter::OnRadialDamage(float Damage)
 
 }
 
+bool ABaseCharacter::Server_Reliable_OnDeath_Validate(){ return true; }
+void ABaseCharacter::Server_Reliable_OnDeath_Implementation() { OnDeath(); }
 void ABaseCharacter::OnDeath()
 {
 	if (GetLocalRole() == ROLE_Authority)
@@ -768,23 +886,13 @@ void ABaseCharacter::OnDeath()
 	{ Server_Reliable_OnDeath(); }
 }
 
-bool ABaseCharacter::Server_Reliable_OnDeath_Validate()
-{ return true; }
-
-void ABaseCharacter::Server_Reliable_OnDeath_Implementation()
-{
-	OnDeath();
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Health | Burn
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool ABaseCharacter::Server_Reliable_BurnCharacter_Validate(int Steps, float Damage, float Delay)
-{ return true; }
-
+bool ABaseCharacter::Server_Reliable_BurnCharacter_Validate(int Steps, float Damage, float Delay){ return true; }
 void ABaseCharacter::Server_Reliable_BurnCharacter_Implementation(int Steps, float Damage, float Delay)
 {
 	// Only proceed if we're not being burned... 
@@ -820,9 +928,7 @@ void ABaseCharacter::Server_Reliable_BurnCharacter_Implementation(int Steps, flo
 *
 * @return:	void
 */
-bool ABaseCharacter::Server_Reliable_ResetFleshHealth_Validate()
-{ return _fFleshHealth < _MAX_FLESH_HEALTH; }
-
+bool ABaseCharacter::Server_Reliable_ResetFleshHealth_Validate(){ return _fFleshHealth < _MAX_FLESH_HEALTH; }
 void ABaseCharacter::Server_Reliable_ResetFleshHealth_Implementation()
 { _fFleshHealth = _MAX_FLESH_HEALTH; }
 
@@ -839,9 +945,7 @@ void ABaseCharacter::Server_Reliable_ResetFleshHealth_Implementation()
 *
 * @return:	void
 */
-bool ABaseCharacter::Server_Reliable_ResetShield_Validate()
-{ return _fShield < _MAX_SHIELD; }
-
+bool ABaseCharacter::Server_Reliable_ResetShield_Validate(){ return _fShield < _MAX_SHIELD; }
 void ABaseCharacter::Server_Reliable_ResetShield_Implementation()
 { _fShield = _MAX_SHIELD; }
 
@@ -881,44 +985,50 @@ void ABaseCharacter::StartRechargingShields()
 /*
 *
 */
-AInteractable* ABaseCharacter::CalculateFocusInteractable()
+UInteractionDataComponent* ABaseCharacter::CalculatePrimaryFocusInteractable()
 {
-	///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Orange, TEXT("CALCULATING") + FString::FromInt(_Interactables.Num()));
-	AInteractable* currentFocus = NULL;
+	UInteractionDataComponent* currentFocus = NULL;
 	if (_Interactables.Num() > 0)
 	{
 		// Cycle through all interactables and determine which is the closest
 		float closestDistance = TNumericLimits<float>::Max();
 		for (int i = 0; i < _Interactables.Num(); i++)
 		{
-			float dist = FVector::DistSquared(this->GetActorLocation(), _Interactables[i]->GetActorLocation());
+			float dist = FVector::DistSquared(this->GetActorLocation(), _Interactables[i]->GetOwner()->GetActorLocation());
 			if (dist < closestDistance)
 			{
 				closestDistance = dist;
 				currentFocus = _Interactables[i];
-				///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Orange, TEXT("NAME: ") + currentFocus->GetInteractablePickupName().ToString());
+					GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, currentFocus == NULL ? TEXT("Empty!") : TEXT(""));
+				///GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Orange, TEXT("NAME: ") + currentFocus->GetInteractablePickupName().ToString());
 			}
 		}
 	}
+	///GEngine->AddOnScreenDebugMessage(4, 5.0f, FColor::Orange, TEXT("CALCULATING WITH AN ARRAY SIZE OF ") + FString::FromInt(_Interactables.Num()));
 
-	_FocusInteractable = currentFocus;
-	return _FocusInteractable;
+	_FocusInteractable = currentFocus; // The member variable is used for the functionality, the return value is used for the visuals (HUD)
+	return currentFocus;
 }
 
 /*
 *
 */
-void ABaseCharacter::AddToInteractablesArray(AInteractable* Interactable)
+void ABaseCharacter::AddToInteractablesArray(UInteractionDataComponent* Interactable)
 {
-	_Interactables.Add(Interactable);
+	if (!_Interactables.Contains(Interactable))
+		_Interactables.Add(Interactable);
 }
 
 /*
 *
 */
-void ABaseCharacter::RemoveFromInteractablesArray(AInteractable* Interactable)
+bool ABaseCharacter::RemoveFromInteractablesArray(UInteractionDataComponent* Interactable)
 {
-	if (_Interactables.Contains(Interactable)) { _Interactables.Remove(Interactable); }
+	if (_Interactables.Contains(Interactable))
+		return _Interactables.Remove(Interactable);
+
+	// If we make it this far, then we didn't remove anything
+	return false;
 }
 
 /*
@@ -932,6 +1042,7 @@ void ABaseCharacter::InteractPrimary()
 	// Start interaction timer
 	FTimerDelegate interactionDelegate;
 	interactionDelegate.BindUFunction(this, FName("Interact"), false);
+	GetWorld()->GetTimerManager().ClearTimer(_fInteractionHandle);
 	GetWorld()->GetTimerManager().SetTimer(_fInteractionHandle, interactionDelegate, 1.0f, false, _fInteractionThresholdTime);
 }
 
@@ -964,31 +1075,136 @@ void ABaseCharacter::CancelInteraction()
 void ABaseCharacter::Interact(bool IsSecondary)
 {
 	// Sanity checks
-	if (_FocusInteractable == NULL) { return; }
-	if (_FocusInteractable->GetOnUsedActor() == NULL) { return; }
+	if (_FocusInteractable == NULL) 
+		return;
 
-	// Interacting with a weapon?
-	TSubclassOf<AWeapon> weaponClass = StaticCast<TSubclassOf<AWeapon>>(_FocusInteractable->GetOnUsedActor());
-	if (weaponClass)
+	// An actor spawns when we interact with the object
+	if (_FocusInteractable->GetOnUsedActor() != NULL)
 	{
-		// Set new weapon
-		int magSize = 100;
-		int reserveSize = 100;
-		int batterySize = 100;
-		Server_Reliable_SpawnAbstractWeapon(IsSecondary, weaponClass, magSize, reserveSize, batterySize);
+		// Interacting with a weapon?
+		TSubclassOf<AWeapon> weaponClass = StaticCast<TSubclassOf<AWeapon>>(_FocusInteractable->GetOnUsedActor());
+		if (weaponClass)
+		{
+			AInteractableWeapon* interactableWeapon = Cast<AInteractableWeapon>(_FocusInteractable->GetOwner());
+			if (interactableWeapon == NULL)
+				return;
 
-		// Drop old weapon
-		///if (_PrimaryWeapon != NULL) { Server_Reliable_DropWeapon(_PrimaryWeapon); }
-	}
+			// Set new weapon
+			int magSize = interactableWeapon->GetMagazineSize();
+			int reserveSize = interactableWeapon->GetReserveSize();
+			int batterySize = interactableWeapon->GetBatterySize();
+			Server_Reliable_SpawnAbstractWeapon(IsSecondary, weaponClass, magSize, reserveSize, batterySize);
 
-	// Interacting with a NON-Weapon object
-	else
-	{
-
+			// Drop old weapon
+			///if (_PrimaryWeapon != NULL) { Server_Reliable_DropWeapon(_PrimaryWeapon); }
+		}
 	}
 
 	// On interact event plays on the interactable object (basically just destroy/re-pool)
 	_FocusInteractable->Server_Reliable_OnInteract(this);
+}
+
+/*
+*
+*/
+void ABaseCharacter::FocusInteractableToHUD()
+{
+	// Display interactable info to player's screen/HUD
+	APlayerController* playerController = Cast<APlayerController>(GetController());
+	if (playerController == NULL)
+		return;
+	AIngameHUD* hud = Cast<AIngameHUD>(playerController->GetHUD());
+	if (hud == NULL)
+		return;
+
+	// Determine what interactable is the closest to the player character
+	UInteractionDataComponent* interactable = CalculatePrimaryFocusInteractable();
+	if (interactable == NULL)
+	{
+		hud->SetNewFocusInteractable(NULL);
+		hud->SetWidgetInteractable(NULL);
+		return;
+	}
+	if (interactable->IsInteractable())
+	{
+		// Fire raycast to the primary focus object to see if the player is actually trying to look at it
+		FVector startLoc = _FirstPerson_Camera->GetComponentLocation();
+		FVector endLoc = interactable->GetOwner()->GetActorLocation();
+		FHitResult hitResult;
+		FCollisionQueryParams params;
+		params.bTraceComplex = false;
+		params.AddIgnoredActor(this);
+		GetWorld()->LineTraceSingleByChannel(hitResult, startLoc, endLoc, ECollisionChannel::ECC_Camera, params);
+		DrawDebugLine(GetWorld(), startLoc, endLoc, FColor::Blue, false, 1.0f);
+
+		hud->SetNewFocusInteractable(interactable);
+		hud->SetWidgetInteractable(interactable);
+	}
+}
+
+/*
+*
+*/
+bool ABaseCharacter::Server_Reliable_DropInteractableWeapon_Validate(AWeapon* WeaponInstance){ return true; }
+void ABaseCharacter::Server_Reliable_DropInteractableWeapon_Implementation(AWeapon* WeaponInstance)
+{
+	// Sanity check
+	if (WeaponInstance == NULL) { return; }
+
+	// Get class
+	TSubclassOf<AActor> actorClass = WeaponInstance->GetOnDroppedActor();
+	if (actorClass == NULL) { return; }
+
+	// Spawn info
+	ECollisionChannel collisionChannel = ECollisionChannel::ECC_Camera;
+	FCollisionQueryParams queryParams;
+	queryParams.AddIgnoredActor(this);
+	FActorSpawnParameters spawnInfo;
+	spawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	// Spawn location
+	FVector forwardVector = GetActorForwardVector() * 100.0f;
+	FVector loc = GetCapsuleComponent()->GetComponentLocation();
+	FVector eyeLocation = FVector(loc.X, loc.Y, loc.Z + BaseEyeHeight);
+
+	// Spawn dropped actor
+	DrawDebugLine(GetWorld(), eyeLocation, eyeLocation + forwardVector, FColor::Red, true, 20.0f);
+	AActor* droppedActor = GetWorld()->SpawnActor<AActor>(actorClass, eyeLocation + forwardVector, GetActorRotation(), spawnInfo);
+#if WITH_EDITOR
+	droppedActor->SetFolderPath_Recursively(FName(TEXT("Runtime Spawned Actors/Interactables/Weapons/" + UKismetSystemLibrary::GetClassDisplayName(UGameplayStatics::GetObjectClass(droppedActor)))));
+#endif
+}
+
+/*
+*	Spawns the abstract Weapon actor (not to be mistaken with 'Interactable_Weapon') & set's it to the characters loadout
+*/
+bool ABaseCharacter::Server_Reliable_SpawnAbstractWeapon_Validate(bool IsSecondary, TSubclassOf<AWeapon> WeaponClass, int MagazineSize, int ReserveSize, int BatterySize){ return true; }
+void ABaseCharacter::Server_Reliable_SpawnAbstractWeapon_Implementation(bool IsSecondary, TSubclassOf<AWeapon> WeaponClass, int MagazineSize, int ReserveSize, int BatterySize)
+{
+	// Spawn info
+	FVector location(0.0f, 0.0f, 0.0f);
+	FRotator rotation(0.0f, 0.0f, 0.0f);
+	FActorSpawnParameters spawnInfo;
+	spawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	// Spawn weapon
+	AWeapon* weapon = GetWorld()->SpawnActor<AWeapon>(WeaponClass, location, rotation, spawnInfo);
+#if WITH_EDITOR
+	weapon->SetFolderPath_Recursively(FName(TEXT("Runtime Spawned Actors/Abstract/Weapons/" + UKismetSystemLibrary::GetClassDisplayName(UGameplayStatics::GetObjectClass(weapon)))));
+#endif
+
+	if (!IsSecondary)
+	{
+		Server_Reliable_DropInteractableWeapon(_PrimaryWeapon);
+
+		// If we're already dual-wielding, don't play a raise animation
+		bool bPlayAnimation = _bIsDuelWielding ? false : true;
+		Server_Reliable_SetPrimaryWeapon(weapon, bPlayAnimation, true);
+	} else
+	{
+		Server_Reliable_DropInteractableWeapon(_SecondaryWeapon);
+		Server_Reliable_SetSecondaryWeapon(weapon);
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -997,9 +1213,7 @@ void ABaseCharacter::Interact(bool IsSecondary)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool ABaseCharacter::Server_Reliable_CreateStartingLoadout_Validate()
-{ return true; }
-
+bool ABaseCharacter::Server_Reliable_CreateStartingLoadout_Validate(){ return true; }
 void ABaseCharacter::Server_Reliable_CreateStartingLoadout_Implementation()
 {
 	if (_bUseStartingLoadoutFromGamemode)
@@ -1022,16 +1236,22 @@ void ABaseCharacter::Server_Reliable_CreateStartingLoadout_Implementation()
 			// Spawn weapon & set
 			AWeapon* weapon = GetWorld()->SpawnActor<AWeapon>(_StartingPrimaryWeaponClass, location, rotation, spawnInfo);
 			Server_Reliable_SetPrimaryWeapon(weapon, true, true);
+#if WITH_EDITOR
+			weapon->SetFolderPath_Recursively(FName(TEXT("Runtime Spawned Actors/Abstract/Weapons/" + UKismetSystemLibrary::GetClassDisplayName(UGameplayStatics::GetObjectClass(weapon)))));
+#endif
 		}
 
 		// Secondary (left hand)
 		if (_StartingSecondaryWeaponClass != NULL)
 		{
-			_bIsDuelWielding = true;
+			_bIsDuelWielding = true; // We don't have to call OnRep_DuelWielding here because the "SetSecondaryWeapon()" will call it for us
 
 			// Spawn weapon & set
 			AWeapon* weapon = GetWorld()->SpawnActor<AWeapon>(_StartingSecondaryWeaponClass, location, rotation, spawnInfo);
 			Server_Reliable_SetSecondaryWeapon(weapon);
+#if WITH_EDITOR
+			weapon->SetFolderPath_Recursively(FName(TEXT("Runtime Spawned Actors/Abstract/Weapons/" + UKismetSystemLibrary::GetClassDisplayName(UGameplayStatics::GetObjectClass(weapon)))));
+#endif
 		}
 		else { _bIsDuelWielding = false; }
 
@@ -1041,6 +1261,9 @@ void ABaseCharacter::Server_Reliable_CreateStartingLoadout_Implementation()
 			// Spawn weapon & set
 			AWeapon* weapon = GetWorld()->SpawnActor<AWeapon>(_StartingReserveWeaponClass, location, rotation, spawnInfo);
 			Server_Reliable_SetReserveWeapon(weapon);
+#if WITH_EDITOR
+			weapon->SetFolderPath_Recursively(FName(TEXT("Runtime Spawned Actors/Abstract/Weapons/" + UKismetSystemLibrary::GetClassDisplayName(UGameplayStatics::GetObjectClass(weapon)))));
+#endif
 		}
 	}
 }
@@ -1058,18 +1281,17 @@ void ABaseCharacter::Server_Reliable_CreateStartingLoadout_Implementation()
 *
 * @return:	void
 */
-bool ABaseCharacter::Server_Reliable_SetIsAiming_Validate(bool aiming)
-{ return true; }
-
+bool ABaseCharacter::Server_Reliable_SetIsAiming_Validate(bool aiming){ return true; }
 void ABaseCharacter::Server_Reliable_SetIsAiming_Implementation(bool aiming)
 {
-	if (HasAuthority()) { _bIsAiming = aiming; }
+	if (HasAuthority()) 
+		_bIsAiming = aiming;
 }
 
 /*
 *
 */
-void ABaseCharacter::AimWeaponEnter()
+void ABaseCharacter::InputAimEnter()
 {
 	// Character sanity checks
 	if (_bIsReloadingPrimaryWeapon || _bIsReloadingSecondaryWeapon || _bIsTogglingWeapons) { return; }
@@ -1087,7 +1309,7 @@ void ABaseCharacter::AimWeaponEnter()
 
 	// Disable camera boom
 	_FirstPerson_SpringArm->bEnableCameraRotationLag = false;
-	_FirstPerson_SpringArm->CameraRotationLagSpeed = 0.0f;
+	_FirstPerson_SpringArm->CameraRotationLagSpeed = _fAimingSpringArmRotationLag;
 	FAttachmentTransformRules rules = FAttachmentTransformRules(EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, true);
 	_FirstPerson_Arms->AttachToComponent(_FirstPerson_Camera, rules);
 
@@ -1102,46 +1324,187 @@ void ABaseCharacter::AimWeaponEnter()
 	_fFovStart = _FirstPerson_Camera->FieldOfView;
 	_fFovTarget = _PrimaryWeapon->GetCurrentFireMode()->GetFovArray()[0];
 
+	// In the future, firemodes will have their own individual scopes/sights but for now, they are universal to the weapon parent instead
+	_StartingOriginTransform = _FirstPerson_Arms->GetRelativeTransform();
+	bool ads = _PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled();
+	if (ads)
+	{
+		bool hasScope = _PrimaryWeapon->IsScopeAttachmentEnabled();
+		if (hasScope)
+		{
+			// Get socket attached to the scope
+		}
+		else
+		{
+
+		}
+
+		// Camera loc (world space)
+		FVector cameraLocation = _FirstPerson_Camera->GetComponentLocation();
+
+		// Weapon sight transform (world space)
+		FTransform sightTransform = _FirstPerson_PrimaryWeapon_SkeletalMesh->GetSocketTransform(_AimSocketName);
+		FVector sightLocation = sightTransform.GetLocation();
+		FRotator sightRotation = sightTransform.GetRotation().Rotator();
+
+		// Get the sight location
+		FVector sightDirection = FRotationMatrix(sightRotation).GetScaledAxis(EAxis::X);
+		FVector directionToSight = sightLocation - cameraLocation;		
+		float directionToSightDot = UKismetMathLibrary::Dot_VectorVector(UKismetMathLibrary::Normal(directionToSight), sightDirection);
+		float directiontoSightLen = UKismetMathLibrary::VSize(directionToSight);
+		float directionToSightDotLen = directionToSightDot * directiontoSightLen;
+		FVector sightDirectionDotLen = sightDirection * directionToSightDotLen;
+		FVector sightTargetLocation = sightLocation - sightDirectionDotLen;
+		
+		// Get the relative location distance between the root bone (in world space) and the sight socket location (in world space)
+		FTransform sightSocketTransform = FTransform(_FirstPerson_PrimaryWeapon_SkeletalMesh->GetSocketTransform(_AimSocketName, ERelativeTransformSpace::RTS_World));
+		FVector sightRootBoneLocation = FVector(_FirstPerson_PrimaryWeapon_SkeletalMesh->GetBoneLocation("root_Joint", EBoneSpaces::WorldSpace));
+		FVector relativeLocation = sightSocketTransform.GetLocation() - sightRootBoneLocation;
+		relativeLocation = relativeLocation + _FpsArmOffset;
+
+		// Target transform needs to add offset of the first person arms origin
+		FVector finalLocation = sightTargetLocation - _FpsArmOffset;
+		///_TargetOriginTransform = FTransform(GetControlRotation(), finalLocation, FVector(1.0f, 1.0f, 1.0f)); // Final relative transform
+
+		///GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Orange, FString::Printf(TEXT("_FpsArmOffset is: %s"), *_FpsArmOffset.ToString()));
+		GEngine->AddOnScreenDebugMessage(2, 5.0f, FColor::Magenta, FString::Printf(TEXT("Relative Location is: %s"), *relativeLocation.ToString()));
+		
+		// <TEMPORARY> TO BE MADE DEPRECIATED BY THE CODE ABOVE
+		_TargetOriginTransform = _PrimaryWeapon->GetCurrentFireMode()->GetOriginADS();
+	}
+	else
+	{
+		// Socket's use world transforms, we need to get relative transforms for use
+
+		///FTransform::InverseTransformVector()
+		///_TargetOriginTransform = FTransform(_FirstPerson_PrimaryWeapon_SkeletalMesh->GetSocketTransform(_AimSocketName, ERelativeTransformSpace::RTS_ParentBoneSpace));
+	}
+
+	// Call event dispatcher so the blueprints can do custom things
+	if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled()) { _fAdsAnimationEvent.Broadcast(true); }
+
+	// Start lerp
 	_eAimDirection = E_AimDirection::ePT_ZoomIn;
 	_bIsAimLerping = true;
-
-	// Transform origin lerping
-	if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled()) { _fAdsAnimationEvent.Broadcast(true); }
 }
 
 /*
 *
 */
-void ABaseCharacter::AimWeaponExit()
+void ABaseCharacter::InputAimExit()
 {
 	if (_bIsAiming)
 	{
-		// Weapon sanity checks*
-		if (_PrimaryWeapon == NULL) { return; }
+		StopAiming();
 
-		// Enable camera boom
-		_FirstPerson_SpringArm->bEnableCameraRotationLag = true;
-		_FirstPerson_SpringArm->CameraRotationLagSpeed = _fCameraRotationLagSpeed;
-		FAttachmentTransformRules rules = FAttachmentTransformRules(EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, true);
-		_FirstPerson_Arms->AttachToComponent(_FirstPerson_SpringArm, rules);
-
-		// Set moving speed
+		// Set moving speed back to default
 		Server_Reliable_SetMovingSpeed(_fMovementSpeedJog);
-
-		// Set aiming
-		_PrimaryWeapon->Server_Reliable_SetPawnOwnerIsAiming(false);
-		Server_Reliable_SetIsAiming(false);
-
-		// Init lerp targets
-		_fFovStart = _FirstPerson_Camera->FieldOfView;
-		_fFovTarget = Cast<ABasePlayerController>(GetController())->GetDefaultFov();
-
-		_eAimDirection = E_AimDirection::ePT_ZoomOut;
-		_bIsAimLerping = true;
-
-		// Transform origin lerping
-		if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled()) { _fAdsAnimationEvent.Broadcast(false); }
 	}
+}
+
+/*
+*
+*/
+void ABaseCharacter::StopAiming()
+{
+	if (!_bIsAiming)
+		return;
+
+	// Weapon sanity checks*
+	if (_PrimaryWeapon == NULL) { return; }
+
+	// Enable camera boom
+	_FirstPerson_SpringArm->bEnableCameraRotationLag = true;
+	_FirstPerson_SpringArm->CameraRotationLagSpeed = _fCameraRotationLagSpeed;
+	FAttachmentTransformRules rules = FAttachmentTransformRules(EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, true);
+	_FirstPerson_Arms->AttachToComponent(_FirstPerson_SpringArm, rules);
+
+	// Set aiming to false
+	if (GetLocalRole() == ROLE_Authority)
+		_bIsAiming = false;
+	else
+		Server_Reliable_SetIsAiming(false);
+	_PrimaryWeapon->Server_Reliable_SetPawnOwnerIsAiming(false);
+
+	// Initiate lerp targets
+	_fFovStart = _FirstPerson_Camera->FieldOfView;
+	_fFovTarget = Cast<AIngamePlayerController>(GetController())->GetDefaultFov();
+	_StartingOriginTransform = _FirstPerson_Arms->GetRelativeTransform();
+	_TargetOriginTransform = FTransform(_PrimaryWeapon->GetTransformOriginArms());
+	_eAimDirection = E_AimDirection::ePT_ZoomOut;
+	_bIsAimLerping = true;
+
+	// Call event dispatcher so the blueprints can do custom things
+	if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled())
+		_fAdsAnimationEvent.Broadcast(false);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Inventory | Weapon | Duel Wielding
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseCharacter::OnRep_DuelWielding()
+{
+	// Update meshes
+	OwningClient_UpdateFirstPersonSecondaryWeaponMesh(_SecondaryWeapon);
+	Multicast_UpdateThirdPersonSecondaryWeaponMesh(_SecondaryWeapon);
+}
+
+/*
+*
+*/
+bool ABaseCharacter::Server_Reliable_SetIsDuelWielding_Validate(bool bDuelWielding){ return true; }
+void ABaseCharacter::Server_Reliable_SetIsDuelWielding_Implementation(bool bDuelWielding)
+{
+	SetIsDuelWielding(bDuelWielding);
+}
+
+/*
+*
+*/
+void ABaseCharacter::SetIsDuelWielding(bool bDuelWielding)
+{
+	_bIsDuelWielding = bDuelWielding;
+	if (GetLocalRole() == ROLE_Authority) { OnRep_DuelWielding(); }
+}
+
+/*
+*
+*/
+void ABaseCharacter::OnDuelWielding_PrimaryReloadComplete()
+{
+	// Set reload complete variables
+	if (_PrimaryWeapon == NULL) { return; }
+	_PrimaryWeapon->GetCurrentFireMode()->SetReloadAnimationComplete(true);
+
+	uint8 handAnimByte; handAnimByte = (uint8)E_HandAnimation::eHA_ReloadDuelRightRaise;
+	uint8 gunAnimByte; gunAnimByte = (uint8)E_GunAnimation::eGA_ReloadDuelRightRaise;
+
+	// Play reload (raise) animation
+	float startingFrame = 0.0f;
+	OwningClient_PlayPrimaryWeaponFPAnimation(_FirstPerson_ArmsDuelRight, _fGlobalReloadPlayRate, false, true, handAnimByte, startingFrame, true, gunAnimByte, startingFrame);
+}
+
+/*
+*
+*/
+void ABaseCharacter::OnDuelWielding_SecondaryReloadComplete()
+{
+	// Set reload complete variables
+	if (_PrimaryWeapon == NULL) { return; }
+	_PrimaryWeapon->GetCurrentFireMode()->SetReloadAnimationComplete(true);
+
+	uint8 handAnimByte; handAnimByte = (uint8)E_HandAnimation::eHA_ReloadDuelLeftRaise;
+	uint8 gunAnimByte; gunAnimByte = (uint8)E_GunAnimation::eGA_ReloadDuelLeftRaise;
+
+	// Play reload (raise) animation
+	float startingFrame = 0.0f;
+	OwningClient_PlaySecondaryWeaponFPAnimation(_FirstPerson_ArmsDuelLeft, _fGlobalReloadPlayRate, false, true, handAnimByte, startingFrame, true, gunAnimByte, startingFrame);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1279,15 +1642,14 @@ void ABaseCharacter::InputToggleWeapon()
 			GEngine->AddOnScreenDebugMessage(-1, 20.0f, FColor::Red, TEXT("ERROR: " + AActor::GetDebugName(_PrimaryWeapon) + " has no [UNEQUIP / LOWER] animation reference. Cannot continue TOGGLING PRIMARY/RESERVE state."));
 			return; 
 		}
-		OwningClient_PlayPrimaryWeaponFPAnimation(_FirstPerson_Arms, _fGlobalTogglePlayRate, false, true, handAnim, 0.0f, false, 0, 0.0f);
+		OwningClient_PlayPrimaryWeaponFPAnimation(_FirstPerson_Arms, _fGlobalTogglePlayRate, true, true, handAnim, 0.0f, false, 0, 0.0f);
 		float lowerDelay = lowerMontage->GetPlayLength();
 		float toggleTimeBetweenAnimations = 0.5f;
 		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Magenta, TEXT("Toggle delay: " + FString::SanitizeFloat(lowerDelay + toggleTimeBetweenAnimations)));
 
 		// Start delay timer for the actual toggle
-		FTimerDelegate toggleDelegate;
-		toggleDelegate.BindUFunction(this, FName("ToggleWeapon"));
-		GetWorld()->GetTimerManager().SetTimer(_fToggleHandle, toggleDelegate, 1.0f, false, lowerDelay + toggleTimeBetweenAnimations);
+		GetWorld()->GetTimerManager().ClearTimer(_fToggleHandle);
+		GetWorld()->GetTimerManager().SetTimer(_fToggleHandle, this, &ABaseCharacter::ToggleWeapon, 1.0f, false, lowerDelay + toggleTimeBetweenAnimations);
 
 		// Start delay timer for the weapon raise
 		///FTimerDelegate raiseDelegate;
@@ -1299,17 +1661,8 @@ void ABaseCharacter::InputToggleWeapon()
 /*
 *
 */
-bool ABaseCharacter::Server_Reliable_SetupToggleWeapon_Validate()
-{ return true; }
-
-void ABaseCharacter::Server_Reliable_SetupToggleWeapon_Implementation()
-{
-	SetupToggleWeapon();
-}
-
-/*
-*	Setup toggle environment (old primary/reserve pointer refs) && notify state change
-*/
+bool ABaseCharacter::Server_Reliable_SetupToggleWeapon_Validate(){ return true; }
+void ABaseCharacter::Server_Reliable_SetupToggleWeapon_Implementation() { SetupToggleWeapon(); }
 void ABaseCharacter::SetupToggleWeapon()
 {
 	_bIsTogglingWeapons = true;
@@ -1322,26 +1675,16 @@ void ABaseCharacter::SetupToggleWeapon()
 /*
 *
 */
-bool ABaseCharacter::Server_Reliable_ToggleWeapon_Validate()
-{ return true; }
-
-void ABaseCharacter::Server_Reliable_ToggleWeapon_Implementation()
-{
-	ToggleWeapon();
-}
-
-/*
-*
-*/
+bool ABaseCharacter::Server_Reliable_ToggleWeapon_Validate(){ return true; }
+void ABaseCharacter::Server_Reliable_ToggleWeapon_Implementation() { ToggleWeapon(); }
 void ABaseCharacter::ToggleWeapon()
 {
-
 	GetWorldTimerManager().ClearTimer(_fToggleHandle);
 
 	// Only perform on the server
 	if (GetLocalRole() == ROLE_Authority)
 	{
-		// Swap the weapons
+		// Swap the weapons (these functions need to be made as a local call and not another server RPC call)
 		Server_Reliable_SetPrimaryWeapon(_OldReserveWeapon, false, false, false);
 		Server_Reliable_SetReserveWeapon(_OldPrimaryWeapon);
 
@@ -1357,17 +1700,8 @@ void ABaseCharacter::ToggleWeapon()
 /*
 *
 */
-bool ABaseCharacter::Server_Reliable_ExitToggleWeapon_Validate()
-{ return true; }
-
-void ABaseCharacter::Server_Reliable_ExitToggleWeapon_Implementation()
-{
-	ExitToggleWeapon();
-}
-
-/*
-*
-*/
+bool ABaseCharacter::Server_Reliable_ExitToggleWeapon_Validate(){ return true; }
+void ABaseCharacter::Server_Reliable_ExitToggleWeapon_Implementation() { ExitToggleWeapon(); }
 void ABaseCharacter::ExitToggleWeapon()
 {
 	GetWorldTimerManager().ClearTimer(_fExitToggleHandle);
@@ -1385,6 +1719,7 @@ void ABaseCharacter::ExitToggleWeapon()
 		UAnimMontage* raiseMontage = _PrimaryWeapon->GetArmAnimation((E_HandAnimation)handAnim);
 		float raiseDelay = raiseMontage->GetPlayLength() + 0.5f;
 
+		OwningClient_Reliable_PrimarySetCanFireWeapon(true);
 	} 
 
 	// Call this function again, but force it as a server RPC call
@@ -1392,74 +1727,25 @@ void ABaseCharacter::ExitToggleWeapon()
 	{ Server_Reliable_ExitToggleWeapon(); }
 }
 
-/*
-*
-*/
-bool ABaseCharacter::Server_Reliable_DropInteractableWeapon_Validate(AWeapon* WeaponInstance)
-{ return true; }
-
-void ABaseCharacter::Server_Reliable_DropInteractableWeapon_Implementation(AWeapon* WeaponInstance)
-{
-	// Sanity check
-	if (WeaponInstance == NULL) { return; }
-
-	// Get class
-	TSubclassOf<AActor> actorClass = WeaponInstance->GetOnDroppedActor();
-	if (actorClass == NULL) { return; }
-
-	// Spawn info
-	ECollisionChannel collisionChannel = ECollisionChannel::ECC_Camera;
-	FCollisionQueryParams queryParams;
-	queryParams.AddIgnoredActor(this);
-	FActorSpawnParameters spawnInfo;
-	spawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-
-	// Spawn location
-	FVector forwardVector = GetActorForwardVector() * 100.0f;
-	FVector loc = GetCapsuleComponent()->GetComponentLocation();
-	FVector eyeLocation = FVector(loc.X, loc.Y, loc.Z + BaseEyeHeight);
-
-	// Spawn dropped actor
-	DrawDebugLine(GetWorld(), eyeLocation, eyeLocation + forwardVector, FColor::Red, true, 20.0f);
-	AActor* droppedActor = GetWorld()->SpawnActor<AActor>(actorClass, eyeLocation + forwardVector, GetActorRotation(), spawnInfo);
-}
-
-/*
-*	Spawns the abstract Weapon actor (not to be mistaken with 'Interactable_Weapon') & set's it to the characters loadout
-*/
-bool ABaseCharacter::Server_Reliable_SpawnAbstractWeapon_Validate(bool IsSecondary, TSubclassOf<AWeapon> WeaponClass, int MagazineSize, int ReserveSize, int BatterySize)
-{ return true; }
-
-void ABaseCharacter::Server_Reliable_SpawnAbstractWeapon_Implementation(bool IsSecondary, TSubclassOf<AWeapon> WeaponClass, int MagazineSize, int ReserveSize, int BatterySize)
-{
-	// Spawn info
-	FVector location(0.0f, 0.0f, 0.0f);
-	FRotator rotation(0.0f, 0.0f, 0.0f);
-	FActorSpawnParameters spawnInfo;
-	spawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-	// Spawn weapon
-	AWeapon* weapon = GetWorld()->SpawnActor<AWeapon>(WeaponClass, location, rotation, spawnInfo);
-
-	if (!IsSecondary)
-	{
-		Server_Reliable_DropInteractableWeapon(_PrimaryWeapon);
-		
-		// If we're already dual-wielding, don't play a raise animation
-		bool bPlayAnimation = _bIsDuelWielding ? false : true;
-		Server_Reliable_SetPrimaryWeapon(weapon, bPlayAnimation, true);
-	} else
-	{
-		Server_Reliable_DropInteractableWeapon(_SecondaryWeapon);
-		Server_Reliable_SetSecondaryWeapon(weapon);
-	}
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Inventory | Weapon | Primary
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseCharacter::OnRep_PrimaryWeapon()
+{
+	// This function is called when updating _SecondaryWeapon's value,
+	// so if we're currently duel wielding -> DONT play a raise animation
+	bool bPlayAnimation = _SecondaryWeapon != NULL ? true : false;
+
+	// Update meshes
+	OwningClient_UpdateFirstPersonPrimaryWeaponMesh(_PrimaryWeapon, /*bPlayAnimation*/true, false);
+	Multicast_UpdateThirdPersonPrimaryWeaponMesh(_PrimaryWeapon);
+}
 
 /**
 * @summary:	Sets the character's primary weapon
@@ -1470,22 +1756,20 @@ void ABaseCharacter::Server_Reliable_SpawnAbstractWeapon_Implementation(bool IsS
 *
 * @return:	void
 */
-bool ABaseCharacter::Server_Reliable_SetPrimaryWeapon_Validate(AWeapon* Weapon, bool PlayAnimation, bool FirstPickup, bool DestroyOld = true)
-{ return true; }
-
+bool ABaseCharacter::Server_Reliable_SetPrimaryWeapon_Validate(AWeapon* Weapon, bool PlayAnimation, bool FirstPickup, bool DestroyOld = true) { return true; }
 void ABaseCharacter::Server_Reliable_SetPrimaryWeapon_Implementation(AWeapon* Weapon, bool PlayAnimation, bool FirstPickup, bool DestroyOld = true)
 {
 	// Destroy/despawn the old weapon once the new weapon has been set
 	AWeapon* destroyActor = _PrimaryWeapon;
-	
+
 	// Set weapon owner
 	_PrimaryWeapon = Weapon;
 	if (_PrimaryWeapon != NULL)
 	{
 		_PrimaryWeapon->SetOwner(this);
-		_PrimaryWeapon->Server_Reliable_SetNewOwner(this);
-		_PrimaryWeapon->Server_Reliable_SetOwnersPrimaryWeapon(true);
-		_PrimaryWeapon->Server_Reliable_SetOwnersSecondaryWeapon(false);
+		_PrimaryWeapon->SetNewOwner(this);
+		_PrimaryWeapon->SetOwnersPrimaryWeapon(true);
+		_PrimaryWeapon->SetOwnersSecondaryWeapon(false);
 	}
 
 	// destroy the old primary weapon actor (the abstract actor instance)
@@ -1499,16 +1783,14 @@ void ABaseCharacter::Server_Reliable_SetPrimaryWeapon_Implementation(AWeapon* We
 /*
 *
 */
-bool ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Validate(AWeapon* Weapon, bool PlayAnimation, bool FirstPickup)
-{ return true; }
-
+bool ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Validate(AWeapon* Weapon, bool PlayAnimation, bool FirstPickup) { return true; }
 void ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Implementation(AWeapon* Weapon, bool PlayAnimation, bool FirstPickup)
 {
 	// Either update the mesh with the mesh referenced from the weapon, otherwise clear the mesh on the character
 	if (Weapon != NULL)
 	{
 		_FirstPerson_PrimaryWeapon_SkeletalMesh->SetSkeletalMesh(Weapon->GetFirstPersonMesh());
-		
+
 		// Update origins
 		if (_bIsDuelWielding)
 		{
@@ -1524,6 +1806,7 @@ void ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Implementat
 			_FirstPerson_ArmsDuelRight->SetRelativeTransform(Weapon->GetTransformOriginDuelPrimaryArms());
 			_FirstPerson_PrimaryWeapon_SkeletalMesh->SetRelativeTransform(Weapon->GetTransformOriginDuelPrimaryWeapon());
 
+
 			// Reset origin starting location in arena character (used for first person dash animation)
 			///AArenaCharacter* arenaChar = Cast<AArenaCharacter>(this);
 			///if (arenaChar) { arenaChar->SetFPRelativeStartingTransform(Weapon->GetTransformOriginArms()); }
@@ -1532,7 +1815,8 @@ void ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Implementat
 			_FirstPerson_ArmsDuelRight->SetAnimationMode(EAnimationMode::AnimationBlueprint);
 			_FirstPerson_ArmsDuelRight->SetAnimInstanceClass(Weapon->GetAnimInstanceFirstPersonHands());
 			UWeaponAnimInstance* wepAnimInst = Cast<UWeaponAnimInstance>(_FirstPerson_ArmsDuelRight->GetAnimInstance());
-			if (wepAnimInst != NULL) { wepAnimInst->SetWeapon(_PrimaryWeapon); }
+			if (wepAnimInst != NULL) 
+				wepAnimInst->SetWeapon(_PrimaryWeapon);
 
 			// Set animation BP instance (anim BP) for the weapon mesh
 			_FirstPerson_PrimaryWeapon_SkeletalMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
@@ -1542,7 +1826,7 @@ void ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Implementat
 			uint8 handAnim = (uint8)E_HandAnimation::eHA_EquipDuelRight;
 			uint8 gunAnim = (uint8)0;
 			OwningClient_PlayPrimaryWeaponFPAnimation(_FirstPerson_ArmsDuelRight, 1.0f, false, true, handAnim, 0.0f, false, gunAnim, 0.0f);
-		} 
+		}
 
 		// _bIsDuelWielding == FALSE
 		else
@@ -1561,13 +1845,15 @@ void ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Implementat
 
 			// Reset origin starting location in arena character (used for first person dash animation)
 			AArenaCharacter* arenaChar = Cast<AArenaCharacter>(this);
-			if (arenaChar) { arenaChar->SetFPRelativeStartingTransform(Weapon->GetTransformOriginArms()); }
+			if (arenaChar) 
+				arenaChar->SetFPRelativeStartingTransform(Weapon->GetTransformOriginArms());
 
 			// Set animation BP instance (anim BP)
 			_FirstPerson_Arms->SetAnimationMode(EAnimationMode::AnimationBlueprint);
 			_FirstPerson_Arms->SetAnimInstanceClass(Weapon->GetAnimInstanceFirstPersonHands());
 			UWeaponAnimInstance* wepAnimInst = Cast<UWeaponAnimInstance>(_FirstPerson_Arms->GetAnimInstance());
-			if (wepAnimInst != NULL) { wepAnimInst->SetWeapon(_PrimaryWeapon); }
+			if (wepAnimInst != NULL) 
+				wepAnimInst->SetWeapon(_PrimaryWeapon);
 
 			// Set animation BP instance (anim BP) for the weapon mesh
 			_FirstPerson_PrimaryWeapon_SkeletalMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
@@ -1575,7 +1861,7 @@ void ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Implementat
 
 			// Play animations?
 			if (PlayAnimation)
-			{	
+			{
 				// Play first pickup animation
 				if (FirstPickup)
 				{
@@ -1593,14 +1879,18 @@ void ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Implementat
 				}
 			}
 		}
-	} 
+	}
 
 	// Weapon == NULL
 	else
 	{
 		// Nullify the animation BPs & skeletal meshes
-		_FirstPerson_PrimaryWeapon_SkeletalMesh->SetAnimInstanceClass(NULL);
-		_FirstPerson_PrimaryWeapon_SkeletalMesh->SetSkeletalMesh(NULL);
+		///_FirstPerson_PrimaryWeapon_SkeletalMesh->SetAnimInstanceClass(NULL);
+		///_FirstPerson_PrimaryWeapon_SkeletalMesh->SetSkeletalMesh(NULL);
+
+		_FirstPerson_PrimaryWeapon_SkeletalMesh->SetHiddenInGame(true);
+		if (_bIsDuelWielding)
+			_FirstPerson_ArmsDuelRight->SetHiddenInGame(true);
 	}
 
 	// Updating attachments for the weapon
@@ -1610,9 +1900,7 @@ void ABaseCharacter::OwningClient_UpdateFirstPersonPrimaryWeaponMesh_Implementat
 /*
 *
 */
-bool ABaseCharacter::Multicast_UpdateThirdPersonPrimaryWeaponMesh_Validate(AWeapon* Weapon)
-{ return true; }
-
+bool ABaseCharacter::Multicast_UpdateThirdPersonPrimaryWeaponMesh_Validate(AWeapon* Weapon) { return true; }
 void ABaseCharacter::Multicast_UpdateThirdPersonPrimaryWeaponMesh_Implementation(AWeapon* Weapon)
 {
 	// Either update the mesh with the mesh referenced from the weapon, otherwise clear the mesh on the character
@@ -1641,8 +1929,7 @@ void ABaseCharacter::UpdateFirstPersonPrimaryScopeAttachment(AWeapon* Weapon)
 
 		// Ensure the scope is at the right attachment point
 		FName sightAttachmentPoint = _PrimaryWeapon != NULL ? _PrimaryWeapon->GetSightAttachmentName() : "SightAttachmentPoint";
-	}
-	else
+	} else
 	{
 		// Weapon == NULL
 		_FirstPerson_PrimaryWeapon_Sight_StaticMesh->SetStaticMesh(NULL);
@@ -1652,16 +1939,66 @@ void ABaseCharacter::UpdateFirstPersonPrimaryScopeAttachment(AWeapon* Weapon)
 /*
 *
 */
-void ABaseCharacter::OnRep_PrimaryWeapon()
+bool ABaseCharacter::OwningClient_PlayPrimaryWeaponFPAnimation_Validate(USkeletalMeshComponent* ArmsMesh, float PlayRate, bool FreezeMontageAtLastFrame, bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame, bool PlayGunAnimation, uint8 GunAnimation, float GunAnimationStartingFrame) { return true; }
+void ABaseCharacter::OwningClient_PlayPrimaryWeaponFPAnimation_Implementation(USkeletalMeshComponent* ArmsMesh, float PlayRate, bool FreezeMontageAtLastFrame, bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame, bool PlayGunAnimation, uint8 GunAnimation, float GunAnimationStartingFrame)
+{ PlayPrimaryWeaponFPAnimation(ArmsMesh, PlayRate, FreezeMontageAtLastFrame, PlayHandAnimation, HandAnimation, HandAnimationStartingFrame, PlayGunAnimation, GunAnimation, GunAnimationStartingFrame); }
+void ABaseCharacter::PlayPrimaryWeaponFPAnimation(USkeletalMeshComponent* ArmsMesh, float PlayRate, bool FreezeMontageAtLastFrame, bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame, bool PlayGunAnimation, uint8 GunAnimation, float GunAnimationStartingFrame)
 {
-	// This function is called when updating _SecondaryWeapon's value,
-	// so if we're currently duel wielding -> DONT play a raise animation
-	bool bPlayAnimation = _SecondaryWeapon != NULL ? true : false;
-	
-	// Update meshes
-	OwningClient_UpdateFirstPersonPrimaryWeaponMesh(_PrimaryWeapon, bPlayAnimation, false);
-	Multicast_UpdateThirdPersonPrimaryWeaponMesh(_PrimaryWeapon);
+	// Sanity checks
+	if (_PrimaryWeapon == NULL) { return; }
+
+	// Hand animation
+	float i = 0.0f;
+	if (PlayHandAnimation)
+	{
+		UAnimMontage* handMontage = _PrimaryWeapon->GetArmAnimation((E_HandAnimation)HandAnimation);
+		UAnimInstance* handAnimInstance = ArmsMesh->GetAnimInstance();
+		if (handMontage != NULL && handAnimInstance != NULL)
+		{
+			// Play hand montage
+			if (ArmsMesh != NULL) { ArmsMesh->bPauseAnims = false; }
+			ArmsMesh->SetHiddenInGame(false, true); // Force unhide the mesh before playing the animations
+			ArmsMesh->bPauseAnims = false;
+			handAnimInstance->Montage_Stop(1.0f, _CurrentMontagePlaying);
+			float playLength = handAnimInstance->Montage_Play(handMontage, PlayRate, EMontagePlayReturnType::MontageLength, HandAnimationStartingFrame, false);
+			_CurrentMontagePlaying = handMontage;
+			if (FreezeMontageAtLastFrame)
+			{
+				// Start delay timer then freeze anim
+				FTimerDelegate animationDelegate;
+				animationDelegate.BindUFunction(this, FName("FreezeAnimation"), ArmsMesh, handMontage, playLength, true);
+				GetWorld()->GetTimerManager().SetTimer(_fPrimaryFPAnimationHandle, animationDelegate, 1.0f, false, (playLength / _fGlobalReloadPlayRate) - i);
+			}
+		}
+	}
+
+	// Gun animation
+	if (PlayGunAnimation)
+	{
+		UAnimMontage* gunMontage = _PrimaryWeapon->GetGunAnimation((E_GunAnimation)GunAnimation);
+		UAnimInstance* weaponAnimInstance = _FirstPerson_PrimaryWeapon_SkeletalMesh->GetAnimInstance();
+		if (gunMontage != NULL && weaponAnimInstance != NULL)
+		{
+			// Play gun montage
+			_FirstPerson_PrimaryWeapon_SkeletalMesh->SetHiddenInGame(false); // Force unhide the mesh before playing the animations
+			weaponAnimInstance->Montage_Play(gunMontage, PlayRate, EMontagePlayReturnType::MontageLength, GunAnimationStartingFrame, true);
+			if (FreezeMontageAtLastFrame)
+			{
+				// Start delay timer then freeze anim
+				float playLength = gunMontage->GetPlayLength();
+				FTimerDelegate animationDelegate;
+				animationDelegate.BindUFunction(this, FName("FreezeAnimation"), _FirstPerson_PrimaryWeapon_SkeletalMesh, gunMontage, playLength, true);
+				GetWorld()->GetTimerManager().SetTimer(_fPrimaryFPAnimationHandle, animationDelegate, 1.0f, false, (playLength / _fGlobalReloadPlayRate) - i);
+			}
+		}
+	}
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Inventory | Weapon | Primary | Firing
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -1675,7 +2012,10 @@ void ABaseCharacter::InitFirePrimaryWeapon()
 
 	if (_bIsReloadingPrimaryWeapon) { return; }
 	if (_bIsTogglingWeapons) { return; }
-	if (_bIsSprinting) { return; }
+	if (_bIsSprinting)
+	{
+
+	}
 
 	// Weapon requires a full charge to fire
 	if (_PrimaryWeapon->GetCurrentFireMode()->GetWeaponMustBeChargedToFire())
@@ -1688,10 +2028,10 @@ void ABaseCharacter::InitFirePrimaryWeapon()
 	{
 		switch (_PrimaryWeapon->GetCurrentFireMode()->GetFiringType())
 		{
-		case E_FiringModeType::eFMT_FullAuto: FireWeaponTraceFullAuto(_PrimaryWeapon); break;
-		case E_FiringModeType::eFMT_Burst: FireWeaponTraceBurst(_PrimaryWeapon); break;
-		case E_FiringModeType::eFMT_SemiAuto: FireWeaponTraceSemiAuto(_PrimaryWeapon); break;
-		case E_FiringModeType::eFMT_Spread: FireWeaponTraceSpread(_PrimaryWeapon); break;
+		case E_FiringModeType::eFMT_FullAuto:	FireWeaponTraceFullAuto(_PrimaryWeapon); break;
+		case E_FiringModeType::eFMT_Burst:		FireWeaponTraceBurst(_PrimaryWeapon); break;
+		case E_FiringModeType::eFMT_SemiAuto:	FireWeaponTraceSemiAuto(_PrimaryWeapon); break;
+		case E_FiringModeType::eFMT_Spread:		FireWeaponTraceSpread(_PrimaryWeapon); break;
 		default: break;
 		}
 	}
@@ -1744,9 +2084,16 @@ void ABaseCharacter::InputPrimaryFireRelease()
 /*
 *
 */
-bool ABaseCharacter::OwningClient_Reliable_PrimaryWeaponCameraTrace_Validate()
-{ return true; }
+bool ABaseCharacter::OwningClient_Reliable_PrimarySetCanFireWeapon_Validate(bool bCanFire) { return true; }
+void ABaseCharacter::OwningClient_Reliable_PrimarySetCanFireWeapon_Implementation(bool bCanFire)
+{
+	_bCanFirePrimary = bCanFire;
+}
 
+/*
+*
+*/
+bool ABaseCharacter::OwningClient_Reliable_PrimaryWeaponCameraTrace_Validate() { return true; }
 void ABaseCharacter::OwningClient_Reliable_PrimaryWeaponCameraTrace_Implementation() 
 {
 	if (_PrimaryWeapon == NULL) { return; }
@@ -1787,9 +2134,7 @@ void ABaseCharacter::OwningClient_Reliable_PrimaryWeaponCameraTrace_Implementati
 /*
 *
 */
-bool ABaseCharacter::Server_Reliable_PrimaryWeaponCameraTrace_Validate(FHitResult ClientHitResult)
-{ return true; }
-
+bool ABaseCharacter::Server_Reliable_PrimaryWeaponCameraTrace_Validate(FHitResult ClientHitResult) { return true; }
 void ABaseCharacter::Server_Reliable_PrimaryWeaponCameraTrace_Implementation(FHitResult ClientHitResult)
 {
 	if (_FirstPerson_PrimaryWeapon_SkeletalMesh == NULL) { return; }
@@ -1832,6 +2177,12 @@ void ABaseCharacter::Server_Reliable_PrimaryWeaponCameraTrace_Implementation(FHi
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Inventory | Weapon | Primary | Reload
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /**
 * @summary:	Checks and initiates a reload of the character's primary weapon.
 *
@@ -1872,12 +2223,12 @@ void ABaseCharacter::InputReloadPrimaryWeapon()
 					// Chamber a round into the magazine (if available)
 					if (ammoPool->GetMagazineAmmo() > 0)
 					{
-						// Play animation
+						// Play animation (chamber round)
 						uint8 handAnimByte = (uint8)E_HandAnimation::eHA_ReloadFullEmpty;
 						uint8 gunAnimByte = (uint8)E_GunAnimation::eGA_ReloadFullEmpty;
 						float startingFrame = fireMode->GetReloadStartingTimeChamberRound();
 						OwningClient_PlayPrimaryWeaponFPAnimation(_FirstPerson_Arms, _fGlobalReloadPlayRate, false, true, handAnimByte, startingFrame, true, gunAnimByte, startingFrame);
-
+						
 						return;
 					}
 				}
@@ -1890,10 +2241,10 @@ void ABaseCharacter::InputReloadPrimaryWeapon()
 			_bCanFirePrimary = false;
 
 			// Stop aiming
-			if (_bIsAiming) { AimWeaponExit(); }
+			if (_bIsAiming) { InputAimExit(); }
 
 			// Start reloading state/sequence
-			Server_Reliable_SetIsReloadingPrimaryWeapon(true);
+			SetIsReloadingPrimaryWeapon(true);
 
 			// Get reload montage reference (hands)
 			uint8 handAnimByte;
@@ -1911,6 +2262,11 @@ void ABaseCharacter::InputReloadPrimaryWeapon()
 			float startingFrame = _PrimaryWeapon->GetCurrentFireMode()->GetReloadStartingTime();
 			OwningClient_PlayPrimaryWeaponFPAnimation(_FirstPerson_Arms, _fGlobalReloadPlayRate, false, true, handAnimByte, startingFrame, true, gunAnimByte, startingFrame);
 
+			// Start "reload complete" timer
+			GetWorld()->GetTimerManager().ClearTimer(_fPrimaryReloadHandle);
+			GetWorld()->GetTimerManager().ClearTimer(_fPrimaryReloadHandle);
+			GetWorld()->GetTimerManager().SetTimer(_fPrimaryReloadHandle, this, &ABaseCharacter::OnReloadComplete, 1.0f, false);
+			
 			break;
 		}
 		case E_ReloadType::eRT_LoadSingle: { break; }
@@ -1950,7 +2306,7 @@ void ABaseCharacter::InputReloadPrimaryWeapon()
 			_bCanFirePrimary = false;
 
 			// Stop aiming (we can't if we're dual wielding, but just incase..)
-			if (_bIsAiming) { AimWeaponExit(); }
+			if (_bIsAiming) { InputAimExit(); }
 
 			// Start reloading state/sequence
 			Server_Reliable_SetIsReloadingPrimaryWeapon(true);
@@ -1969,9 +2325,8 @@ void ABaseCharacter::InputReloadPrimaryWeapon()
 			float reloadTime = _PrimaryWeapon->GetDuelWieldingReloadTime();
 
 			// Start delay timer for the weapon raise
-			FTimerDelegate raiseDelegate;
-			raiseDelegate.BindUFunction(this, FName("OnDuelWielding_PrimaryReloadComplete"));
-			GetWorld()->GetTimerManager().SetTimer(_fDuelPrimaryReloadHandle, raiseDelegate, 1.0f, false, lowerAnimLength + reloadTime);
+			GetWorld()->GetTimerManager().ClearTimer(_fDuelPrimaryReloadHandle);
+			GetWorld()->GetTimerManager().SetTimer(_fDuelPrimaryReloadHandle, this, &ABaseCharacter::OnDuelWielding_PrimaryReloadComplete, 1.0f, false, lowerAnimLength + reloadTime);
 
 			break;
 		}
@@ -1981,92 +2336,34 @@ void ABaseCharacter::InputReloadPrimaryWeapon()
 	}
 }
 
-/*
-*
-*/
-void ABaseCharacter::OnDuelWielding_PrimaryReloadComplete()
+void ABaseCharacter::OnReloadComplete()
 {
-	uint8 handAnimByte; handAnimByte = (uint8)E_HandAnimation::eHA_ReloadDuelRightRaise;
-	uint8 gunAnimByte; gunAnimByte = (uint8)E_GunAnimation::eGA_ReloadDuelRightRaise;
-
-	// Play reload (raise) animation
-	float startingFrame = 0.0f;
-	OwningClient_PlayPrimaryWeaponFPAnimation(_FirstPerson_ArmsDuelRight, _fGlobalReloadPlayRate, false, true, handAnimByte, startingFrame, true, gunAnimByte, startingFrame);
-}
-
-/*
-*
-*/
-bool ABaseCharacter::OwningClient_PlayPrimaryWeaponFPAnimation_Validate(USkeletalMeshComponent* ArmsMesh, float PlayRate, bool FreezeMontageAtLastFrame, bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame, bool PlayGunAnimation, uint8 GunAnimation, float GunAnimationStartingFrame)
-{ return true; }
-
-void ABaseCharacter::OwningClient_PlayPrimaryWeaponFPAnimation_Implementation(USkeletalMeshComponent* ArmsMesh, float PlayRate, bool FreezeMontageAtLastFrame, bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame, bool PlayGunAnimation, uint8 GunAnimation, float GunAnimationStartingFrame)
-{
-	PlayPrimaryWeaponFPAnimation(ArmsMesh, PlayRate, FreezeMontageAtLastFrame, PlayHandAnimation, HandAnimation, HandAnimationStartingFrame, PlayGunAnimation, GunAnimation, GunAnimationStartingFrame);
-}
-
-/*
-*
-*/
-void ABaseCharacter::PlayPrimaryWeaponFPAnimation(USkeletalMeshComponent* ArmsMesh, float PlayRate, bool FreezeMontageAtLastFrame, bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame, bool PlayGunAnimation, uint8 GunAnimation, float GunAnimationStartingFrame)
-{	
-	// Sanity checks
 	if (_PrimaryWeapon == NULL) { return; }
 
-	// Hand animation
-	float i = 0.0f;
-	if (PlayHandAnimation)
-	{
-		UAnimMontage* handMontage = _PrimaryWeapon->GetArmAnimation((E_HandAnimation)HandAnimation);
-		UAnimInstance* handAnimInstance = ArmsMesh->GetAnimInstance();
-		if (handMontage != NULL && handAnimInstance != NULL)
-		{
-			// Play hand montage
-			if (ArmsMesh != NULL) { ArmsMesh->bPauseAnims = false; }
-			ArmsMesh->SetHiddenInGame(false, true); // Force unhide the mesh before playing the animations
-			handAnimInstance->Montage_Play(handMontage, PlayRate, EMontagePlayReturnType::MontageLength, HandAnimationStartingFrame, true);
-			if (FreezeMontageAtLastFrame)
-			{
-				// Start delay timer then freeze anim
-				float playLength = handMontage->GetPlayLength();
-				FTimerDelegate animationDelegate;
-				animationDelegate.BindUFunction(this, FName("FreezeAnimation"), ArmsMesh, handMontage, playLength);
-				GetWorld()->GetTimerManager().SetTimer(_fPrimaryFPAnimationHandle, animationDelegate, 1.0f, false, (playLength / _fGlobalReloadPlayRate) - i);
-			}
-		}
-	}
-
-	// Gun animation
-	if (PlayGunAnimation)
-	{
-		UAnimMontage* gunMontage = _PrimaryWeapon->GetGunAnimation((E_GunAnimation)GunAnimation);
-		UAnimInstance* weaponAnimInstance = _FirstPerson_PrimaryWeapon_SkeletalMesh->GetAnimInstance();
-		if (gunMontage != NULL && weaponAnimInstance != NULL)
-		{
-			// Play gun montage
-			_FirstPerson_PrimaryWeapon_SkeletalMesh->SetHiddenInGame(false); // Force unhide the mesh before playing the animations
-			weaponAnimInstance->Montage_Play(gunMontage, PlayRate, EMontagePlayReturnType::MontageLength, GunAnimationStartingFrame, true);
-			if (FreezeMontageAtLastFrame)
-			{
-				// Start delay timer then freeze anim
-				float playLength = gunMontage->GetPlayLength();
-				FTimerDelegate animationDelegate;
-				animationDelegate.BindUFunction(this, FName("FreezeAnimation"), _FirstPerson_PrimaryWeapon_SkeletalMesh, gunMontage, playLength);
-				GetWorld()->GetTimerManager().SetTimer(_fPrimaryFPAnimationHandle, animationDelegate, 1.0f, false, (playLength / _fGlobalReloadPlayRate) - i);
-			}
-		}
-	}
+	_PrimaryWeapon->GetCurrentFireMode()->SetReloadAnimationComplete(true);
 }
 
 /*
 *
 */
-bool ABaseCharacter::Server_Reliable_SetIsReloadingPrimaryWeapon_Validate(bool ReloadingPrimary)
-{ return true; }
-
+bool ABaseCharacter::Server_Reliable_SetIsReloadingPrimaryWeapon_Validate(bool ReloadingPrimary) { return true; }
 void ABaseCharacter::Server_Reliable_SetIsReloadingPrimaryWeapon_Implementation(bool ReloadingPrimary)
 {
 	_bIsReloadingPrimaryWeapon = ReloadingPrimary;
+}
+
+/*
+*
+*/
+void ABaseCharacter::SetIsReloadingPrimaryWeapon(bool IsReloading)
+{
+	if (_bIsReloadingPrimaryWeapon != IsReloading)
+	{
+		if (GetLocalRole() == ROLE_Authority)
+			_bIsReloadingPrimaryWeapon = IsReloading;
+		else
+			Server_Reliable_SetIsReloadingPrimaryWeapon(IsReloading);
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2074,6 +2371,25 @@ void ABaseCharacter::Server_Reliable_SetIsReloadingPrimaryWeapon_Implementation(
 // Inventory | Weapon | Secondary
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseCharacter::OnRep_SecondaryWeapon()
+{
+	// set _bDuelwielding's value based off _SecondaryWeapon's value
+	bool bDuelWielding = _SecondaryWeapon != NULL ? true : false;
+	if (GetLocalRole() == ROLE_Authority)
+		SetIsDuelWielding(bDuelWielding);
+	else
+		Server_Reliable_SetIsDuelWielding(bDuelWielding);
+
+	// Update meshes (DEPRECIATED) OnRep_DuelWielding calls these methods, which comes from the SetIsDuelWielding() function,
+	// but I'm leaving the old method calls here just as a reminder
+
+	///OwningClient_UpdateFirstPersonSecondaryWeaponMesh(_SecondaryWeapon); 
+	///Multicast_UpdateThirdPersonSecondaryWeaponMesh(_SecondaryWeapon);
+}
 
 /**
 * @summary:	Sets the character's secondary weapon
@@ -2084,22 +2400,32 @@ void ABaseCharacter::Server_Reliable_SetIsReloadingPrimaryWeapon_Implementation(
 *
 * @return:	void
 */
-bool ABaseCharacter::Server_Reliable_SetSecondaryWeapon_Validate(AWeapon* Weapon)
-{ return true; }
-
+bool ABaseCharacter::Server_Reliable_SetSecondaryWeapon_Validate(AWeapon* Weapon) { return true; }
 void ABaseCharacter::Server_Reliable_SetSecondaryWeapon_Implementation(AWeapon* Weapon)
-{	
+{
 	// Destroy/despawn the old weapon once the new weapon has been set
 	AWeapon* destroyActor = _SecondaryWeapon;
-	_SecondaryWeapon = Weapon;
 
-	// Set weapon owner
+	// Set weapon properties
+	_SecondaryWeapon = Weapon;
 	if (_SecondaryWeapon != NULL)
 	{
-		_SecondaryWeapon->SetOwner(this);
-		_SecondaryWeapon->SetNewOwner(this);
-		_SecondaryWeapon->SetOwnersPrimaryWeapon(false);
-		_SecondaryWeapon->SetOwnersSecondaryWeapon(true);
+		if (_SecondaryWeapon->CanBeDuelWielded())
+		{
+			_SecondaryWeapon->SetOwner(this);
+			_SecondaryWeapon->SetNewOwner(this);
+			_SecondaryWeapon->SetOwnersPrimaryWeapon(false);
+			_SecondaryWeapon->SetOwnersSecondaryWeapon(true);
+		}
+		else		
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Error: _SecondaryWeapon in BaseCharacter.cpp is not a 'duel wieldable' weapon, is being set to NULL"));
+	}
+	else
+	{
+		///Weapon->SetOwner(NULL);
+		///Weapon->SetNewOwner(NULL);
+		///Weapon->SetOwnersPrimaryWeapon(false);
+		///Weapon->SetOwnersSecondaryWeapon(false);
 	}
 
 	// destroy the old secondary weapon actor (the abstract actor instance)
@@ -2115,9 +2441,7 @@ void ABaseCharacter::Server_Reliable_SetSecondaryWeapon_Implementation(AWeapon* 
 /*
 *
 */
-bool ABaseCharacter::OwningClient_UpdateFirstPersonSecondaryWeaponMesh_Validate(AWeapon* Weapon)
-{ return true; }
-
+bool ABaseCharacter::OwningClient_UpdateFirstPersonSecondaryWeaponMesh_Validate(AWeapon* Weapon) { return true; }
 void ABaseCharacter::OwningClient_UpdateFirstPersonSecondaryWeaponMesh_Implementation(AWeapon* Weapon)
 {
 	if (_bStartingLoadout)
@@ -2129,6 +2453,9 @@ void ABaseCharacter::OwningClient_UpdateFirstPersonSecondaryWeaponMesh_Implement
 	// Either update the mesh with the mesh referenced from the weapon, otherwise clear the mesh on the character
 	if (Weapon != NULL)
 	{
+		if (_FirstPerson_SecondaryWeapon_SkeletalMesh == NULL || _FirstPerson_ArmsDuelLeft == NULL)
+			return;
+
 		// Set mesh
 		_FirstPerson_SecondaryWeapon_SkeletalMesh->SetSkeletalMesh(Weapon->GetFirstPersonMesh());
 
@@ -2138,11 +2465,14 @@ void ABaseCharacter::OwningClient_UpdateFirstPersonSecondaryWeaponMesh_Implement
 		_FirstPerson_ArmsDuelRight->SetHiddenInGame(false);
 
 		// Attach primary weapon mesh to fps right hand duel wielding mesh
-		_FirstPerson_SecondaryWeapon_SkeletalMesh->AttachToComponent(_FirstPerson_ArmsDuelLeft, FAttachmentTransformRules::KeepWorldTransform, "hand_l");
+		FName hand = _bDuelWieldingIsMirrored ? "hand_r" : "hand_l"; // If the left arm mesh is mirrored, then attach to the right hand
+		_FirstPerson_SecondaryWeapon_SkeletalMesh->AttachToComponent(_FirstPerson_ArmsDuelLeft, FAttachmentTransformRules::KeepWorldTransform, hand);
 
 		// Set weapon's relative transform offset to the fps arms transform
 		_FirstPerson_ArmsDuelLeft->SetRelativeTransform(Weapon->GetTransformOriginDuelSecondaryArms());
 		_FirstPerson_SecondaryWeapon_SkeletalMesh->SetRelativeTransform(Weapon->GetTransformOriginDuelSecondaryWeapon());
+		///_FirstPerson_ArmsDuelLeft->SetWorldScale3D(FVector(_bDuelWieldingIsMirrored ? -1.0f : 1.0f, 1.0f, 1.0f)); // Mirror the arm mesh?
+		///_FirstPerson_ArmsDuelLeft->SetWorldScale3D(FVector(_bDuelWieldingIsMirrored ? -1.0f : 1.0f, 1.0f, 1.0f)); // Mirror the arm mesh?
 
 		// Reset origin starting location in arena character (used for first person dash animation)
 		///AArenaCharacter* arenaChar = Cast<AArenaCharacter>(this);
@@ -2167,9 +2497,14 @@ void ABaseCharacter::OwningClient_UpdateFirstPersonSecondaryWeaponMesh_Implement
 	// Weapon == NULL
 	else
 	{
+		if (_FirstPerson_SecondaryWeapon_SkeletalMesh == NULL || _FirstPerson_ArmsDuelLeft == NULL)
+			return;
+
 		// Nullify the animation BPs & skeletal meshes
 		_FirstPerson_SecondaryWeapon_SkeletalMesh->SetAnimInstanceClass(NULL);
 		_FirstPerson_SecondaryWeapon_SkeletalMesh->SetSkeletalMesh(NULL);
+		_FirstPerson_SecondaryWeapon_SkeletalMesh->SetHiddenInGame(true);
+		_FirstPerson_ArmsDuelLeft->SetHiddenInGame(true);
 	}
 
 	// Updating attachments for the weapon
@@ -2179,9 +2514,7 @@ void ABaseCharacter::OwningClient_UpdateFirstPersonSecondaryWeaponMesh_Implement
 /*
 *
 */
-bool ABaseCharacter::Multicast_UpdateThirdPersonSecondaryWeaponMesh_Validate(AWeapon* Weapon)
-{ return true; }
-
+bool ABaseCharacter::Multicast_UpdateThirdPersonSecondaryWeaponMesh_Validate(AWeapon* Weapon) { return true; }
 void ABaseCharacter::Multicast_UpdateThirdPersonSecondaryWeaponMesh_Implementation(AWeapon* Weapon)
 {
 	// Either update the mesh with the mesh referenced from the weapon, otherwise clear the mesh on the character
@@ -2201,19 +2534,70 @@ void ABaseCharacter::Multicast_UpdateThirdPersonSecondaryWeaponMesh_Implementati
 /*
 *
 */
-void ABaseCharacter::OnRep_SecondaryWeapon()
+bool ABaseCharacter::OwningClient_PlaySecondaryWeaponFPAnimation_Validate(USkeletalMeshComponent* ArmsMesh, float PlayRate, bool FreezeMontageAtLastFrame, bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame, bool PlayGunAnimation, uint8 GunAnimation, float GunAnimationStartingFrame) { return true; }
+void ABaseCharacter::OwningClient_PlaySecondaryWeaponFPAnimation_Implementation(USkeletalMeshComponent* ArmsMesh, float PlayRate, bool FreezeMontageAtLastFrame, bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame, bool PlayGunAnimation, uint8 GunAnimation, float GunAnimationStartingFrame)
 {
-	// set _bDuelwielding's value based off _SecondaryWeapon's value
-	bool bDuelWielding = _SecondaryWeapon != NULL ? true : false;
-	if (GetLocalRole() == ROLE_Authority) { SetIsDuelWielding(bDuelWielding); }
-	else { Server_Reliable_SetIsDuelWielding(bDuelWielding); }
-
-	// Update meshes (DEPRECIATED) OnRep_DuelWielding calls these methods, which comes from the SetIsDuelWielding() function,
-	// but I'm leaving the old method calls here just as a reminder
-
-	///OwningClient_UpdateFirstPersonSecondaryWeaponMesh(_SecondaryWeapon); 
-	///Multicast_UpdateThirdPersonSecondaryWeaponMesh(_SecondaryWeapon);
+	PlaySecondaryWeaponFPAnimation(ArmsMesh, PlayRate, FreezeMontageAtLastFrame, PlayHandAnimation, HandAnimation, HandAnimationStartingFrame, PlayGunAnimation, GunAnimation, GunAnimationStartingFrame);
 }
+
+/*
+*
+*/
+void ABaseCharacter::PlaySecondaryWeaponFPAnimation(USkeletalMeshComponent* ArmsMesh, float PlayRate, bool FreezeMontageAtLastFrame, bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame, bool PlayGunAnimation, uint8 GunAnimation, float GunAnimationStartingFrame)
+{
+	// Sanity checks
+	if (_SecondaryWeapon == NULL) { return; }
+
+	// arm animation play
+	float i = 0.05f;
+	if (PlayHandAnimation)
+	{
+		UAnimMontage* handMontage = _SecondaryWeapon->GetArmAnimation((E_HandAnimation)HandAnimation);
+		UAnimInstance* handAnimInstance = _FirstPerson_ArmsDuelLeft->GetAnimInstance();
+		if (handMontage != NULL && handAnimInstance != NULL)
+		{
+			// Play hand montage
+			ArmsMesh->SetHiddenInGame(false, true); // Force unhide the mesh before playing the animations
+			ArmsMesh->bPauseAnims = false;
+			handAnimInstance->Montage_Play(handMontage, PlayRate, EMontagePlayReturnType::MontageLength, HandAnimationStartingFrame, true);
+			if (FreezeMontageAtLastFrame)
+			{
+				// Start delay timer then freeze anim
+				float playLength = handMontage->GetPlayLength();
+				FTimerDelegate animationDelegate;
+				animationDelegate.BindUFunction(this, FName("FreezeAnimation"), ArmsMesh, handMontage, playLength);
+				GetWorld()->GetTimerManager().SetTimer(_fSecondaryFPAnimationHandle, animationDelegate, 1.0f, false, (playLength / _fGlobalReloadPlayRate) - i);
+			}
+		}
+	}
+
+	// weapon animation play
+	if (PlayGunAnimation)
+	{
+		UAnimMontage* gunMontage = _SecondaryWeapon->GetGunAnimation((E_GunAnimation)GunAnimation);
+		UAnimInstance* weaponAnimInstance = _FirstPerson_SecondaryWeapon_SkeletalMesh->GetAnimInstance();
+		if (gunMontage != NULL && weaponAnimInstance != NULL)
+		{
+			// Play gun montage
+			_FirstPerson_SecondaryWeapon_SkeletalMesh->SetHiddenInGame(false); // Force unhide the mesh before playing the animations
+			weaponAnimInstance->Montage_Play(gunMontage, PlayRate, EMontagePlayReturnType::MontageLength, GunAnimationStartingFrame, true);
+			if (FreezeMontageAtLastFrame)
+			{
+				// Start delay timer then freeze anim
+				float playLength = gunMontage->GetPlayLength();
+				FTimerDelegate animationDelegate;
+				animationDelegate.BindUFunction(this, FName("FreezeAnimation"), _FirstPerson_SecondaryWeapon_SkeletalMesh, gunMontage, playLength);
+				GetWorld()->GetTimerManager().SetTimer(_fSecondaryFPAnimationHandle, animationDelegate, 1.0f, false, (playLength / _fGlobalReloadPlayRate) - i);
+			}
+		}
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Inventory | Weapon | Secondary | Firing
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -2225,6 +2609,7 @@ void ABaseCharacter::InitFireSecondaryWeapon()
 	if (_SecondaryWeapon->IsThereValidFireModeCount() == false) { return; }
 	if (_SecondaryWeapon->GetCurrentFireMode() == NULL) { return; }
 
+	// State checks
 	if (_bIsReloadingSecondaryWeapon) { return; }
 	if (_bIsTogglingWeapons) { return; }
 	if (_bIsSprinting) { return; }
@@ -2240,10 +2625,10 @@ void ABaseCharacter::InitFireSecondaryWeapon()
 	{
 		switch (_SecondaryWeapon->GetCurrentFireMode()->GetFiringType())
 		{
-		case E_FiringModeType::eFMT_FullAuto: FireWeaponTraceFullAuto(_SecondaryWeapon); break;
-		case E_FiringModeType::eFMT_Burst: FireWeaponTraceBurst(_SecondaryWeapon); break;
-		case E_FiringModeType::eFMT_SemiAuto: FireWeaponTraceSemiAuto(_SecondaryWeapon); break;
-		case E_FiringModeType::eFMT_Spread: FireWeaponTraceSpread(_SecondaryWeapon); break;
+		case E_FiringModeType::eFMT_FullAuto:	FireWeaponTraceFullAuto(_SecondaryWeapon); break;
+		case E_FiringModeType::eFMT_Burst:		FireWeaponTraceBurst(_SecondaryWeapon); break;
+		case E_FiringModeType::eFMT_SemiAuto:	FireWeaponTraceSemiAuto(_SecondaryWeapon); break;
+		case E_FiringModeType::eFMT_Spread:		FireWeaponTraceSpread(_SecondaryWeapon); break;
 		default: break;
 		}
 	}
@@ -2296,9 +2681,16 @@ void ABaseCharacter::InputSecondaryFireRelease()
 /*
 *
 */
-bool ABaseCharacter::OwningClient_Reliable_SecondaryWeaponCameraTrace_Validate()
-{ return true; }
+bool ABaseCharacter::OwningClient_Reliable_SecondarySetCanFireWeapon_Validate(bool bCanFire) { return true; }
+void ABaseCharacter::OwningClient_Reliable_SecondarySetCanFireWeapon_Implementation(bool bCanFire)
+{
+	_bCanFireSecondary = bCanFire;
+}
 
+/*
+*
+*/
+bool ABaseCharacter::OwningClient_Reliable_SecondaryWeaponCameraTrace_Validate() { return true; }
 void ABaseCharacter::OwningClient_Reliable_SecondaryWeaponCameraTrace_Implementation()
 {
 	if (_SecondaryWeapon == NULL) { return; }
@@ -2339,9 +2731,7 @@ void ABaseCharacter::OwningClient_Reliable_SecondaryWeaponCameraTrace_Implementa
 /*
 *
 */
-bool ABaseCharacter::Server_Reliable_SecondaryWeaponCameraTrace_Validate(FHitResult ClientHitResult)
-{ return true; }
-
+bool ABaseCharacter::Server_Reliable_SecondaryWeaponCameraTrace_Validate(FHitResult ClientHitResult) { return true; }
 void ABaseCharacter::Server_Reliable_SecondaryWeaponCameraTrace_Implementation(FHitResult ClientHitResult)
 {
 	if (_FirstPerson_SecondaryWeapon_SkeletalMesh == NULL) { return; }
@@ -2384,6 +2774,12 @@ void ABaseCharacter::Server_Reliable_SecondaryWeaponCameraTrace_Implementation(F
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Inventory | Weapon | Secondary | Reload
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /**
 * @summary:	Checks and initiates a reload of the character's secondary weapon.
 *
@@ -2423,7 +2819,7 @@ void ABaseCharacter::InputReloadSecondaryWeapon()
 					// Chamber a round into the magazine (if available)
 					if (ammoPool->GetMagazineAmmo() > 0)
 					{
-						// Dont play an animation because we're dual wielding.. instead just insta-chamber the round then continue on
+						// Don't play an animation because we're dual wielding.. instead just insta-chamber the round then continue on
 						fireMode->Server_Reliable_ChamberRound();
 					}
 				}
@@ -2436,7 +2832,7 @@ void ABaseCharacter::InputReloadSecondaryWeapon()
 			_bCanFireSecondary = false;
 
 			// Start reloading state/sequence
-			Server_Reliable_SetIsReloadingSecondaryWeapon(true);
+			SetIsReloadingSecondaryWeapon(true);
 
 			// Get reload lower montage references for playing
 			uint8 handAnimByte; handAnimByte = (uint8)E_HandAnimation::eHA_ReloadDuelLeftLower;
@@ -2452,9 +2848,8 @@ void ABaseCharacter::InputReloadSecondaryWeapon()
 			float reloadTime = _SecondaryWeapon->GetDuelWieldingReloadTime();
 
 			// Start delay timer for the weapon raise
-			FTimerDelegate raiseDelegate;
-			raiseDelegate.BindUFunction(this, FName("OnDuelWielding_SecondaryReloadComplete"));
-			GetWorld()->GetTimerManager().SetTimer(_fDuelSecondaryReloadHandle, raiseDelegate, 1.0f, false, lowerAnimLength + reloadTime);
+			GetWorld()->GetTimerManager().ClearTimer(_fDuelSecondaryReloadHandle);
+			GetWorld()->GetTimerManager().SetTimer(_fDuelSecondaryReloadHandle, this, &ABaseCharacter::OnDuelWielding_SecondaryReloadComplete, 1.0f, false, lowerAnimLength + reloadTime);
 
 			break;
 		}
@@ -2467,85 +2862,7 @@ void ABaseCharacter::InputReloadSecondaryWeapon()
 /*
 *
 */
-void ABaseCharacter::OnDuelWielding_SecondaryReloadComplete()
-{
-	uint8 handAnimByte; handAnimByte = (uint8)E_HandAnimation::eHA_ReloadDuelLeftRaise;
-	uint8 gunAnimByte; gunAnimByte = (uint8)E_GunAnimation::eGA_ReloadDuelLeftRaise;
-
-	// Play reload (raise) animation
-	float startingFrame = 0.0f;
-	OwningClient_PlaySecondaryWeaponFPAnimation(_FirstPerson_ArmsDuelLeft, _fGlobalReloadPlayRate, false, true, handAnimByte, startingFrame, true, gunAnimByte, startingFrame);
-}
-
-/*
-*
-*/
-bool ABaseCharacter::OwningClient_PlaySecondaryWeaponFPAnimation_Validate(USkeletalMeshComponent* ArmsMesh, float PlayRate, bool FreezeMontageAtLastFrame, bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame, bool PlayGunAnimation, uint8 GunAnimation, float GunAnimationStartingFrame)
-{ return true; }
-
-void ABaseCharacter::OwningClient_PlaySecondaryWeaponFPAnimation_Implementation(USkeletalMeshComponent* ArmsMesh, float PlayRate, bool FreezeMontageAtLastFrame, bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame, bool PlayGunAnimation, uint8 GunAnimation, float GunAnimationStartingFrame)
-{
-	PlaySecondaryWeaponFPAnimation(ArmsMesh, PlayRate, FreezeMontageAtLastFrame, PlayHandAnimation, HandAnimation, HandAnimationStartingFrame, PlayGunAnimation, GunAnimation, GunAnimationStartingFrame);
-}
-
-/*
-*
-*/
-void ABaseCharacter::PlaySecondaryWeaponFPAnimation(USkeletalMeshComponent* ArmsMesh, float PlayRate, bool FreezeMontageAtLastFrame, bool PlayHandAnimation, uint8 HandAnimation, float HandAnimationStartingFrame, bool PlayGunAnimation, uint8 GunAnimation, float GunAnimationStartingFrame)
-{
-	// Sanity checks
-	if (_SecondaryWeapon == NULL) { return; }
-
-	// arm animation play
-	float i = 0.05f;
-	if (PlayHandAnimation)
-	{
-		UAnimMontage* handMontage = _SecondaryWeapon->GetArmAnimation((E_HandAnimation)HandAnimation);
-		UAnimInstance* handAnimInstance = _FirstPerson_ArmsDuelLeft->GetAnimInstance();
-		if (handMontage != NULL && handAnimInstance != NULL)
-		{
-			// Play hand montage
-			ArmsMesh->SetHiddenInGame(false, true); // Force unhide the mesh before playing the animations
-			handAnimInstance->Montage_Play(handMontage, PlayRate, EMontagePlayReturnType::MontageLength, HandAnimationStartingFrame, true);
-			if (FreezeMontageAtLastFrame)
-			{
-				// Start delay timer then freeze anim
-				float playLength = handMontage->GetPlayLength();
-				FTimerDelegate animationDelegate;
-				animationDelegate.BindUFunction(this, FName("FreezeAnimation"), ArmsMesh, handMontage, playLength);
-				GetWorld()->GetTimerManager().SetTimer(_fSecondaryFPAnimationHandle, animationDelegate, 1.0f, false, (playLength / _fGlobalReloadPlayRate) - i);
-			}
-		}
-	}
-
-	// weapon animation play
-	if (PlayGunAnimation)
-	{
-		UAnimMontage* gunMontage = _SecondaryWeapon->GetGunAnimation((E_GunAnimation)GunAnimation);
-		UAnimInstance* weaponAnimInstance = _FirstPerson_SecondaryWeapon_SkeletalMesh->GetAnimInstance();
-		if (gunMontage != NULL && weaponAnimInstance != NULL)
-		{
-			// Play gun montage
-			_FirstPerson_SecondaryWeapon_SkeletalMesh->SetHiddenInGame(false); // Force unhide the mesh before playing the animations
-			weaponAnimInstance->Montage_Play(gunMontage, PlayRate, EMontagePlayReturnType::MontageLength, GunAnimationStartingFrame, true);
-			if (FreezeMontageAtLastFrame)
-			{
-				// Start delay timer then freeze anim
-				float playLength = gunMontage->GetPlayLength();
-				FTimerDelegate animationDelegate;
-				animationDelegate.BindUFunction(this, FName("FreezeAnimation"), _FirstPerson_SecondaryWeapon_SkeletalMesh, gunMontage, playLength);
-				GetWorld()->GetTimerManager().SetTimer(_fSecondaryFPAnimationHandle, animationDelegate, 1.0f, false, (playLength / _fGlobalReloadPlayRate) - i);
-			}
-		}
-	}
-}
-
-/*
-*
-*/
-bool ABaseCharacter::Server_Reliable_SetIsReloadingSecondaryWeapon_Validate(bool ReloadingSecondary)
-{ return true; }
-
+bool ABaseCharacter::Server_Reliable_SetIsReloadingSecondaryWeapon_Validate(bool ReloadingSecondary) { return true; }
 void ABaseCharacter::Server_Reliable_SetIsReloadingSecondaryWeapon_Implementation(bool ReloadingSecondary)
 {
 	_bIsReloadingSecondaryWeapon = ReloadingSecondary;
@@ -2554,31 +2871,15 @@ void ABaseCharacter::Server_Reliable_SetIsReloadingSecondaryWeapon_Implementatio
 /*
 *
 */
-bool ABaseCharacter::Server_Reliable_SetIsDuelWielding_Validate(bool bDuelWielding)
-{ return true; }
-
-void ABaseCharacter::Server_Reliable_SetIsDuelWielding_Implementation(bool bDuelWielding)
+void ABaseCharacter::SetIsReloadingSecondaryWeapon(bool IsReloading)
 {
-	SetIsDuelWielding(bDuelWielding);
-}
-
-/*
-*
-*/
-void ABaseCharacter::SetIsDuelWielding(bool bDuelWielding)
-{
-	_bIsDuelWielding = bDuelWielding;
-	if (GetLocalRole() == ROLE_Authority) { OnRep_DuelWielding(); }
-}
-
-/*
-*
-*/
-void ABaseCharacter::OnRep_DuelWielding()
-{
-	// Update meshes
-	OwningClient_UpdateFirstPersonSecondaryWeaponMesh(_SecondaryWeapon);
-	Multicast_UpdateThirdPersonSecondaryWeaponMesh(_SecondaryWeapon);
+	if (_bIsReloadingSecondaryWeapon != IsReloading)
+	{
+		if (GetLocalRole() == ROLE_Authority)
+			_bIsReloadingSecondaryWeapon = IsReloading;
+		else
+			Server_Reliable_SetIsReloadingSecondaryWeapon(IsReloading);
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2596,9 +2897,7 @@ void ABaseCharacter::OnRep_DuelWielding()
 *
 * @return:	void
 */
-bool ABaseCharacter::Server_Reliable_SetReserveWeapon_Validate(AWeapon* Weapon)
-{ return true; }
-
+bool ABaseCharacter::Server_Reliable_SetReserveWeapon_Validate(AWeapon* Weapon) { return true; }
 void ABaseCharacter::Server_Reliable_SetReserveWeapon_Implementation(AWeapon* Weapon)
 {
 	_ReserveWeapon = Weapon;
@@ -2717,62 +3016,119 @@ void ABaseCharacter::MoveRight(float Value)
 	}
 }
 
-bool ABaseCharacter::Server_SetMovementMode_Validate(EMovementMode MovementMode)
-{ return true; }
-
+bool ABaseCharacter::Server_SetMovementMode_Validate(EMovementMode MovementMode) { return true; }
 void ABaseCharacter::Server_SetMovementMode_Implementation(EMovementMode MovementMode)
 {
 	Multicast_SetMovementMode(MovementMode);
 }
 
-bool ABaseCharacter::Multicast_SetMovementMode_Validate(EMovementMode MovementMode)
-{ return true; }
-
+bool ABaseCharacter::Multicast_SetMovementMode_Validate(EMovementMode MovementMode) { return true; }
 void ABaseCharacter::Multicast_SetMovementMode_Implementation(EMovementMode MovementMode)
 {
 	GetCharacterMovement()->SetMovementMode(MovementMode);
 }
 
-bool ABaseCharacter::Server_Reliable_SetMovingSpeed_Validate(float Speed)
-{ return GetCharacterMovement() != NULL; }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// Movement | Properties | Gravity
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+*
+*/
+bool ABaseCharacter::Server_Reliable_SetGravityScale_Validate(float Scale) { return true; }
+void ABaseCharacter::Server_Reliable_SetGravityScale_Implementation(float Scale)
+{
+	Multicast_Reliable_SetGravityScale(Scale);
+}
+
+/*
+*
+*/
+bool ABaseCharacter::Multicast_Reliable_SetGravityScale_Validate(float Scale) { return true; }
+void ABaseCharacter::Multicast_Reliable_SetGravityScale_Implementation(float Scale)
+{
+	GetCharacterMovement()->GravityScale = Scale;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Movement | Properties | Speed
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool ABaseCharacter::SetMovingSpeed_Validate(float Speed) { return true; }
+void ABaseCharacter::SetMovingSpeed_Implementation(float Speed)
+{
+	if (GetLocalRole() == ROLE_Authority)
+		Multicast_Reliable_SetMovingSpeed(Speed);
+	else
+		Server_Reliable_SetMovingSpeed(Speed);
+}
+
+bool ABaseCharacter::Server_Reliable_SetMovingSpeed_Validate(float Speed) { return GetCharacterMovement() != NULL; }
 void ABaseCharacter::Server_Reliable_SetMovingSpeed_Implementation(float Speed)
 { Multicast_Reliable_SetMovingSpeed(Speed); }
 
-bool ABaseCharacter::Multicast_Reliable_SetMovingSpeed_Validate(float Speed)
-{ return GetCharacterMovement() != NULL; }
-
+bool ABaseCharacter::Multicast_Reliable_SetMovingSpeed_Validate(float Speed) { return GetCharacterMovement() != NULL; }
 void ABaseCharacter::Multicast_Reliable_SetMovingSpeed_Implementation(float Speed)
 { GetCharacterMovement()->MaxWalkSpeed = Speed; }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Movement | Crouch
+// Movement | Properties | Stamina
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ABaseCharacter::CrouchToggle(bool Crouch)
+/**
+* @summary:	Returns reference to the of stamina component attached to this character, specified by the channel.
+*
+* @param:	int Channel
+*
+* @return:	TArray<UStamina*>
+*/
+UStamina* ABaseCharacter::GetStaminaComponentByChannel(int Channel)
+{
+	// Get relevant stamina via matching channel
+	UStamina* stamina = NULL;
+	for (int i = 0; i < _uStaminaComponents.Num(); i++)
+	{
+		if (_uStaminaComponents[i]->GetStaminaChannel() == Channel)
+		{
+			stamina = _uStaminaComponents[i];
+			break;
+		}
+	}
+	return stamina;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Movement | States | Crouch
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void ABaseCharacter::InputCrouchToggle(bool Crouch)
 {
 	// Crouch enter
 	if (Crouch)
 	{
 		// When initiating a crouch from a sprint state
-		if (_bIsSprinting)
-		{
-
-		}
+		if (_bIsSprinting) 
+			InputSprintExit();		
 
 		// _bIsSprinting == FALSE
-		else
-		{ EnterCrouch(); }
+		else 
+			InputCrouchEnter();
 	}
 
 	// Crouch exit
 	else
-	{ ExitCrouch(); }
+		InputCrouchExit();
 }
 
-void ABaseCharacter::EnterCrouch()
+void ABaseCharacter::InputCrouchEnter()
 {
 	/*
 		// Cannot crouch when airborne
@@ -2803,7 +3159,7 @@ void ABaseCharacter::EnterCrouch()
 	*/
 }
 
-void ABaseCharacter::ExitCrouch()
+void ABaseCharacter::InputCrouchExit()
 {
 	/*
 		// Can only stop crouching if we we're previously crouching TRUE????
@@ -2835,9 +3191,7 @@ void ABaseCharacter::ExitCrouch()
 	*/
 }
 
-bool ABaseCharacter::Server_Reliable_SetIsCrouching_Validate(bool IsCrouching)
-{ return true; }
-
+bool ABaseCharacter::Server_Reliable_SetIsCrouching_Validate(bool IsCrouching) { return true; }
 void ABaseCharacter::Server_Reliable_SetIsCrouching_Implementation(bool IsCrouching)
 {
 	_bIsCrouching = IsCrouching;
@@ -2845,7 +3199,7 @@ void ABaseCharacter::Server_Reliable_SetIsCrouching_Implementation(bool IsCrouch
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Movement | Jump
+// Movement | States | Jump
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2862,7 +3216,7 @@ void ABaseCharacter::InputJump()
 			if (!GetCharacterMovement()->IsFalling())
 			{
 				// Uncrouch then jump
-				if (_bIsCrouching) { ExitCrouch(); } else
+				if (_bIsCrouching) { InputCrouchExit(); } else
 				{
 					// Set _bIsJumping = TRUE
 					if (GetLocalRole() == ROLE_Authority)
@@ -2885,9 +3239,7 @@ void ABaseCharacter::InputJump()
 	} else { return; }
 }
 
-bool ABaseCharacter::Server_Reliable_SetJumping_Validate(bool Jumping)
-{ return true; }
-
+bool ABaseCharacter::Server_Reliable_SetJumping_Validate(bool Jumping) { return true; }
 void ABaseCharacter::Server_Reliable_SetJumping_Implementation(bool Jumping)
 {
 	_bIsJumping = Jumping;
@@ -2895,7 +3247,287 @@ void ABaseCharacter::Server_Reliable_SetJumping_Implementation(bool Jumping)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Movement | Sprint
+// Movement | States | Slide
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+*
+*/
+void ABaseCharacter::InputSlideEnter()
+{
+	if (_bSlideEnabled/* && !_bIsDashing*/)
+	{
+		// Can only slide when we are projecting forwards(relative to actors rotation) and downwards(world absolute) in velocity to a certain amount
+		FVector velocity = GetCharacterMovement()->Velocity;
+		float forwardSpeed = FVector::DotProduct(velocity, UKismetMathLibrary::GetForwardVector(GetActorRotation()));
+		///bool checkUpVelocity = GetCharacterMovement()->IsMovingOnGround() ? true : velocity.Z < _fSlideUpVelocityThreshold;
+		///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("" + FString::SanitizeFloat(forwardSpeed)));
+		if (forwardSpeed > _fSlideForwardVelocityThreshold || forwardSpeed < -_fSlideForwardVelocityThreshold)
+		{
+			// If we're currently airborne
+			if (!GetCharacterMovement()->IsMovingOnGround())
+			{
+				// Fire trace to fall and check the distance of that trace
+				GetCharacterMovement()->GravityScale = _fSlideAirbourneGravityForce;
+				_bIsPerformingGroundChecks = true;
+				_bIsTryingToSlide = true;
+				///_bWasDashingWhenSlideInputWasPressed = _bIsDashing;
+			}
+
+			// Already touching the ground so just slide straight away
+			else 
+				Slide();
+
+			// Disable vaulting during a slide attempt
+			_bCanVault = false;
+		}
+	}
+}
+
+/*
+*
+*/
+void ABaseCharacter::InputSlideExit()
+{
+	// Can only stop sliding if we're currently sliding
+	if (_bIsSliding)
+	{
+		// Set _bSliding to FALSE
+		bool slide = false;
+		if (GetLocalRole() == ROLE_Authority)
+			_bIsSliding = slide;
+		else
+			Server_Reliable_SetIsSliding(slide);
+
+		// Stop slide
+		if (GetLocalRole() != ROLE_Authority)
+			Multicast_Reliable_StopSlide();
+		else
+			Server_Reliable_StopSlide();
+
+		// Lerp camera origin transform?
+		_bSlideEnter = false;
+		if (_fSlideCameraLerpTime != 0.0f)
+		{
+			if (_fSlideCameraLerpTime >= _fSlideCameraLerpingDuration)
+				_fSlideCameraLerpTime = 0.0f;
+			else
+			{
+				// Get current percent of lerp time so that it doesn't jagger at the start of the next lerp sequence
+				float t = _fSlideCameraLerpTime;
+				_fSlideCameraLerpTime = _fSlideCameraLerpingDuration - t;
+			}
+		}
+		if (_PrimaryWeapon != NULL)
+		{
+			if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled())
+				_bLerpSlideCamera = !IsAiming();
+			else
+				_bLerpSlideCamera = true;
+		} else
+			_bLerpSlideCamera = true;
+		_bLerpCrouchCapsule = _bLerpSlideCamera;
+
+		// Stop camera shake
+		if (_SlideCameraShakeInstance != NULL)
+			_SlideCameraShakeInstance->StopShake(false);
+
+		// Can no longer slide jump
+		///_bCanSlideJump = false;
+		_bCanJump = true;
+
+		// Enable vaulting
+		_bCanVault = true;
+	}
+	_bIsTryingToSlide = false;
+}
+
+/*
+*
+*/
+void ABaseCharacter::InputSlideToggle(bool Sliding)
+{
+	// Slide enter
+	if (Sliding)
+	{
+		if (!_bIsSliding)
+			InputSlideEnter(); GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Slide Enter!"));
+	}
+
+	// Slide exit
+	else
+		InputSlideExit(); GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Slide Exit!"));
+
+}
+
+/*
+*
+*/
+void ABaseCharacter::Slide(bool WasDashing)
+{
+	// Can only slide when we're using forward/backward input
+	APlayerController* playerController = Cast<APlayerController>(this->GetController());
+	if (playerController == NULL) { return; }
+
+	// If we're pressing forward, then our velocity HAS to be forward (and above threshold)
+	// If we're pressing backward, then our velocity HAS to be backward (and under threshold)
+	FVector velocity = GetCharacterMovement()->Velocity;
+	float forwardSpeed = FVector::DotProduct(velocity, UKismetMathLibrary::GetForwardVector(GetActorRotation()));
+	bool validForward = forwardSpeed > _fSlideForwardVelocityThreshold && playerController->IsInputKeyDown(EKeys::W);
+	bool validBackward = forwardSpeed < -_fSlideForwardVelocityThreshold && playerController->IsInputKeyDown(EKeys::S);
+	if (validForward || validBackward)
+	{
+		///_bCanExitDash = false;
+
+		// Reset gravity
+		if (HasAuthority())
+			Multicast_Reliable_SetGravityScale(_fDefaultGravityScale);
+		else
+			Server_Reliable_SetGravityScale(_fDefaultGravityScale);
+
+		// Stop sprinting (if we were)
+		if (_bIsSprinting) 
+			StopSprinting();
+
+		// Can shoot weapons again
+		_bCanFirePrimary = true;
+		if (_SecondaryWeapon != NULL) 
+			_bCanFireSecondary = true;
+
+		// If we're not currently sliding
+		if (!_bIsSliding)
+		{
+			// Set _bSliding to TRUE
+			bool slide = true;
+			if (GetLocalRole() == ROLE_Authority)
+				_bIsSliding = slide;
+			else
+				Server_Reliable_SetIsSliding(slide);
+
+			// Initiate sliding
+			if (GetLocalRole() != ROLE_Authority)
+				Multicast_Reliable_InitiateSlide(WasDashing);
+			else
+				Server_Reliable_InitiateSlide(WasDashing);
+
+			// Local camera shake
+			if (playerController != NULL && _SlideStartCameraShake != NULL)
+				_SlideCameraShakeInstance = playerController->PlayerCameraManager->PlayCameraShake(_SlideStartCameraShake, 1.0f, ECameraAnimPlaySpace::CameraLocal, FRotator::ZeroRotator);
+		}
+
+		// Lerp camera origin transform?
+		_tSlideEnterOrigin = _FirstPerson_Arms->GetRelativeTransform();
+		_bSlideEnter = true;
+		if (_fSlideCameraLerpTime != 0.0f)
+		{
+			if (_fSlideCameraLerpTime >= _fSlideCameraLerpingDuration) 
+				_fSlideCameraLerpTime = 0.0f; 
+			else
+			{
+				// Get current percent of lerp time so that it doesn't jagger at the start of the next lerp sequence
+				float t = _fCrouchCameraLerpTime;
+				_fSlideCameraLerpTime = _fSlideCameraLerpingDuration - t;
+			}
+		}
+		if (_PrimaryWeapon != NULL)
+		{
+			if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled())
+				_bLerpSlideCamera = !IsAiming();
+			else
+				_bLerpSlideCamera = true;
+		}
+		else
+			_bLerpSlideCamera = true;
+		_bLerpCrouchCapsule = _bLerpSlideCamera;
+	}
+
+	// Allow slide jumping whilst we are sliding
+	///if (_bSlideJumpEnabled)
+	///	_bCanSlideJump = true;
+	_bCanJump = true;
+
+	// Disable vaulting
+	_bCanVault = false;
+}
+
+/*
+*
+*/
+bool ABaseCharacter::Server_Reliable_SetIsSliding_Validate(bool Sliding) { return true; }
+void ABaseCharacter::Server_Reliable_SetIsSliding_Implementation(bool Sliding)
+{
+	_bIsSliding = Sliding;
+}
+
+/*
+*
+*/
+bool ABaseCharacter::Server_Reliable_InitiateSlide_Validate(bool WasDashing) { return true; }
+void ABaseCharacter::Server_Reliable_InitiateSlide_Implementation(bool WasDashing) { Multicast_Reliable_InitiateSlide(WasDashing); }
+
+/*
+*
+*/
+bool ABaseCharacter::Multicast_Reliable_InitiateSlide_Validate(bool WasDashing) { return true; }
+void ABaseCharacter::Multicast_Reliable_InitiateSlide_Implementation(bool WasDashing)
+{
+	// Get movement component
+	UCharacterMovementComponent* movement = GetCharacterMovement();
+	if (movement == NULL) 
+		return;
+
+	// Only slide launch if we're touching the ground (so airborne slides will wait till you hit the ground before launching you)
+	if (movement->IsMovingOnGround())
+	{
+		// Set slide values
+		movement->GroundFriction = 0.0f;
+		movement->BrakingFrictionFactor = _fSlideBreakingFrictionFactor;
+		movement->BrakingDecelerationWalking = _fSlideBrakingDeceleration;
+
+		// Launch the character
+		FVector forwardForce = FVector::ZeroVector;
+		if (!WasDashing && _bOverrideSlideVelocityFromDash)
+			forwardForce = GetActorForwardVector() * _fSlideForce; 
+		else
+		{
+			///float f = _DashExitVelocityEnd.Size() / _fSlideForce;
+			float h = _fSlideForce/* * (f / 2)*/;
+			forwardForce = GetActorForwardVector() * (_fSlideForwardVelocityThreshold + h);
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Magenta, FString::SanitizeFloat(_fSlideForwardVelocityThreshold + h));
+		}
+		FVector downForce = GetActorUpVector() * (_fSlideForce * -1.0f);
+		FVector launchForce = forwardForce + downForce;
+		this->LaunchCharacter(launchForce, /*_fSlideLaunchXYOverride &&*/ WasDashing, _fSlideLaunchZOverride);
+	}
+}
+
+/*
+*
+*/
+bool ABaseCharacter::Server_Reliable_StopSlide_Validate() { return true; }
+void ABaseCharacter::Server_Reliable_StopSlide_Implementation() { Multicast_Reliable_StopSlide(); }
+
+/*
+*
+*/
+bool ABaseCharacter::Multicast_Reliable_StopSlide_Validate() { return true; }
+void ABaseCharacter::Multicast_Reliable_StopSlide_Implementation()
+{
+	// Get movement component
+	UCharacterMovementComponent* movement = GetCharacterMovement();
+	if (movement == NULL) 
+		return;
+
+	// Set slide value back to default
+	movement->GroundFriction = _fDefaultGroundFriction;
+	movement->BrakingFrictionFactor = _fDefaultBrakingFrictionFactor;
+	movement->BrakingDecelerationWalking = _fDefaultBrakingDecelerationWalking;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Movement | States | Sprint
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2908,106 +3540,48 @@ void ABaseCharacter::Server_Reliable_SetJumping_Implementation(bool Jumping)
 *
 * @return:	void
 */
-bool ABaseCharacter::Server_Reliable_SetSprinting_Validate(bool Sprinting)
-{ return true; }
-
+bool ABaseCharacter::Server_Reliable_SetSprinting_Validate(bool Sprinting) { return true; }
 void ABaseCharacter::Server_Reliable_SetSprinting_Implementation(bool Sprinting)
 {
-	if (HasAuthority()) { _bIsSprinting = Sprinting; }
+	_bIsSprinting = Sprinting;
 }
 
 /*
 *
 */
-void ABaseCharacter::SprintEnter()
+void ABaseCharacter::InputSprintEnter()
 {
 	if (_bSprintEnabled)
 	{
 		if (!_bIsAiming)
-		{ _bTryingToSprint = true; }
+			_bTryingToSprint = true;
 	}
 }
 
 /*
 *
 */
-void ABaseCharacter::SprintExit()
+void ABaseCharacter::InputSprintExit()
 {
-	if (!_bIsAiming) { _bTryingToSprint = false; }
+	if (!_bIsAiming)
+		_bTryingToSprint = false;
 }
 
 /*
 *
 */
-void ABaseCharacter::SprintToggle(bool Sprint)
+void ABaseCharacter::InputSprintToggle(bool Sprint)
 {
-	// Sprint enter
+	// Sprint in
 	if (Sprint)
 	{
-		if (!_bIsSprinting) { SprintEnter(); }
+		if (!_bIsSprinting)
+			InputSprintEnter();
 	}
 
-	// Sprint exit
+	// Sprint out
 	else
-	{ SprintExit(); }
-}
-
-/*
-*
-*/
-void ABaseCharacter::Tick_Sprint()
-{
-	UCharacterMovementComponent* characterMovement = GetCharacterMovement();
-	if (characterMovement == NULL) { return; }
-
-	// Check if forward input is being pressed in this frame
-	bool forward = false;
-	auto ctrl = Cast<ABasePlayerController>(this->GetController()); if (ctrl == NULL) { return; }
-
-	if (ctrl->GetControllerType() == E_ControllerType::eCT_Keyboard) { forward = ctrl->IsInputKeyDown(EKeys::W); }
-	else if (ctrl->GetControllerType() == E_ControllerType::eCT_Xbox) { forward = ctrl->IsInputKeyDown(EKeys::Gamepad_LeftStick_Up); }
-	else if (ctrl->GetControllerType() == E_ControllerType::eCT_PlayStation) { forward = ctrl->IsInputKeyDown(EKeys::Gamepad_LeftStick_Up); }
-
-	// This is so that when the forward input is released, the sprint is forcibly stopped.
-	else { StopSprinting(); }
-
-	// Forward input is present this frame
-	if (forward)
-	{
-		// Moving on the ground
-		if (characterMovement->IsMovingOnGround())
-		{
-			// Not aiming
-			if (_bIsAiming) { AimWeaponExit(); }
-
-			// Set sprinting = true
-			if (!_bIsSprinting)
-			{
-				// Set _bIsSprinting on server for replication
-				if (HasAuthority())
-				{ _bIsSprinting = true; } else
-				{ Server_Reliable_SetSprinting(true); }
-
-				_fOnSprintEnter.Broadcast(true);
-			}
-
-			// Set sprinting movement speed
-			if (characterMovement->GetMaxSpeed() != _fMovementSpeedSprint)
-			{
-				if (HasAuthority()) { Multicast_Reliable_SetMovingSpeed(_fMovementSpeedSprint); } 
-				else { Server_Reliable_SetMovingSpeed(_fMovementSpeedSprint); }
-			}
-
-			// Play feedback(s) [Camera shakes / Gamepad Rumbles]
-			OwningClient_PlayCameraShake(_CameraShakeSprint, 1.0f);
-		}
-
-		// In the air
-		else { StopSprinting(); }
-	}
-
-	// Not pressing forward input anymore, stop sprinting bruh
-	else { StopSprinting(); }
+		InputSprintExit();
 }
 
 /*
@@ -3041,7 +3615,7 @@ void ABaseCharacter::StopSprinting()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Movement | Vault
+// Movement | States | Vault
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -3181,9 +3755,7 @@ void ABaseCharacter::GrabLedge(FVector MoveLocation)
 /*
 *
 */
-bool ABaseCharacter::Server_Reliable_GrabLedge_Validate(FVector MoveLocation)
-{ return true; }
-
+bool ABaseCharacter::Server_Reliable_GrabLedge_Validate(FVector MoveLocation) { return true; }
 void ABaseCharacter::Server_Reliable_GrabLedge_Implementation(FVector MoveLocation)
 {
 	Multicast_Reliable_GrabLedge(MoveLocation);
@@ -3192,9 +3764,7 @@ void ABaseCharacter::Server_Reliable_GrabLedge_Implementation(FVector MoveLocati
 /*
 *
 */
-bool ABaseCharacter::Multicast_Reliable_GrabLedge_Validate(FVector MoveLocation)
-{ return true; }
-
+bool ABaseCharacter::Multicast_Reliable_GrabLedge_Validate(FVector MoveLocation) { return true; }
 void ABaseCharacter::Multicast_Reliable_GrabLedge_Implementation(FVector MoveLocation)
 {
 	GrabLedge(MoveLocation);
@@ -3216,9 +3786,7 @@ void ABaseCharacter::ClimbLedge()
 	_bIsTryingToVault = false;
 }
 
-bool ABaseCharacter::Server_Reliable_SetIsVaulting_Validate(bool Vaulting)
-{ return true; }
-
+bool ABaseCharacter::Server_Reliable_SetIsVaulting_Validate(bool Vaulting) { return true; }
 void ABaseCharacter::Server_Reliable_SetIsVaulting_Implementation(bool Vaulting)
 {
 	_bIsVaulting = Vaulting;
@@ -3237,32 +3805,4 @@ FVector ABaseCharacter::GetMoveToLocation(float HeightOffset, float ForwardOffse
 	///DrawDebugLine(GetWorld(), _vWallTraceStart, _vWallTraceStart + forward, FColor::Blue, true, 10.0f);
 
 	return height + forward;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Stamina
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
-* @summary:	Returns reference to the of stamina component attached to this character, specified by the channel.
-*
-* @param:	int Channel
-*
-* @return:	TArray<UStamina*>
-*/
-UStamina* ABaseCharacter::GetStaminaComponentByChannel(int Channel)
-{
-	// Get relevant stamina via matching channel
-	UStamina* stamina = NULL;
-	for (int i = 0; i < _uStaminaComponents.Num(); i++)
-	{
-		if (_uStaminaComponents[i]->GetStaminaChannel() == Channel)
-		{
-			stamina = _uStaminaComponents[i];
-			break;
-		}
-	}
-	return stamina;
 }

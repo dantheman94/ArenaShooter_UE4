@@ -17,7 +17,11 @@
 #include "UnrealNetwork.h"
 #include "Weapon.h"
 
-// Startup ********************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Startup
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
 * @summary:	Sets default values for this actor's properties.
@@ -35,14 +39,10 @@ AArenaCharacter::AArenaCharacter()
 
 }
 
-///////////////////////////////////////////////
-
 AArenaCharacter::~AArenaCharacter()
 {
 
 }
-
-///////////////////////////////////////////////
 
 void AArenaCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -59,8 +59,6 @@ void AArenaCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AArenaCharacter, _DashExitVelocityStart);
 	DOREPLIFETIME(AArenaCharacter, _DashExitVelocityEnd);
 }
-
-///////////////////////////////////////////////
 
 /**
 * @summary:	Called when the game starts or when spawned.
@@ -99,7 +97,11 @@ void AArenaCharacter::BeginPlay()
 	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &AArenaCharacter::OnCapsuleComponentHit);
 }
 
-// Current Frame **************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Current Frame
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
 * @summary:	Called every frame.
@@ -114,7 +116,7 @@ void AArenaCharacter::Tick(float DeltaTime)
 
 	// If we're currently in the air and not doing any checks for landing on the ground, then start doing those checks
 	if (GetCharacterMovement()->IsFalling() && !_bIsPerformingGroundChecks) { _bIsPerformingGroundChecks; }
-	if (_bIsPerformingGroundChecks) { OnGroundChecks(); }
+	if (_bIsPerformingGroundChecks) { OnGroundChecks(DeltaTime); }
 
 	// Slide camera(origin) lerping
 	if (_bLerpSlideCamera)
@@ -246,8 +248,6 @@ void AArenaCharacter::Tick(float DeltaTime)
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 * @summary:	Called every frame (if _bIsWallRunning == true)
 *
@@ -339,8 +339,6 @@ void AArenaCharacter::Tick_WallRunning(float DeltaTime)
 	} else { EndWallRun(); }
 }
 
-///////////////////////////////////////////////
-
 /**
 * @summary:	Called every frame.
 *
@@ -348,7 +346,7 @@ void AArenaCharacter::Tick_WallRunning(float DeltaTime)
 *
 * @return:	virtual void
 */
-void AArenaCharacter::OnGroundChecks()
+void AArenaCharacter::OnGroundChecks(float DeltaTime)
 {
 	// Character has landed on the ground
 	if (GetCharacterMovement()->IsMovingOnGround()) 
@@ -401,7 +399,11 @@ void AArenaCharacter::OnGroundChecks()
 	else { _fFallingVelocity = GetVelocity().Z; }
 }
 
-// Inventory | Weapon | Primary ***********************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Inventory | Weapon | Primary
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
 * @summary:	Checks and initiates a reload of the character's primary weapon.
@@ -415,7 +417,19 @@ void AArenaCharacter::InputReloadPrimaryWeapon()
 	ABaseCharacter::InputReloadPrimaryWeapon();
 }
 
-// Inventory | Weapon | Secondary *********************************************************************************************************
+void AArenaCharacter::InitFirePrimaryWeapon()
+{
+	// Cant fire if performing certain movements
+	if (_bIsDashing) { return; }
+
+	ABaseCharacter::InitFirePrimaryWeapon();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Inventory | Weapon | Secondary
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
 * @summary:	Checks and initiates a reload of the character's secondary weapon.
@@ -429,17 +443,11 @@ void AArenaCharacter::InputReloadSecondaryWeapon()
 	ABaseCharacter::InputReloadSecondaryWeapon();
 }
 
-///////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void AArenaCharacter::InitFirePrimaryWeapon()
-{
-	// Cant fire if performing certain movements
-	if (_bIsDashing) { return; }
+// Movement | Base
 
-	ABaseCharacter::InitFirePrimaryWeapon();
-}
-
-// Movement | Base ************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
 * @summary:	Moves the character on the vertical axis (forward/backward)
@@ -451,8 +459,6 @@ void AArenaCharacter::MoveForward(float Value)
 	if (!_bIsSliding) { ABaseCharacter::MoveForward(Value); }
 }
 
-///////////////////////////////////////////////
-
 /**
 * @summary:	Moves the character on the horizontal axis (left/right)
 *
@@ -463,21 +469,13 @@ void AArenaCharacter::MoveRight(float Value)
 	if (!_bIsSliding) { ABaseCharacter::MoveRight(Value); }
 }
 
-///////////////////////////////////////////////
-
-bool AArenaCharacter::Server_Reliable_SetMovementMode_Validate(EMovementMode NewMovementMode, uint8 NewCustomMode = 0)
-{ return true; }
-
+bool AArenaCharacter::Server_Reliable_SetMovementMode_Validate(EMovementMode NewMovementMode, uint8 NewCustomMode = 0) { return true; }
 void AArenaCharacter::Server_Reliable_SetMovementMode_Implementation(EMovementMode NewMovementMode, uint8 NewCustomMode = 0)
 {
 	Multicast_Reliable_SetMovementMode(NewMovementMode, NewCustomMode);
 }
 
-///////////////////////////////////////////////
-
-bool AArenaCharacter::Multicast_Reliable_SetMovementMode_Validate(EMovementMode NewMovementMode, uint8 NewCustomMode = 0)
-{ return true; }
-
+bool AArenaCharacter::Multicast_Reliable_SetMovementMode_Validate(EMovementMode NewMovementMode, uint8 NewCustomMode = 0) { return true; }
 void AArenaCharacter::Multicast_Reliable_SetMovementMode_Implementation(EMovementMode NewMovementMode, uint8 NewCustomMode = 0)
 {
 	UCharacterMovementComponent* movementComp = GetCharacterMovement();
@@ -486,7 +484,11 @@ void AArenaCharacter::Multicast_Reliable_SetMovementMode_Implementation(EMovemen
 	movementComp->SetMovementMode(NewMovementMode, NewCustomMode);
 }
 
-// Movement | Grapple Hook ****************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Movement | Grapple Hook
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -508,14 +510,19 @@ void AArenaCharacter::GrappleHookExit()
 	_fOnGrappleHookRelease.Broadcast();
 }
 
-// Movement | Dash ************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Movement | Dash
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
 */
 void AArenaCharacter::InputDash()
 {
-	if (!_bDashEnabled) { return; }
+	if (!_bDashEnabled) 
+		return;
 
 	if (_bCanDash && _uStaminaComponents.Num() > 0)
 	{
@@ -523,11 +530,8 @@ void AArenaCharacter::InputDash()
 		UStamina* stamina = NULL;
 		for (int i = 0; i < _uStaminaComponents.Num(); i++)
 		{
-			if (_uStaminaComponents[i]->GetStaminaChannel() == _iDashStaminaChannel)
-			{
-				stamina = _uStaminaComponents[i];
-				break;
-			}
+			if (_uStaminaComponents[i]->GetStaminaChannel() == _iDashStaminaChannel)			
+				stamina = _uStaminaComponents[i]; break;			
 		}
 
 		// Valid stamina channel found
@@ -540,10 +544,11 @@ void AArenaCharacter::InputDash()
 				// Can perform multiple dashes per max stamina
 				float currentStaminaPercentage = stamina->GetStamina() / stamina->GetMaxStaminaAmount();
 				enoughStamina = currentStaminaPercentage >= _fDashStaminaPercentageCost;
-			}
-			
+			}			
 			// Dash requires full stamina
-			else { enoughStamina = stamina->IsFullyRecharged(); }
+			else 
+				enoughStamina = stamina->IsFullyRecharged();
+
 			if (enoughStamina)
 			{
 				// Current stamina is max stamina
@@ -564,9 +569,12 @@ void AArenaCharacter::InputDash()
 				_bCanFireSecondary = false;
 
 				// Stop any current movement modes
-				if (_bIsAiming) { AimWeaponExit(); }
-				if (_bIsCrouching) { CrouchToggle(_bIsCrouching); }
-				if (_bIsHovering) { HoverExit(); }
+				if (_bIsAiming) 
+					InputAimExit();
+				if (_bIsCrouching) 
+					InputCrouchToggle(_bIsCrouching);
+				if (_bIsHovering) 
+					HoverExit();
 
 				// Gamepad rumble
 				OwningClient_GamepadRumble(_fThrustGamepadRumbleIntensity, _fThrustGamepadRumbleDuration,
@@ -588,52 +596,33 @@ void AArenaCharacter::InputDash()
 				{
 					switch (GetDirectionFromInput())
 					{
-
-					case E_Direction::eGA_Idle:
-					{
+					case E_Direction::eGA_Idle:					
 						DetermineFinalLaunchVelocity(*launchVector, FVector(_fAirDashStrength, 0.0f, 0.0f));
 						break;
-					}
-					case E_Direction::eGA_Fwd:
-					{
+					case E_Direction::eGA_Fwd:					
 						DetermineFinalLaunchVelocity(*launchVector, FVector(_fAirDashStrength, 0.0f, 0.0f));
-						break;
-					}
-					case E_Direction::eGA_FwdL:
-					{
+						break;					
+					case E_Direction::eGA_FwdL:					
 						DetermineFinalLaunchVelocity(*launchVector, FVector(_fAirDashAngleStrength, 0.0f - _fAirDashAngleStrength, 0.0f));
-						break;
-					}
-					case E_Direction::eGA_FwdR:
-					{
+						break;					
+					case E_Direction::eGA_FwdR:					
 						DetermineFinalLaunchVelocity(*launchVector, FVector(_fAirDashAngleStrength, _fAirDashAngleStrength, 0.0f));
-						break;
-					}
-					case E_Direction::eGA_Bwd:
-					{
+						break;					
+					case E_Direction::eGA_Bwd:					
 						DetermineFinalLaunchVelocity(*launchVector, FVector(0.0f - _fAirDashStrength, 0.0f, 0.0f));
-						break;
-					}
-					case E_Direction::eGA_BwdL:
-					{
-						 DetermineFinalLaunchVelocity(*launchVector, FVector(0.0f - _fAirDashAngleStrength, 0.0f - _fAirDashAngleStrength, 0.0f));
-						break;
-					}
-					case E_Direction::eGA_BwdR:
-					{
+						break;					
+					case E_Direction::eGA_BwdL:					
+						DetermineFinalLaunchVelocity(*launchVector, FVector(0.0f - _fAirDashAngleStrength, 0.0f - _fAirDashAngleStrength, 0.0f));
+						break;					
+					case E_Direction::eGA_BwdR:					
 						DetermineFinalLaunchVelocity(*launchVector, FVector(0.0f - _fAirDashAngleStrength, _fAirDashAngleStrength, 0.0f));
-						break;
-					}
-					case E_Direction::eGA_Left:
-					{
+						break;					
+					case E_Direction::eGA_Left:					
 						DetermineFinalLaunchVelocity(*launchVector, FVector(0.0f, 0.0f - _fAirDashStrength, 0.0f));
-						break;
-					}
-					case E_Direction::eGA_Right:
-					{
+						break;					
+					case E_Direction::eGA_Right:					
 						DetermineFinalLaunchVelocity(*launchVector, FVector(0.0f, _fAirDashStrength, 0.0f));
-						break;
-					}
+						break;					
 					default: break;
 					}
 				}
@@ -643,68 +632,49 @@ void AArenaCharacter::InputDash()
 				{
 					switch (GetDirectionFromInput())
 					{
-
-					case E_Direction::eGA_Idle:
-					{
+					case E_Direction::eGA_Idle:					
 						DetermineFinalLaunchVelocity(*launchVector, FVector(_fGroundDashStrength, 0.0f, 0.0f));
-						break;
-					}
-					case E_Direction::eGA_Fwd:
-					{
+						break;					
+					case E_Direction::eGA_Fwd:					
 						DetermineFinalLaunchVelocity(*launchVector, FVector(_fGroundDashStrength, 0.0f, 0.0f));
-						break;
-					}
-					case E_Direction::eGA_FwdL:
-					{
+						break;					
+					case E_Direction::eGA_FwdL:					
 						DetermineFinalLaunchVelocity(*launchVector, FVector(_fGroundDashAngleStrength, 0.0f - _fGroundDashAngleStrength, 0.0f));
-						break;
-					}
-					case E_Direction::eGA_FwdR:
-					{
+						break;					
+					case E_Direction::eGA_FwdR:					
 						DetermineFinalLaunchVelocity(*launchVector, FVector(_fGroundDashAngleStrength, _fGroundDashAngleStrength, 0.0f));
-						break;
-					}
-					case E_Direction::eGA_Bwd:
-					{
+						break;					
+					case E_Direction::eGA_Bwd:					
 						DetermineFinalLaunchVelocity(*launchVector, FVector(0.0f - _fGroundDashStrength, 0.0f, 0.0f));
-						break;
-					}
-					case E_Direction::eGA_BwdL:
-					{
+						break;					
+					case E_Direction::eGA_BwdL:					
 						DetermineFinalLaunchVelocity(*launchVector, FVector(0.0f - _fGroundDashAngleStrength, 0.0f - _fGroundDashAngleStrength, 0.0f));
-						break;
-					}
-					case E_Direction::eGA_BwdR:
-					{
+						break;					
+					case E_Direction::eGA_BwdR:					
 						DetermineFinalLaunchVelocity(*launchVector, FVector(0.0f - _fGroundDashAngleStrength, _fGroundDashAngleStrength, 0.0f));
-						break;
-					}
-					case E_Direction::eGA_Left:
-					{
+						break;					
+					case E_Direction::eGA_Left:					
 						DetermineFinalLaunchVelocity(*launchVector, FVector(0.0f, 0.0f - _fGroundDashStrength, 0.0f));
-						break;
-					}
-					case E_Direction::eGA_Right:
-					{
+						break;					
+					case E_Direction::eGA_Right:					
 						DetermineFinalLaunchVelocity(*launchVector, FVector(0.0f, _fGroundDashStrength, 0.0f));
-						break;
-					}
+						break;					
 					default: break;
 					}
 				}
 
 				// Remove gravity
 				if (HasAuthority())
-				{ Multicast_Reliable_SetGravityScale(_fDashGravityScale); }
+					Multicast_Reliable_SetGravityScale(_fDashGravityScale);
 				else
-				{ Server_Reliable_SetGravityScale(_fDashGravityScale); }
+					Server_Reliable_SetGravityScale(_fDashGravityScale);
 
 				// Dash
 				*launchVector = FVector(launchVector->X, launchVector->Y, 0.0f);
 				if (HasAuthority())
-				{ Multicast_Reliable_LaunchCharacter(*launchVector, true, true); }
+					Multicast_Reliable_LaunchCharacter(*launchVector, true, true);
 				else
-				{ Server_Reliable_LaunchCharacter(*launchVector, true, true); }
+					Server_Reliable_LaunchCharacter(*launchVector, true, true);
 
 				_bCanExitDash = true;
 				
@@ -720,11 +690,9 @@ void AArenaCharacter::InputDash()
 					// Find matching camera shake by dash direction
 					for (int i = 0; i < _DashCameraShakes.Num(); i++)
 					{
+						// Matching direction found -> play camera shake
 						if (_DashCameraShakes[i].GetCameraShakeByDirection(GetDirectionFromInput()))
-						{
-							// Matching direction found -> play camera shake
-							OwningClient_PlayCameraShake(_DashCameraShakes[i].GetCameraShakeClass(), 1.0f);
-						}
+							OwningClient_PlayCameraShake(_DashCameraShakes[i].GetCameraShakeClass(), 1.0f);						
 					}
 				}
 
@@ -738,9 +706,7 @@ void AArenaCharacter::InputDash()
 				if (_PrimaryWeapon != NULL)
 				{
 					if (_PrimaryWeapon->GetCurrentFireMode()->IsFiring())
-					{
-						InputPrimaryFireRelease();
-					}
+						InputPrimaryFireRelease();					
 				}
 			}
 		}
@@ -753,8 +719,6 @@ void AArenaCharacter::InputDash()
 		}
 	}
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -817,8 +781,6 @@ E_Direction AArenaCharacter::GetDirectionFromInput()
 
 	return dir;
 }
-
-///////////////////////////////////////////////
 
 /*
 
@@ -902,23 +864,13 @@ FVector AArenaCharacter::DirectionalInputToVector()
 	return launchVector;
 }
 
-///////////////////////////////////////////////
-
-bool AArenaCharacter::Server_Reliable_SetDashDirection_Validate(E_Direction Direction)
-{ return true; }
-
+bool AArenaCharacter::Server_Reliable_SetDashDirection_Validate(E_Direction Direction) { return true; }
 void AArenaCharacter::Server_Reliable_SetDashDirection_Implementation(E_Direction Direction)
 { _eDashDirection = Direction; }
 
-///////////////////////////////////////////////
-
-bool AArenaCharacter::Server_Reliable_SetDashing_Validate(bool Dashing)
-{ return HasAuthority(); }
-
+bool AArenaCharacter::Server_Reliable_SetDashing_Validate(bool Dashing) { return HasAuthority(); }
 void AArenaCharacter::Server_Reliable_SetDashing_Implementation(bool Dashing)
 { _bIsDashing = Dashing; }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -960,8 +912,6 @@ void AArenaCharacter::StopDashing(FVector LaunchVelocity)
 	{ Server_Reliable_SetGravityScale(_fDefaultGravityScale); }
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -978,43 +928,35 @@ void AArenaCharacter::DetermineFinalLaunchVelocity(FVector& LaunchVelocity, FVec
 	{ LaunchVelocity = FVector(LaunchVelocity.X, LaunchVelocity.Y, LaunchVelocity.Z - 100.0f); }
 }
 
-///////////////////////////////////////////////
-
-bool AArenaCharacter::Server_Reliable_SetDashExiting_Validate(bool DashExiting)
-{ return true; }
-
+bool AArenaCharacter::Server_Reliable_SetDashExiting_Validate(bool DashExiting) { return true; }
 void AArenaCharacter::Server_Reliable_SetDashExiting_Implementation(bool DashExiting)
 {
 	_bDashExiting = DashExiting;
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
-bool AArenaCharacter::Server_Reliable_SetDashExitingStartVelocity_Validate(FVector Velocity)
-{ return true; }
-
+bool AArenaCharacter::Server_Reliable_SetDashExitingStartVelocity_Validate(FVector Velocity) { return true; }
 void AArenaCharacter::Server_Reliable_SetDashExitingStartVelocity_Implementation(FVector Velocity)
 {
 	_DashExitVelocityStart = Velocity;
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
-bool AArenaCharacter::Server_Reliable_SetDashExitingEndVelocity_Validate(FVector Velocity)
-{ return true; }
-
+bool AArenaCharacter::Server_Reliable_SetDashExitingEndVelocity_Validate(FVector Velocity) { return true; }
 void AArenaCharacter::Server_Reliable_SetDashExitingEndVelocity_Implementation(FVector Velocity)
 {
 	_DashExitVelocityEnd = Velocity;
 }
 
-// Movement | Hover ***********************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Movement | Hover
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -1105,8 +1047,6 @@ void AArenaCharacter::HoverEnter()
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -1160,31 +1100,28 @@ void AArenaCharacter::HoverExit()
 	}
 }
 
-///////////////////////////////////////////////
-
-bool AArenaCharacter::Server_Reliable_SetHovering_Validate(bool IsHovering)
-{ return true; }
-
+/*
+*
+*/
+bool AArenaCharacter::Server_Reliable_SetHovering_Validate(bool IsHovering) { return true; }
 void AArenaCharacter::Server_Reliable_SetHovering_Implementation(bool IsHovering)
 {
 	_bIsHovering = IsHovering;
 }
 
-///////////////////////////////////////////////
-
-bool AArenaCharacter::Server_Reliable_ChangeHoverState_Validate(bool IsHovering)
-{ return true; }
-
+/*
+*
+*/
+bool AArenaCharacter::Server_Reliable_ChangeHoverState_Validate(bool IsHovering) { return true; }
 void AArenaCharacter::Server_Reliable_ChangeHoverState_Implementation(bool IsHovering)
 {
 	Multicast_Reliable_ChangeHoverState(IsHovering);
 }
 
-///////////////////////////////////////////////
-
-bool AArenaCharacter::Multicast_Reliable_ChangeHoverState_Validate(bool IsHovering)
-{ return true; }
-
+/*
+*
+*/
+bool AArenaCharacter::Multicast_Reliable_ChangeHoverState_Validate(bool IsHovering){ return true; }
 void AArenaCharacter::Multicast_Reliable_ChangeHoverState_Implementation(bool IsHovering)
 {
 	// Hovering (Flying :O)
@@ -1210,27 +1147,11 @@ void AArenaCharacter::Multicast_Reliable_ChangeHoverState_Implementation(bool Is
 	}
 }
 
-///////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool AArenaCharacter::Server_Reliable_SetGravityScale_Validate(float Scale)
-{ return true; }
+// Movement | Jump
 
-void AArenaCharacter::Server_Reliable_SetGravityScale_Implementation(float Scale)
-{
-	Multicast_Reliable_SetGravityScale(Scale);
-}
-
-///////////////////////////////////////////////
-
-bool AArenaCharacter::Multicast_Reliable_SetGravityScale_Validate(float Scale)
-{ return true; }
-
-void AArenaCharacter::Multicast_Reliable_SetGravityScale_Implementation(float Scale)
-{
-	GetCharacterMovement()->GravityScale = Scale;
-}
-
-// Movement | Jump ************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -1255,7 +1176,7 @@ void AArenaCharacter::InputJump()
 				else
 				{
 					// Uncrouch then jump
-					if (_bIsCrouching) { ExitCrouch(); } else
+					if (_bIsCrouching) { InputCrouchExit(); } else
 					{
 						// Set _bIsJumping = TRUE
 						if (GetLocalRole() == ROLE_Authority)
@@ -1308,31 +1229,23 @@ void AArenaCharacter::InputJumpExit()
 	_bIsTryingToWallJump = false;
 }
 
-///////////////////////////////////////////////
+/*
+*
+*/
+bool AArenaCharacter::Server_Reliable_LaunchCharacter_Validate(FVector LaunchVelocity, bool XYOverride, bool ZOverride) { return true; }
+void AArenaCharacter::Server_Reliable_LaunchCharacter_Implementation(FVector LaunchVelocity, bool XYOverride, bool ZOverride) { Multicast_Reliable_LaunchCharacter(LaunchVelocity, XYOverride, ZOverride); }
 
 /*
 *
 */
-bool AArenaCharacter::Server_Reliable_LaunchCharacter_Validate(FVector LaunchVelocity, bool XYOverride, bool ZOverride)
-{ return true; }
+bool AArenaCharacter::Multicast_Reliable_LaunchCharacter_Validate(FVector LaunchVelocity, bool XYOverride, bool ZOverride) { return true; }
+void AArenaCharacter::Multicast_Reliable_LaunchCharacter_Implementation(FVector LaunchVelocity, bool XYOverride, bool ZOverride) { LaunchCharacter(LaunchVelocity, XYOverride, ZOverride); }
 
-void AArenaCharacter::Server_Reliable_LaunchCharacter_Implementation(FVector LaunchVelocity, bool XYOverride, bool ZOverride)
-{
-	Multicast_Reliable_LaunchCharacter(LaunchVelocity, XYOverride, ZOverride);
-}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/*
-*
-*/
-bool AArenaCharacter::Multicast_Reliable_LaunchCharacter_Validate(FVector LaunchVelocity, bool XYOverride, bool ZOverride)
-{ return true; }
+// Movement | Double Jump
 
-void AArenaCharacter::Multicast_Reliable_LaunchCharacter_Implementation(FVector LaunchVelocity, bool XYOverride, bool ZOverride)
-{
-	LaunchCharacter(LaunchVelocity, XYOverride, ZOverride);
-}
-
-// Movement | Double Jump *****************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -1435,17 +1348,17 @@ void AArenaCharacter::InputDoubleJump()
 	}
 }
 
-///////////////////////////////////////////////
-
-bool AArenaCharacter::Server_Reliable_SetDoubleJumping_Validate(bool DoubleJumping)
-{ return true; }
-
+bool AArenaCharacter::Server_Reliable_SetDoubleJumping_Validate(bool DoubleJumping) { return true; }
 void AArenaCharacter::Server_Reliable_SetDoubleJumping_Implementation(bool DoubleJumping)
 {
 	_bIsDoubleJumping = DoubleJumping;
 }
 
-// Movement | Slide ***********************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Movement | Slide
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -1468,11 +1381,12 @@ void AArenaCharacter::InputSlideEnter()
 				GetCharacterMovement()->GravityScale = _fSlideAirbourneGravityForce;
 				_bIsPerformingGroundChecks = true;
 				_bIsTryingToSlide = true;
-				_bWasDashingWhenSlideInputWasPressed = _bIsDashing;
-			} 
-			
+				///_bWasDashingWhenSlideInputWasPressed = _bIsDashing;
+			}
+
 			// Already touching the ground so just slide straight away
-			else { Slide(_bIsDashing); }
+			else
+				Slide();
 
 			// Disable vaulting during a slide attempt
 			_bCanVault = false;
@@ -1482,8 +1396,6 @@ void AArenaCharacter::InputSlideEnter()
 		}
 	}
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -1495,16 +1407,24 @@ void AArenaCharacter::InputSlideExit()
 	{
 		// Set _bSliding to FALSE
 		bool slide = false;
-		if (GetLocalRole() == ROLE_Authority) { _bIsSliding = slide; } else { Server_Reliable_SetIsSliding(slide); }
+		if (GetLocalRole() == ROLE_Authority)
+			_bIsSliding = slide;
+		else
+			Server_Reliable_SetIsSliding(slide);
 
 		// Stop slide
-		if (GetLocalRole() != ROLE_Authority) { Multicast_Reliable_StopSlide(); } else { Server_Reliable_StopSlide(); }
+		if (GetLocalRole() != ROLE_Authority)
+			Multicast_Reliable_StopSlide();
+		else
+			Server_Reliable_StopSlide();
 
 		// Lerp camera origin transform?
 		_bSlideEnter = false;
 		if (_fSlideCameraLerpTime != 0.0f)
 		{
-			if (_fSlideCameraLerpTime >= _fSlideCameraLerpingDuration) { _fSlideCameraLerpTime = 0.0f; } else
+			if (_fSlideCameraLerpTime >= _fSlideCameraLerpingDuration)
+				_fSlideCameraLerpTime = 0.0f;
+			else
 			{
 				// Get current percent of lerp time so that it doesn't jagger at the start of the next lerp sequence
 				float t = _fSlideCameraLerpTime;
@@ -1514,13 +1434,16 @@ void AArenaCharacter::InputSlideExit()
 		if (_PrimaryWeapon != NULL)
 		{
 			if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled())
-			{ _bLerpSlideCamera = !IsAiming(); } else
-			{ _bLerpSlideCamera = true; }
-		} else { _bLerpSlideCamera = true; }
+				_bLerpSlideCamera = !IsAiming();
+			else
+				_bLerpSlideCamera = true;
+		} else
+			_bLerpSlideCamera = true;
 		_bLerpCrouchCapsule = _bLerpSlideCamera;
 
 		// Stop camera shake
-		if (_SlideCameraShakeInstance != NULL) { _SlideCameraShakeInstance->StopShake(false); }
+		if (_SlideCameraShakeInstance != NULL)
+			_SlideCameraShakeInstance->StopShake(false);
 
 		// Can no longer slide jump
 		_bCanSlideJump = false;
@@ -1535,34 +1458,10 @@ void AArenaCharacter::InputSlideExit()
 	_bCanExitDash = _bIsDashing;
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
-void AArenaCharacter::InputSlideToggle(bool Sliding)
-{
-	// Slide enter
-	if (Sliding)
-	{
-		if (!_bIsSliding) { InputSlideEnter(); 
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Slide Enter!"));
-		}
-	}
-
-	// Slide exit
-	else
-	{
-		InputSlideExit(); GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Slide Exit!"));
-	}
-}
-
-///////////////////////////////////////////////
-
-/*
-*
-*/
-void AArenaCharacter::Slide(bool WasDashing)
+void AArenaCharacter::Slide(bool WasDashing /*= false*/)
 {
 	// Can only slide when we're using forward/backward input
 	APlayerController* playerController = Cast<APlayerController>(this->GetController());
@@ -1580,32 +1479,38 @@ void AArenaCharacter::Slide(bool WasDashing)
 
 		// Reset gravity
 		if (HasAuthority())
-		{ Multicast_Reliable_SetGravityScale(_fDefaultGravityScale); } 
+			Multicast_Reliable_SetGravityScale(_fDefaultGravityScale);
 		else
-		{ Server_Reliable_SetGravityScale(_fDefaultGravityScale); }
+			Server_Reliable_SetGravityScale(_fDefaultGravityScale);
 
 		// Stop sprinting (if we were)
-		if (_bIsSprinting) { StopSprinting(); }
+		if (_bIsSprinting)
+			StopSprinting();
 
 		// Can shoot weapons again
 		_bCanFirePrimary = true;
-		if (_SecondaryWeapon != NULL) { _bCanFireSecondary = true; }
+		if (_SecondaryWeapon != NULL)
+			_bCanFireSecondary = true;
 
 		// If we're not currently sliding
 		if (!_bIsSliding)
 		{
 			// Set _bSliding to TRUE
 			bool slide = true;
-			if (GetLocalRole() == ROLE_Authority) { _bIsSliding = slide; } else { Server_Reliable_SetIsSliding(slide); }
+			if (GetLocalRole() == ROLE_Authority)
+				_bIsSliding = slide;
+			else
+				Server_Reliable_SetIsSliding(slide);
 
 			// Initiate sliding
-			if (GetLocalRole() != ROLE_Authority) { Multicast_Reliable_InitiateSlide(WasDashing); } else { Server_Reliable_InitiateSlide(WasDashing); }
+			if (GetLocalRole() != ROLE_Authority)
+				Multicast_Reliable_InitiateSlide(WasDashing);
+			else
+				Server_Reliable_InitiateSlide(WasDashing);
 
 			// Local camera shake
 			if (playerController != NULL && _SlideStartCameraShake != NULL)
-			{
 				_SlideCameraShakeInstance = playerController->PlayerCameraManager->PlayCameraShake(_SlideStartCameraShake, 1.0f, ECameraAnimPlaySpace::CameraLocal, FRotator::ZeroRotator);
-			}
 		}
 
 		// Lerp camera origin transform?
@@ -1613,7 +1518,9 @@ void AArenaCharacter::Slide(bool WasDashing)
 		_bSlideEnter = true;
 		if (_fSlideCameraLerpTime != 0.0f)
 		{
-			if (_fSlideCameraLerpTime >= _fSlideCameraLerpingDuration) { _fSlideCameraLerpTime = 0.0f; } else
+			if (_fSlideCameraLerpTime >= _fSlideCameraLerpingDuration)
+				_fSlideCameraLerpTime = 0.0f;
+			else
 			{
 				// Get current percent of lerp time so that it doesn't jagger at the start of the next lerp sequence
 				float t = _fCrouchCameraLerpTime;
@@ -1623,115 +1530,28 @@ void AArenaCharacter::Slide(bool WasDashing)
 		if (_PrimaryWeapon != NULL)
 		{
 			if (_PrimaryWeapon->GetCurrentFireMode()->IsAimDownSightEnabled())
-			{ _bLerpSlideCamera = !IsAiming(); } else
-			{ _bLerpSlideCamera = true; }
-		} else { _bLerpSlideCamera = true; }
+				_bLerpSlideCamera = !IsAiming();
+			else
+				_bLerpSlideCamera = true;
+		} else
+			_bLerpSlideCamera = true;
 		_bLerpCrouchCapsule = _bLerpSlideCamera;
 	}
 
 	// Allow slide jumping whilst we are sliding
-	if (_bSlideJumpEnabled) { _bCanSlideJump = true; }
+	if (_bSlideJumpEnabled)
+		_bCanSlideJump = true;
 	_bCanJump = true;
 
 	// Disable vaulting
 	_bCanVault = false;
 }
 
-///////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/*
-*
-*/
-bool AArenaCharacter::Server_Reliable_SetIsSliding_Validate(bool Sliding)
-{ return true; }
+// Movement | Slide Jump
 
-void AArenaCharacter::Server_Reliable_SetIsSliding_Implementation(bool Sliding)
-{
-	_bIsSliding = Sliding;
-}
-
-///////////////////////////////////////////////
-
-/*
-*
-*/
-bool AArenaCharacter::Server_Reliable_InitiateSlide_Validate(bool WasDashing)
-{ return true; }
-
-void AArenaCharacter::Server_Reliable_InitiateSlide_Implementation(bool WasDashing)
-{
-	Multicast_Reliable_InitiateSlide(WasDashing);
-}
-
-/*
-*
-*/
-bool AArenaCharacter::Multicast_Reliable_InitiateSlide_Validate(bool WasDashing)
-{ return true; }
-
-void AArenaCharacter::Multicast_Reliable_InitiateSlide_Implementation(bool WasDashing)
-{
-	// Get movement component
-	UCharacterMovementComponent* movement = GetCharacterMovement();
-	if (movement == NULL) { return; }
-
-	// Only slide launch if we're touching the ground (so airborne slides will wait till you hit the ground before launching you)
-	if (movement->IsMovingOnGround())
-	{
-		// Set slide values
-		movement->GroundFriction = 0.0f;
-		movement->BrakingFrictionFactor = _fSlideBreakingFrictionFactor;
-		movement->BrakingDecelerationWalking = _fSlideBrakingDeceleration;
-
-		// Launch the character
-		FVector forwardForce = FVector::ZeroVector;
-		if (!WasDashing && _bOverrideSlideVelocityFromDash)
-		{ forwardForce = GetActorForwardVector() * _fSlideForce; }
-		else
-		{ 
-			float f = _DashExitVelocityEnd.Size() / _fSlideForce;
-			float h = _fSlideForce * (f / 2);
-			forwardForce = GetActorForwardVector() * (_fSlideForwardVelocityThreshold + h);
-			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Magenta, FString::SanitizeFloat(_fSlideForwardVelocityThreshold + h));
-		}
-		FVector downForce = GetActorUpVector() * (_fSlideForce * -1.0f);
-		FVector launchForce = forwardForce + downForce;
-		this->LaunchCharacter(launchForce, /*_fSlideLaunchXYOverride &&*/ WasDashing, _fSlideLaunchZOverride);
-	}
-}
-
-///////////////////////////////////////////////
-
-/*
-*
-*/
-bool AArenaCharacter::Server_Reliable_StopSlide_Validate()
-{ return true; }
-
-void AArenaCharacter::Server_Reliable_StopSlide_Implementation()
-{
-	Multicast_Reliable_StopSlide();
-}
-
-/*
-*
-*/
-bool AArenaCharacter::Multicast_Reliable_StopSlide_Validate()
-{ return true; }
-
-void AArenaCharacter::Multicast_Reliable_StopSlide_Implementation()
-{
-	// Get movement component
-	UCharacterMovementComponent* movement = GetCharacterMovement();
-	if (movement == NULL) { return; }
-
-	// Set slide value back to default
-	movement->GroundFriction = _fDefaultGroundFriction;
-	movement->BrakingFrictionFactor = _fDefaultBrakingFrictionFactor;
-	movement->BrakingDecelerationWalking = _fDefaultBrakingDecelerationWalking;
-}
-
-// Movement | Slide Jump ************************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -1756,7 +1576,8 @@ void AArenaCharacter::InputSlideJump()
 		}
 
 		// Valid stamina channel found
-		if (stamina != NULL) { canSlideJump = stamina->IsFullyRecharged(); }
+		if (stamina != NULL) 
+			canSlideJump = stamina->IsFullyRecharged();
 		else
 		{
 			// Didn't find a valid stamina channel & we require one
@@ -1782,10 +1603,13 @@ void AArenaCharacter::InputSlideJump()
 			FVector force = FVector(_fSlideJumpLaunchXForce, 0.0f, _fSlideJumpLaunchZForce);
 			if (GetLocalRole() == ROLE_Authority)
 			{
+				// server
 				LaunchCharacter(force, _fSlideJumpLaunchXYOverride, true);
 				_bIsSlideJumping = true;
-			} else
+			} 
+			else
 			{
+				// client
 				Server_Reliable_LaunchCharacter(force, _fSlideJumpLaunchXYOverride, _fSlideJumpLaunchZOverride);
 				Server_Reliable_SetSlideJumping(true);
 			}
@@ -1807,8 +1631,6 @@ void AArenaCharacter::InputSlideJump()
 	}
 }
 
-///////////////////////////////////////////////
-
 /**
 * @summary:	Sets the whether the character is slide jumping or not.
 *
@@ -1818,15 +1640,17 @@ void AArenaCharacter::InputSlideJump()
 *
 * @return:	void
 */
-bool AArenaCharacter::Server_Reliable_SetSlideJumping_Validate(bool SlideJumping)
-{ return true; }
-
+bool AArenaCharacter::Server_Reliable_SetSlideJumping_Validate(bool SlideJumping) { return true; }
 void AArenaCharacter::Server_Reliable_SetSlideJumping_Implementation(bool SlideJumping)
 {
 	_bIsSlideJumping = SlideJumping;
 }
 
-// Movement | Wall Running **********************************************************************************************************************
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Movement | Wall Running
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
 *
@@ -1852,7 +1676,8 @@ void AArenaCharacter::OnRep_IsWallRunning()
 		}
 
 		// Valid stamina channel found
-		if (stamina != NULL) { canWallRunJump = stamina->IsFullyRecharged(); } 
+		if (stamina != NULL) 
+			canWallRunJump = stamina->IsFullyRecharged(); 
 		else
 		{
 			// Didn't find a valid stamina channel & we require one
@@ -1864,7 +1689,8 @@ void AArenaCharacter::OnRep_IsWallRunning()
 			}
 		}
 
-		if (canWallRunJump) { WallRunJump(); }
+		if (canWallRunJump) 
+			WallRunJump();
 	}
 }
 
@@ -1874,7 +1700,8 @@ void AArenaCharacter::OnRep_IsWallRunning()
 void AArenaCharacter::SetHorizontalVelocity(float HorizontalVelocityX, float HorizontalVelocityY)
 {
 	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
-	if (movementComponent == NULL) { return; }
+	if (movementComponent == NULL) 
+		return;
 
 	// Convert FVector2D velocity to FVector velocity
 	FVector vec = FVector();
@@ -1888,7 +1715,6 @@ void AArenaCharacter::SetHorizontalVelocity(float HorizontalVelocityX, float Hor
 *
 */
 bool AArenaCharacter::Server_Reliable_SetHorizontalVelocity_Validate(float HorizontalVelocityX, float HorizontalVelocityY) { return true; }
-
 void AArenaCharacter::Server_Reliable_SetHorizontalVelocity_Implementation(float HorizontalVelocityX, float HorizontalVelocityY)
 {
 	SetHorizontalVelocity(HorizontalVelocityX, HorizontalVelocityY);
@@ -1900,7 +1726,8 @@ void AArenaCharacter::Server_Reliable_SetHorizontalVelocity_Implementation(float
 FVector2D AArenaCharacter::GetHorizontalVelocity() const
 {
 	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
-	if (movementComponent == NULL) { return FVector2D(); }
+	if (movementComponent == NULL) 
+		return FVector2D();
 
 	// Convert FVector velocity to FVector2D velocity
 	FVector2D vec = FVector2D();
@@ -1916,7 +1743,8 @@ FVector2D AArenaCharacter::GetHorizontalVelocity() const
 void AArenaCharacter::ClampHorizontalVelocity()
 {
 	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
-	if (movementComponent == NULL) { return; }
+	if (movementComponent == NULL)
+		return;
 
 	if (movementComponent->IsFalling())
 	{		
@@ -1930,9 +1758,9 @@ void AArenaCharacter::ClampHorizontalVelocity()
 			
 			// Apply new velocity
 			if (GetLocalRole() == ROLE_Authority)
-			{ SetHorizontalVelocity(newVelocity.X, newVelocity.Y); }
+				SetHorizontalVelocity(newVelocity.X, newVelocity.Y);
 			else
-			{ Server_Reliable_SetHorizontalVelocity(newVelocity.X, newVelocity.Y); }
+				Server_Reliable_SetHorizontalVelocity(newVelocity.X, newVelocity.Y);
 		}
 	}
 }
@@ -1979,11 +1807,13 @@ bool AArenaCharacter::ValidWallRunInput() const
 	// Only need valid forward input if this is a keyboard/mouse combo
 	if (controllerType == E_ControllerType::eCT_Keyboard)
 	{
-		if (_fForwardInputScale == 0.0f) { return false; }
+		if (_fForwardInputScale == 0.0f) 
+			return false;
 	}
 	
 	// Cant wall run anymore if we're trying to jump off the wall
-	if (_bIsTryingToWallJump) { return false; }
+	if (_bIsTryingToWallJump) 
+		return false;
 
 	// Checking for sideways input
 	bool validInput = false;
@@ -2034,7 +1864,8 @@ bool AArenaCharacter::CheckIfSurfaceCanBeWallRan(FVector SurfaceNormal) const
 void AArenaCharacter::OnCapsuleComponentHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
 	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
-	if (movementComponent == NULL) { return; }
+	if (movementComponent == NULL)
+		return;
 	
 	// Not currently wall-running
 	if (!_bIsWallRunning && Hit.IsValidBlockingHit())
@@ -2046,11 +1877,14 @@ void AArenaCharacter::OnCapsuleComponentHit(UPrimitiveComponent* HitComp, AActor
 			_WallRunDirection = DetermineRunDirectionAndSide(Hit.ImpactNormal, eDir);
 
 			// Set wall run side/direction
-			if (GetLocalRole() == ROLE_Authority) { _eWallRunSide = eDir; } 
-			else { Server_Reliable_SetWallRunDirection(eDir); }
+			if (GetLocalRole() == ROLE_Authority)
+				_eWallRunSide = eDir;
+			else
+				Server_Reliable_SetWallRunDirection(eDir);
 			
 			// Start wall running (if there's valid input)
-			if (ValidWallRunInput()) { StartWallRun(); }
+			if (ValidWallRunInput()) 
+				StartWallRun();
 		}
 	}
 }
@@ -2061,7 +1895,8 @@ void AArenaCharacter::OnCapsuleComponentHit(UPrimitiveComponent* HitComp, AActor
 void AArenaCharacter::StartWallRun()
 {
 	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
-	if (movementComponent == NULL) { return; }
+	if (movementComponent == NULL) 
+		return;
 
 	movementComponent->AirControl = 1.0f;
 	movementComponent->GravityScale = 0.0f;
@@ -2079,7 +1914,8 @@ void AArenaCharacter::StartWallRun()
 	}
 	
 	// Reset double jump
-	if (_bDoubleJumpEnabled) { _bCanDoubleJump = true; }
+	if (_bDoubleJumpEnabled) 
+		_bCanDoubleJump = true;
 
 	_bLerpWallRunCamera = true;
 }
@@ -2090,14 +1926,20 @@ void AArenaCharacter::StartWallRun()
 void AArenaCharacter::EndWallRun()
 {
 	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
-	if (movementComponent == NULL) { return; }
+	if (movementComponent == NULL) 
+		return;
 
 	movementComponent->AirControl = _fDefaultAirControl;
 	movementComponent->GravityScale = _fDefaultGravityScale;
 	movementComponent->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 0.0f));
 
-	if (GetLocalRole() == ROLE_Authority) { _bIsWallRunning = false; OnRep_IsWallRunning(); }
-	else { Server_Reliable_SetIsWallRunning(false); }
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		_bIsWallRunning = false;
+		OnRep_IsWallRunning();
+	}
+	else 
+		Server_Reliable_SetIsWallRunning(false);
 
 	// Get relevant stamina via matching channel
 	UStamina* stamina = NULL;
@@ -2110,12 +1952,11 @@ void AArenaCharacter::EndWallRun()
 		}
 	}
 
-	if (stamina == NULL) { return; }
-	else
-	{
-		// Found a matching stamina channel
-		stamina->StopDrainingStamina();
-	}
+	// Stop taking from the stamina
+	if (stamina == NULL) 
+		return;
+	else	
+		stamina->StopDrainingStamina();	
 
 	_bLerpWallRunCamera = false;
 }
@@ -2123,9 +1964,7 @@ void AArenaCharacter::EndWallRun()
 /*
 *
 */
-bool AArenaCharacter::Server_Reliable_SetWallRunDirection_Validate(E_WallRunDirection WallRunDirection)
-{ return true; }
-
+bool AArenaCharacter::Server_Reliable_SetWallRunDirection_Validate(E_WallRunDirection WallRunDirection) { return true; }
 void AArenaCharacter::Server_Reliable_SetWallRunDirection_Implementation(E_WallRunDirection WallRunDirection)
 {
 	_eWallRunSide = WallRunDirection;
@@ -2135,11 +1974,11 @@ void AArenaCharacter::Server_Reliable_SetWallRunDirection_Implementation(E_WallR
 *
 */
 bool AArenaCharacter::Server_Reliable_SetIsWallRunning_Validate(bool IsWallRunning) { return true; }
-
 void AArenaCharacter::Server_Reliable_SetIsWallRunning_Implementation(bool IsWallRunning)
 {
 	_bIsWallRunning = IsWallRunning;
-	if (GetLocalRole() == ROLE_Authority) { OnRep_IsWallRunning(); }
+	if (GetLocalRole() == ROLE_Authority) 
+		OnRep_IsWallRunning();
 }
 
 // Movement | Wall Run Jump *********************************************************************************************************************
@@ -2151,15 +1990,16 @@ FVector AArenaCharacter::GetWallRunLaunchVelocity()
 {
 	FVector launchDirection = FVector::ZeroVector;
 	UCharacterMovementComponent* movementComponent = GetCharacterMovement();
-	if (movementComponent == NULL) { return FVector::ZeroVector; }
+	if (movementComponent == NULL) 
+		return FVector::ZeroVector;
 
 	FVector v = FVector::ZeroVector;
 	if (_eWallRunSide == E_WallRunDirection::eWRD_Left)
-	{ v = FVector(_fWallRunJumpLaunchXForce, (-1 * _fWallRunJumpLaunchYForce), _fWallRunJumpLaunchZForce); } 
+		v = FVector(_fWallRunJumpLaunchXForce, (-1 * _fWallRunJumpLaunchYForce), _fWallRunJumpLaunchZForce); 
 	else if (_eWallRunSide == E_WallRunDirection::eWRD_Right)
-	{ v = FVector(_fWallRunJumpLaunchXForce, _fWallRunJumpLaunchYForce, _fWallRunJumpLaunchZForce); } 
+		v = FVector(_fWallRunJumpLaunchXForce, _fWallRunJumpLaunchYForce, _fWallRunJumpLaunchZForce); 
 	else 
-	{ v = FVector((-1 * _fWallRunJumpLaunchXForce), 0.0f, _fWallRunJumpLaunchZForce); }
+		v = FVector((-1 * _fWallRunJumpLaunchXForce), 0.0f, _fWallRunJumpLaunchZForce);
 
 	float yaw = GetCharacterMovement()->GetPawnOwner()->GetActorRotation().Yaw;
 	FQuat quat = FQuat::MakeFromEuler(FVector(0.0f, 0.0f, yaw));
@@ -2169,9 +2009,12 @@ FVector AArenaCharacter::GetWallRunLaunchVelocity()
 	if (_bIsWallRunning)
 	{
 		FVector select = FVector::ZeroVector;
-		if (_eWallRunSide == E_WallRunDirection::eWRD_Left) { select = FVector(0.0f, 0.0f, -1.0f); } 
-		else if (_eWallRunSide == E_WallRunDirection::eWRD_Right) { select = FVector(0.0f, 0.0f, 1.0f); }
-		else { select = FVector(0.0f, 0.0f, 0.0f); }
+		if (_eWallRunSide == E_WallRunDirection::eWRD_Left) 
+			select = FVector(0.0f, 0.0f, -1.0f); 
+		else if (_eWallRunSide == E_WallRunDirection::eWRD_Right) 
+			select = FVector(0.0f, 0.0f, 1.0f);
+		else 
+			select = FVector(0.0f, 0.0f, 0.0f);
 
 		launchDirection = UKismetMathLibrary::Cross_VectorVector(_WallRunDirection, select);
 	}
@@ -2186,15 +2029,16 @@ void AArenaCharacter::WallRunJump()
 {
 	// Set _bIsJumping = TRUE
 	if (GetLocalRole() == ROLE_Authority)
-	{ _bIsJumping = true; } else
-	{ Server_Reliable_SetJumping(true); }
+		_bIsJumping = true; 
+	else
+		Server_Reliable_SetJumping(true);
 
 	// Action jump
 	FVector launchVelocity = GetWallRunLaunchVelocity();
 	if (GetLocalRole() == ROLE_Authority)
-	{ Multicast_Reliable_LaunchCharacter(launchVelocity, _bWallRunJumpXYOverride, true); }
+		Multicast_Reliable_LaunchCharacter(launchVelocity, _bWallRunJumpXYOverride, true);
 	else
-	{ Server_Reliable_LaunchCharacter(launchVelocity, _bWallRunJumpXYOverride, true); }
+		Server_Reliable_LaunchCharacter(launchVelocity, _bWallRunJumpXYOverride, true);
 
 	///GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, launchVelocity.ToString());
 
