@@ -7,7 +7,6 @@
 #include "Engine/Texture2D.h"
 #include "GameFramework/PlayerInput.h"
 #include "InputCoreTypes.h"
-#include "Interactable.h"
 
 #include "Structures.generated.h"
 
@@ -575,7 +574,7 @@ public:
 		float ItemAwardModifer;
 
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
-		TSubclassOf<AInteractable> InteractableClass;
+		TSubclassOf<AActor> ActorClass;
 };
 
 /*
