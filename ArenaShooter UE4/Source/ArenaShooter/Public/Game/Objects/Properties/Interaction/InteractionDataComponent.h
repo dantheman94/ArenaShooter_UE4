@@ -22,7 +22,13 @@ protected:
 		The name of the object that appears in the HUD widgets when this object is being "focused"
 	*/
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-		FName _PickupName = TEXT("< MISSING NAME >");
+		FName _InteractText = TEXT("< INTERACT WITH >");
+
+	/*
+		The name of the object that appears in the HUD widgets when this object is being "focused"
+	*/
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+		FName _InteractName = TEXT("< MISSING NAME >");
 
 	/*
 		Are the interaction triggers associated with the actor that this component is attached to enabled for interaction?
@@ -103,7 +109,8 @@ public:
 	UFUNCTION(BlueprintCallable) void SetSimulatePhysicsOnStart(bool Simulate) { _bSimulatePhysicsOnStart = Simulate; }
 
 	// Getters
-	UFUNCTION(BlueprintPure) FName GetInteractablePickupName() const { return _PickupName; }
+	UFUNCTION(BlueprintPure) FName GetInteractText() const { return _InteractText; }
+	UFUNCTION(BlueprintPure) FName GetInteractionName() const { return _InteractName; }
 	UFUNCTION(BlueprintPure) bool IsInteractable() const { return _bInteractable; }
 	UFUNCTION(BlueprintPure) TSubclassOf<AActor> GetOnUsedActor() const { return _OnUsedActorClass; }
 	UFUNCTION(BlueprintPure) bool IsSimulatingPhysicsOnStart() const { return _bSimulatePhysicsOnStart; }
@@ -111,8 +118,4 @@ public:
 	// Blueprint override events
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 		FOnInteract OnInteract;
-
-	///UFUNCTION(BlueprintCallable, BlueprintImplementableEvent) void OnBeginFocus();
-	///UFUNCTION(BlueprintCallable, BlueprintImplementableEvent) void OnEndFocus();
-	///UFUNCTION(BlueprintCallable, BlueprintImplementableEvent) void OnInteract();
 };
