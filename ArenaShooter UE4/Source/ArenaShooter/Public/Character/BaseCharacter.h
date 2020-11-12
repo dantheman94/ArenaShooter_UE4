@@ -1421,66 +1421,6 @@ public:
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	// Current Frame 
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	/**
-	* @summary:	Called every frame.
-	*
-	* @param:	float DeltaTime
-	*
-	* @return:	virtual void
-	*/
-	virtual void Tick(float DeltaTime) override;
-
-	/*
-	*
-	*/
-	virtual void OnGroundChecks(float DeltaTime);
-
-	/*
-	*
-	*/
-	void TickAiming(float DeltaTime);
-
-	/*
-	*
-	*/
-	void TickFiringPrimary(float DeltaTime);
-
-	/*
-	*
-	*/
-	void TickFiringSecondary(float DeltaTime);
-
-	/*
-	*
-	*/
-	void TickReloadingPrimary(float DeltaTime);
-
-	/*
-	*
-	*/
-	void TickReloadingSecondary(float DeltaTime);
-
-	/*
-	*
-	*/
-	void TickSprint(float DeltaTime);
-
-	/*
-	*
-	*/
-	void TickCrouch(float DeltaTime);
-
-	/*
-	*
-	*/
-	void TickShields(float DeltaTime);
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 	// Camera 
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1735,13 +1675,13 @@ public:
 	*
 	*/
 	UFUNCTION(Category = "Interaction")
-		void InteractPrimary();
+		void InputInteractPrimary();
 
 	/*
 	*
 	*/
 	UFUNCTION(Category = "Interaction")
-		void InteractSecondary();
+		void InputInteractSecondary();
 
 	/*
 
@@ -2704,5 +2644,46 @@ public:
 	}
 
 #pragma endregion Public Functions
+
+#pragma region Protected Functions
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// Current Frame 
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	* @summary:	Called every frame.
+	*
+	* @param:	float DeltaTime
+	*
+	* @return:	virtual void
+	*/
+	virtual void Tick(float DeltaTime) override;
+
+	/*
+	*
+	*/
+	virtual void OnGroundChecks(float DeltaTime);
+
+	// Combat
+	void TickAiming(float DeltaTime);
+	void TickFiringPrimary(float DeltaTime);
+	void TickFiringSecondary(float DeltaTime);
+	void TickReloadingPrimary(float DeltaTime);
+	void TickReloadingSecondary(float DeltaTime);
+
+	// Movement
+	void TickSprint(float DeltaTime);
+	void TickCrouch(float DeltaTime);
+
+	// Health
+	void TickShields(float DeltaTime);
+
+	// Properties
+	void TickInteraction(float DeltaTime);
+
+#pragma endregion Protected Functions
 
 };

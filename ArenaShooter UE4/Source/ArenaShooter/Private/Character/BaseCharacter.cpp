@@ -367,11 +367,11 @@ void ABaseCharacter::Tick(float DeltaTime)
 
 	// Health
 	TickShields(DeltaTime);
+
+	// Properties
+	TickInteraction(DeltaTime);
 }
 
-/*
-*
-*/
 void ABaseCharacter::OnGroundChecks(float DeltaTime)
 {
 	// Character has landed on the ground
@@ -396,9 +396,40 @@ void ABaseCharacter::OnGroundChecks(float DeltaTime)
 	else { _fFallingVelocity = GetVelocity().Z; }
 }
 
-/*
-*
-*/
+// Combat
+void ABaseCharacter::TickAiming(float DeltaTime)
+{
+	if (_bIsAimLerping && _PrimaryWeapon != NULL)
+	{
+		// Still lerping
+		if (_fAimTime < _PrimaryWeapon->GetCurrentFireMode()->GetWeaponAimTime())
+		{
+			// Add to time
+			_fAimTime += GetWorld()->GetDeltaSeconds();
+			float alpha = FMath::Clamp(_fAimTime / _PrimaryWeapon->GetCurrentFireMode()->GetWeaponAimTime(), 0.0f, 1.0f);
+
+			// Update FOV to target
+			_FirstPerson_Camera->SetFieldOfView(FMath::Lerp(_fFovStart, _fFovTarget, alpha));
+
+			// Update origin transform
+			FTransform lerpTransform = UKismetMathLibrary::TLerp(_StartingOriginTransform, _TargetOriginTransform, alpha, ELerpInterpolationMode::EulerInterp);
+			_FirstPerson_Arms->SetRelativeTransform(lerpTransform);
+		}
+
+		// Lerp complete
+		else
+		{
+			if (_eAimDirection == E_AimDirection::ePT_ZoomIn)
+			{ _iCurrentFovStage += 1; } else if (_eAimDirection == E_AimDirection::ePT_ZoomOut)
+			{ _iCurrentFovStage = 0; }
+
+			// Reset
+			_bIsAimLerping = false;
+			_fAimTime = 0.0f;
+		}
+	}
+}
+
 void ABaseCharacter::TickFiringPrimary(float DeltaTime)
 {
 	// Trying to fire primary
@@ -417,9 +448,6 @@ void ABaseCharacter::TickFiringPrimary(float DeltaTime)
 	}
 }
 
-/*
-*
-*/
 void ABaseCharacter::TickFiringSecondary(float DeltaTime)
 {
 	// Trying to fire secondary
@@ -438,9 +466,6 @@ void ABaseCharacter::TickFiringSecondary(float DeltaTime)
 	}
 }
 
-/*
-*
-*/
 void ABaseCharacter::TickReloadingPrimary(float DeltaTime)
 {
 	if (!_bIsReloadingPrimaryWeapon) { return; }
@@ -475,8 +500,10 @@ void ABaseCharacter::TickReloadingPrimary(float DeltaTime)
 		// Stop montage
 		USkeletalMeshComponent* mesh = !_bIsDuelWielding ? _FirstPerson_Arms : _FirstPerson_ArmsDuelRight;
 		UAnimInstance* animInstance = mesh->GetAnimInstance();
-		if (animInstance == NULL) { return; }
+		if (animInstance == NULL) 
+			return;
 		animInstance->StopAllMontages(0.0f);
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Primary Reload Cancelled!"));
 	}
 
 	// On reload complete
@@ -488,9 +515,6 @@ void ABaseCharacter::TickReloadingPrimary(float DeltaTime)
 	}
 }
 
-/*
-*
-*/
 void ABaseCharacter::TickReloadingSecondary(float DeltaTime)
 {
 	if (!_bIsReloadingSecondaryWeapon) { return; }
@@ -536,46 +560,7 @@ void ABaseCharacter::TickReloadingSecondary(float DeltaTime)
 	}
 }
 
-/*
-*
-*/
-void ABaseCharacter::TickAiming(float DeltaTime)
-{
-	if (_bIsAimLerping && _PrimaryWeapon != NULL)
-	{
-		// Still lerping
-		if (_fAimTime < _PrimaryWeapon->GetCurrentFireMode()->GetWeaponAimTime())
-		{
-			// Add to time
-			_fAimTime += GetWorld()->GetDeltaSeconds();
-			float alpha = FMath::Clamp(_fAimTime / _PrimaryWeapon->GetCurrentFireMode()->GetWeaponAimTime(), 0.0f, 1.0f);
-			
-			// Update FOV to target
-			_FirstPerson_Camera->SetFieldOfView(FMath::Lerp(_fFovStart, _fFovTarget, alpha));
-
-			// Update origin transform
-			FTransform lerpTransform = UKismetMathLibrary::TLerp(_StartingOriginTransform, _TargetOriginTransform, alpha, ELerpInterpolationMode::EulerInterp);
-			_FirstPerson_Arms->SetRelativeTransform(lerpTransform);
-		}
-
-		// Lerp complete
-		else
-		{
-			if (_eAimDirection == E_AimDirection::ePT_ZoomIn)
-			{ _iCurrentFovStage += 1; } 
-			else if (_eAimDirection == E_AimDirection::ePT_ZoomOut)
-			{ _iCurrentFovStage = 0; }
-
-			// Reset
-			_bIsAimLerping = false;
-			_fAimTime = 0.0f;
-		}
-	}
-}
-
-/*
-*
-*/
+// Movement
 void ABaseCharacter::TickSprint(float DeltaTime)
 {
 	if (!_bTryingToSprint)
@@ -650,9 +635,6 @@ void ABaseCharacter::TickSprint(float DeltaTime)
 		StopSprinting();
 }
 
-/*
-*
-*/
 void ABaseCharacter::TickCrouch(float DeltaTime)
 {
 	// Crouch camera lerping
@@ -712,9 +694,7 @@ void ABaseCharacter::TickCrouch(float DeltaTime)
 	}
 }
 
-/*
-*
-*/
+// Health
 void ABaseCharacter::TickShields(float DeltaTime)
 {
 	if (_bRechargeShields && _fShield < _MAX_SHIELD && GetLocalRole() == ROLE_Authority)
@@ -728,6 +708,17 @@ void ABaseCharacter::TickShields(float DeltaTime)
 			_bRechargeShields = false;
 		}
 	}
+}
+
+// Properties
+void ABaseCharacter::TickInteraction(float DeltaTime)
+{
+	// Don't have to cancel the interaction in tick because the button release event has been binded to call that function already for us
+	if (_bIsTryingToInteractPrimary)
+		InputInteractPrimary();
+	
+	if (_bIsTryingToInteractSecondary)
+		InputInteractSecondary();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1034,30 +1025,40 @@ bool ABaseCharacter::RemoveFromInteractablesArray(UInteractionDataComponent* Int
 /*
 *
 */
-void ABaseCharacter::InteractPrimary()
+void ABaseCharacter::InputInteractPrimary()
 {
 	// Sanity check
-	if (_FocusInteractable == NULL) { return; }
+	if (_FocusInteractable == NULL)
+		return;
 
-	// Start interaction timer
-	FTimerDelegate interactionDelegate;
-	interactionDelegate.BindUFunction(this, FName("Interact"), false);
-	GetWorld()->GetTimerManager().ClearTimer(_fInteractionHandle);
-	GetWorld()->GetTimerManager().SetTimer(_fInteractionHandle, interactionDelegate, 1.0f, false, _fInteractionThresholdTime);
+	// If the timer isn't already playing
+	if (!GetWorld()->GetTimerManager().IsTimerActive(_fInteractionHandle))
+	{
+		// Start interaction timer
+		FTimerDelegate interactionDelegate;
+		interactionDelegate.BindUFunction(this, FName("Interact"), false);
+		GetWorld()->GetTimerManager().ClearTimer(_fInteractionHandle);
+		GetWorld()->GetTimerManager().SetTimer(_fInteractionHandle, interactionDelegate, 1.0f, false, _fInteractionThresholdTime);
+	}
 }
 
 /*
 *
 */
-void ABaseCharacter::InteractSecondary()
+void ABaseCharacter::InputInteractSecondary()
 {
 	// Sanity check
-	if (_FocusInteractable == NULL) { return; }
+	if (_FocusInteractable == NULL) 
+		return;
 
-	// Start interaction timer
-	FTimerDelegate interactionDelegate;
-	interactionDelegate.BindUFunction(this, FName("Interact"), true);
-	GetWorld()->GetTimerManager().SetTimer(_fInteractionHandle, interactionDelegate, 1.0f, false, _fInteractionThresholdTime);
+	// If the timer isn't already playing
+	if (!GetWorld()->GetTimerManager().IsTimerActive(_fInteractionHandle))
+	{
+		// Start interaction timer
+		FTimerDelegate interactionDelegate;
+		interactionDelegate.BindUFunction(this, FName("Interact"), true);
+		GetWorld()->GetTimerManager().SetTimer(_fInteractionHandle, interactionDelegate, 1.0f, false, _fInteractionThresholdTime);
+	}
 }
 
 /*
@@ -1100,7 +1101,7 @@ void ABaseCharacter::Interact(bool IsSecondary)
 		}
 	}
 
-	// On interact event plays on the interactable object (basically just destroy/re-pool)
+	// Call interact event on the object
 	_FocusInteractable->Server_Reliable_OnInteract(this);
 }
 
