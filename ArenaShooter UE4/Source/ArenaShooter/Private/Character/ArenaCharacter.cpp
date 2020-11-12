@@ -116,7 +116,8 @@ void AArenaCharacter::Tick(float DeltaTime)
 
 	// If we're currently in the air and not doing any checks for landing on the ground, then start doing those checks
 	if (GetCharacterMovement()->IsFalling() && !_bIsPerformingGroundChecks) { _bIsPerformingGroundChecks; }
-	if (_bIsPerformingGroundChecks) { OnGroundChecks(DeltaTime); }
+	if (_bIsPerformingGroundChecks) 
+		OnGroundChecks(DeltaTime);
 
 	// Slide camera(origin) lerping
 	if (_bLerpSlideCamera)
@@ -174,7 +175,8 @@ void AArenaCharacter::Tick(float DeltaTime)
 	}
 
 	ClampHorizontalVelocity();
-	if (_bIsWallRunning) { Tick_WallRunning(DeltaTime); }
+	if (_bIsWallRunning) 
+		Tick_WallRunning(DeltaTime);
 
 	// Wall-run camera(origin) lerping
 	if (_bLerpWallRunCamera)
@@ -495,7 +497,8 @@ void AArenaCharacter::Multicast_Reliable_SetMovementMode_Implementation(EMovemen
 */
 void AArenaCharacter::GrappleHookEnter()
 {
-	if (!_bGrappleHookEnabled) { return; }
+	if (!_bGrappleHookEnabled) 
+		return;
 
 	_fOnGrappleHook.Broadcast();
 }
@@ -505,7 +508,8 @@ void AArenaCharacter::GrappleHookEnter()
 */
 void AArenaCharacter::GrappleHookExit()
 {
-	if (!_bGrappleHookEnabled) { return; }
+	if (!_bGrappleHookEnabled) 
+		return;
 
 	_fOnGrappleHookRelease.Broadcast();
 }
@@ -530,8 +534,11 @@ void AArenaCharacter::InputDash()
 		UStamina* stamina = NULL;
 		for (int i = 0; i < _uStaminaComponents.Num(); i++)
 		{
-			if (_uStaminaComponents[i]->GetStaminaChannel() == _iDashStaminaChannel)			
-				stamina = _uStaminaComponents[i]; break;			
+			if (_uStaminaComponents[i]->GetStaminaChannel() == _iDashStaminaChannel)
+			{
+				stamina = _uStaminaComponents[i];
+				break;
+			}
 		}
 
 		// Valid stamina channel found

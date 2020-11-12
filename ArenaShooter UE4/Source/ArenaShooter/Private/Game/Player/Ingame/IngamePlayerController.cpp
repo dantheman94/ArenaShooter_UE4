@@ -80,7 +80,7 @@ void AIngamePlayerController::InteractPrimary()
 	if (pawn)
 	{
 		pawn->SetIsTryingToInteractPrimary(true);
-		pawn->InteractPrimary();
+		pawn->InputInteractPrimary();
 	}
 }
 
@@ -90,7 +90,7 @@ void AIngamePlayerController::InteractSecondary()
 	if (pawn)
 	{
 		pawn->SetIsTryingToInteractSecondary(true);
-		pawn->InteractSecondary();
+		pawn->InputInteractSecondary();
 	}
 }
 
