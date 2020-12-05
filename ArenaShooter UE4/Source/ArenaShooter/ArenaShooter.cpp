@@ -4,3 +4,7 @@
 #include "Modules/ModuleManager.h"
 
 IMPLEMENT_PRIMARY_GAME_MODULE( FDefaultGameModuleImpl, ArenaShooter, "ArenaShooter" );
+
+#if GAME_LOG_DEFINED
+DEFINE_LOG_CATEGORY(GameLog);
+#endif
