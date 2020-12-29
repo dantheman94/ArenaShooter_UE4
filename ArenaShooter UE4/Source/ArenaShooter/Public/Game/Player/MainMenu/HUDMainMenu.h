@@ -3,9 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Game/Player/BaseHUD.h"
+#include "BaseHUD.h"
 
 #include "HUDMainMenu.generated.h"
+
+class UPlaylistPreview;
 
 /**
  * 
@@ -16,10 +18,6 @@ class ARENASHOOTER_API AHUDMainMenu : public ABaseHUD
 	GENERATED_BODY()
 
 protected:
-
-	// ****************************************************************************************************************************************
-	// ************************************ VARIABLES *****************************************************************************************
-	// ****************************************************************************************************************************************
 
 	// Main Menu ******************************************************************************************************************************
 
@@ -257,6 +255,18 @@ protected:
 	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Settings")
 		UUserWidget* _UI_SettingsAudio_Instance = NULL;
 
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Widgets | Playlist")
+		TSubclassOf<class UButtonPlaylist> _UI_PlaylistButton_Class;
+
+	/*
+	*
+	*/
+	UPROPERTY(BlueprintReadWrite, VisibleInstanceOnly, Category = "Widgets | Playlist")
+		UPlaylistPreview* _UI_PlaylistPreview_Instance = NULL;
+
 public:
 
 	// Main Menu ******************************************************************************************************************************
@@ -267,15 +277,11 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void Transtion();
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintGetter)
 		E_MainMenuPage GetCurrentMainMenuState() { return _CurrentMenuState; }
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -283,15 +289,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_GoBack();
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_Splash();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -299,15 +301,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_MainMenu(int ZOrder);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintCallable)
 		void HideUI_MainMenu();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -315,15 +313,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_Matchmaking(int ZOrder);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-		void ShowUI_Playlist(int ZOrder);
-
-	///////////////////////////////////////////////
+		void ShowUI_Playlist(int ZOrder, bool RankedPlaylist);
 
 	/*
 	*
@@ -331,15 +325,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_ServerBrowser(int ZOrder);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent)
 		void ShowUI_LobbyPrematch(bool Hosting, int ZOrder);
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -347,15 +337,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_HostLobby(int ZOrder);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void HideUI_HostLobby();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -363,15 +349,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_ClientLobby(int ZOrder);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void HideUI_ClientLobby();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -379,15 +361,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_SearchingForGames(int ZOrder);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void HideUI_SearchingForGames();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -395,15 +373,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_PreMatchLobby(int ZOrder);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void HideUI_PreMatchLobby();
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -411,15 +385,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent)
 		void ShowUI_LobbyMainMenu(bool Hosting, int ZOrder);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_LobbyRoster(int ZOrder);
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -427,15 +397,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void HideUI_LobbyRoster(bool bHideListOnly);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, meta = (AutoCreateRefTerm = "TextVarName"))
 		void ShowUI_LoadingServer(const FText& Message, int ZOrder);
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -443,15 +409,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_GameModeList(int ZOrder);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_MapList(int ZOrder);
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -459,15 +421,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_BarracksHome(int ZOrder);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_SettingsHome(int ZOrder);
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -475,15 +433,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_SettingsGamepad(int ZOrder);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_SettingsKeyBindings(int ZOrder);
-
-	///////////////////////////////////////////////
 
 	/*
 	*
@@ -491,20 +445,28 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_SettingsDisplay(int ZOrder);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_SettingsAudio(int ZOrder);
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 		void ShowUI_NewMenuState(E_MainMenuPage NewMenuState, int ZOrder);
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintCallable)
+		void PopulatePlaylistOptions(UDataTable* PlaylistTable, bool RankedPlaylists, UVerticalBox* VerticalBox);
+
+	/*
+	*
+	*/
+	UFUNCTION(BlueprintPure)
+		UPlaylistPreview* GetPlaylistPreviewWidget() { return _UI_PlaylistPreview_Instance; }
 
 };

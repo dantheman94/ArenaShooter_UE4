@@ -3,6 +3,8 @@
 #include "HUDMainMenu.h"
 
 #include "BaseGameInstance.h"
+#include "ButtonPlaylist.h"
+#include "PlaylistPreview.h"
 #include "UserWidget.h"
 
 // Main Menu ******************************************************************************************************************************
@@ -98,8 +100,6 @@ void AHUDMainMenu::Transtion()
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -107,8 +107,6 @@ void AHUDMainMenu::ShowUI_GoBack_Implementation()
 {
 	Transtion();
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -128,8 +126,6 @@ void AHUDMainMenu::ShowUI_Splash_Implementation()
 		}
 	}
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -151,8 +147,6 @@ void AHUDMainMenu::ShowUI_MainMenu_Implementation(int ZOrder)
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -161,8 +155,6 @@ void AHUDMainMenu::HideUI_MainMenu()
 	// Hide main menu UMG if it exists
 	if (_UI_MainMenu_Instance != NULL) { _UI_MainMenu_Instance->RemoveFromParent(); }
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -184,12 +176,10 @@ void AHUDMainMenu::ShowUI_Matchmaking_Implementation(int ZOrder)
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
-void AHUDMainMenu::ShowUI_Playlist_Implementation(int ZOrder)
+void AHUDMainMenu::ShowUI_Playlist_Implementation(int ZOrder, bool RankedPlaylist)
 {
 	_PreviousMenuState = _CurrentMenuState;
 	Transtion();
@@ -205,8 +195,6 @@ void AHUDMainMenu::ShowUI_Playlist_Implementation(int ZOrder)
 		}
 	}
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -228,8 +216,6 @@ void AHUDMainMenu::ShowUI_ServerBrowser_Implementation(int ZOrder)
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -250,8 +236,6 @@ void AHUDMainMenu::ShowUI_HostLobby_Implementation(int ZOrder)
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -270,8 +254,6 @@ void AHUDMainMenu::HideUI_HostLobby_Implementation()
 		}
 	}
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -293,8 +275,6 @@ void AHUDMainMenu::ShowUI_ClientLobby_Implementation(int ZOrder)
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -313,8 +293,6 @@ void AHUDMainMenu::HideUI_ClientLobby_Implementation()
 		}
 	}
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -336,8 +314,6 @@ void AHUDMainMenu::ShowUI_SearchingForGames_Implementation(int ZOrder)
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -346,8 +322,6 @@ void AHUDMainMenu::HideUI_SearchingForGames_Implementation()
 	// Hide main menu UMG if it exists
 	if (_UI_SearchingForMatch_Instance != NULL) { _UI_SearchingForMatch_Instance->RemoveFromParent(); }
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -369,8 +343,6 @@ void AHUDMainMenu::ShowUI_PreMatchLobby_Implementation(int ZOrder)
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -380,15 +352,11 @@ void AHUDMainMenu::HideUI_PreMatchLobby_Implementation()
 	if (_UI_PreMatch_Instance != NULL) { _UI_PreMatch_Instance->RemoveFromParent(); }
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
 void AHUDMainMenu::ShowUI_LobbyRoster_Implementation(int ZOrder)
 {}
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -402,8 +370,6 @@ void AHUDMainMenu::HideUI_LobbyRoster_Implementation(bool bHideListOnly)
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -413,8 +379,6 @@ void AHUDMainMenu::ShowUI_LoadingServer_Implementation(const FText& Message, int
 	_CurrentMenuState = E_MainMenuPage::eGT_Loading;
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -423,8 +387,6 @@ void AHUDMainMenu::ShowUI_GameModeList_Implementation(int ZOrder)
 
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -432,8 +394,6 @@ void AHUDMainMenu::ShowUI_MapList_Implementation(int ZOrder)
 {
 
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -455,8 +415,6 @@ void AHUDMainMenu::ShowUI_BarracksHome_Implementation(int ZOrder)
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -476,8 +434,6 @@ void AHUDMainMenu::ShowUI_SettingsHome_Implementation(int ZOrder)
 		}
 	}
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -499,8 +455,6 @@ void AHUDMainMenu::ShowUI_SettingsGamepad_Implementation(int ZOrder)
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -520,8 +474,6 @@ void AHUDMainMenu::ShowUI_SettingsKeyBindings_Implementation(int ZOrder)
 		}
 	}
 }
-
-///////////////////////////////////////////////
 
 /*
 *
@@ -543,8 +495,6 @@ void AHUDMainMenu::ShowUI_SettingsDisplay_Implementation(int ZOrder)
 	}
 }
 
-///////////////////////////////////////////////
-
 /*
 *
 */
@@ -565,6 +515,9 @@ void AHUDMainMenu::ShowUI_SettingsAudio_Implementation(int ZOrder)
 	}
 }
 
+/*
+*
+*/
 void AHUDMainMenu::ShowUI_NewMenuState_Implementation(E_MainMenuPage NewMenuState, int ZOrder)
 {
 	_PreviousMenuState = _CurrentMenuState;
@@ -580,4 +533,52 @@ void AHUDMainMenu::ShowUI_NewMenuState_Implementation(E_MainMenuPage NewMenuStat
 			gameInstance->SetMenuState(_CurrentMenuState);
 		}
 	}
+}
+
+/*
+*
+*/
+void AHUDMainMenu::PopulatePlaylistOptions(UDataTable* PlaylistTable, bool RankedPlaylists, UVerticalBox* VerticalBox)
+{
+	// Clear box children
+	VerticalBox->ClearChildren();
+
+	// Get the list of playlists based off ranked/social
+	TArray<FPlaylistInfo*> playlists;
+	for (auto& name : PlaylistTable->GetRowNames())
+	{
+		FPlaylistInfo* row = PlaylistTable->FindRow<FPlaylistInfo>(name, "", true);
+		if (row)
+		{
+			// Correct playlist
+			if (row->_bRankedPlaylist == RankedPlaylists && row->_bActivePlaylist)
+			{
+				// Add a blank widget playlist button to the vertical box
+				playlists.Add(row);
+				UButtonPlaylist* buttonWidget = CreateWidget<UButtonPlaylist>(GetWorld()->GetGameInstance(), _UI_PlaylistButton_Class);
+				VerticalBox->AddChild(buttonWidget);
+			}
+		}
+	}
+	
+	// Cast vertical box children to playlist buttons so that we can manipulate it
+	TArray<UButtonPlaylist*> buttonArray;
+	for (int i = 0; i < VerticalBox->GetChildrenCount(); i++)	
+		buttonArray.Add(Cast<UButtonPlaylist>(VerticalBox->GetChildAt(i)));	
+
+	// Timed playlists must be at the top of the information array
+	for (int i = 0; i < playlists.Num(); i++)
+	{
+		if (playlists[i]->_bTimedPlaylist)
+		{
+			FPlaylistInfo* timedPlaylist = playlists[i];
+			playlists.RemoveAt(i, 1, true);
+			playlists.Insert(timedPlaylist, 0);
+			break;
+		}
+	}
+
+	// Add playlist information to the buttons
+	for (int i = 0; i < buttonArray.Num(); i++)	
+		buttonArray[i]->Setup(*playlists[i], buttonArray);
 }

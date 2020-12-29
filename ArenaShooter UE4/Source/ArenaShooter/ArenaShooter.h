@@ -3,10 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
-#if UE_BUILD_DEVELOPMENT
-
-#define GAME_LOG_DEFINED 1
+//#include "Engine.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(GameLog, Log, All);
 
@@ -24,40 +21,46 @@ DECLARE_LOG_CATEGORY_EXTERN(GameLog, Log, All);
 
 #define GAME_LOG(Message, ...) \
 { \
+	SET_WARN_COLOR(COLOR_CYAN); \
 	const FString Msg = FString::Printf(TEXT(Message), ##__VA_ARGS__); \
-	UE_LOG(GameLog, Log, TEXT("::::::: %s %s : %s :::::::"), NETMODE_WORLD, FUNC_NAME, *Msg); \
+    if (Msg == "") \
+    { \
+        UE_LOG(LogYourCategory, Log, TEXT("%s%s() : %s"), NETMODE_WORLD, FUNC_NAME, *GetNameSafe(this));\
+    } \
+    else \
+    { \
+        UE_LOG(LogYourCategory, Log, TEXT("%s%s() : %s"), NETMODE_WORLD, FUNC_NAME, *Msg);\
+    } \
+    CLEAR_WARN_COLOR(); \
 }
 
 #define GAME_SCREENLOG(Message, ...) \
 { \
 	const FString Msg = FString::Printf(TEXT(Message), ##__VA_ARGS__); \
-	GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::White, Msg); \
+    if (Msg == "") \
+    { \
+        TCHAR StdMsg[MAX_SPRINTF] = TEXT(""); \
+        FCString::Sprintf(StdMsg, TEXT("%s%s() : %s"), NETMODE_WORLD, FUNC_NAME, *GetNameSafe(this)); \
+        GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::White, StdMsg); \
+    } \
+    else \
+    { \
+        GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::White, Msg); \
+    } \
 }
 
 #define GAME_WARN(Message, ...) \
 { \
+	SET_WARN_COLOR(COLOR_YELLOW); \
 	const FString Msg = FString::Printf(TEXT(Message), ##__VA_ARGS__); \
-	UE_LOG(GameLog, Warning, TEXT("::::::: %s %s : %s :::::::"), NETMODE_WORLD, FUNC_NAME, *Msg); \
-	GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, Msg); \
+    UE_LOG(LogYourCategory, Log, TEXT("**WARNING** %s%s() : %s"), NETMODE_WORLD, FUNC_NAME, *Msg);\
+    CLEAR_WARN_COLOR();\
 }
 
 #define GAME_ERROR(Message, ...) \
 { \
+	SET_WARN_COLOR(COLOR_RED); \
 	const FString Msg = FString::Printf(TEXT(Message), ##__VA_ARGS__); \
-	UE_LOG(GameLog, Error, TEXT("::::::: %s %s : %s :::::::"), NETMODE_WORLD, FUNC_NAME, *Msg); \
-	GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Red, Msg); \
+    UE_LOG(LogYourCategory, Log, TEXT("**ERROR** %s%s() : %s"), NETMODE_WORLD, FUNC_NAME, *Msg);\
+    CLEAR_WARN_COLOR();\
 }
-
-#define GAME_HALT(Message, ...) \
-{ \
-	const FString Msg = FString::Printf(TEXT(Message), ##__VA_ARGS__); \
-	UE_LOG(GameLog, Fatal, TEXT("====== %s %s : %s ======"), NETMODE_WORLD, FUNC_NAME, *Msg); \
-}
-
-#else
-#define GAME_LOG(Message, ...)
-#define GAME_SCREENLOG(Message, ...)
-#define GAME_WARN(Message, ...)
-#define GAME_ERROR(Message, ...)
-#define GAME_HALT(Message, ...)
-#endif

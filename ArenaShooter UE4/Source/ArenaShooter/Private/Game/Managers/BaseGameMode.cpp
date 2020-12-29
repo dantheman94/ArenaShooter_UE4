@@ -26,7 +26,9 @@ void ABaseGameMode::BeginPlay()
 	}
 
 	// Get all team components and add to array for referencing
-	TArray<UActorComponent*> comps = GetComponentsByClass(_TeamComponentClass);
+	TArray<UActorComponent*> comps;
+	GetComponents(comps);
+	///TArray<UActorComponent*> comps = GetComponentsByClass(_TeamComponentClass);
 	for (int i = 0; i < comps.Num(); i++)
 	{
 		UTeamComponent* team = Cast<UTeamComponent>(comps[i]);

@@ -23,14 +23,6 @@ enum class E_GameStates : uint8
 };
 
 UENUM(BlueprintType)
-enum class E_WallRunDirection : uint8
-{
-	eWRD_Left UMETA(DisplayName = "Left Side"),
-	eWRD_Right UMETA(DisplayName = "Right Side"),
-	eWRD_Up UMETA(DisplayName = "Upwards")
-};
-
-UENUM(BlueprintType)
 enum class E_TeamNames : uint8
 {
 	eTN_Spectator UMETA(DisplayName = "Unbiased Spectator"),
@@ -44,7 +36,12 @@ UENUM(BlueprintType)
 enum class E_GameTypes : uint8
 {
 	eGT_Undefined UMETA(DisplayName = "Undefined"),
-	eGT_TDM UMETA(DisplayName = "Team Deathmatch")
+	eGT_TDM UMETA(DisplayName = "Team Deathmatch"),
+	eGT_CTF UMETA(DisplayName = "Capture the Flag"),
+	eGT_KOTH UMETA(DisplayName = "King of the Hill"),
+	eGT_Assault UMETA(DisplayName = "Bomb Assault"),
+	EGT_Oddball UMETA(DisplayName = "Oddball"),
+	EGT_Infection UMETA(DisplayName = "Infection")
 };
 
 UENUM(BlueprintType)
@@ -239,6 +236,50 @@ enum class E_MatchmakingState : uint8
 };
 
 USTRUCT(BlueprintType)
+struct FPlaylistInfo : public FTableRowBase
+{
+	GENERATED_BODY()
+
+public:
+
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
+		FText _PlaylistName;
+
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
+		FText _PlaylistDescription;
+
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
+		bool _bRankedPlaylist;
+
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
+		int _iMaximumPlayers;
+
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
+		int _iMinimumPlayers;
+
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
+		int _iMaxLobbySize;
+
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
+		int _iTeamSize;
+
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
+		bool _bActivePlaylist;
+
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
+		bool _bTimedPlaylist;
+
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, meta = (EditCondition = "_bTimedPlaylist"))
+		int _HourDuration;
+
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
+		TArray<E_GameTypes> _GameTypes;
+
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
+		TArray<FString> PlaylistMaps;
+};
+
+USTRUCT(BlueprintType)
 struct FMapInfo : public FTableRowBase
 {
 	GENERATED_BODY()
@@ -279,23 +320,6 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
 		UTexture2D* GametypeThumbnail = NULL;
-};
-
-USTRUCT(BlueprintType)
-struct FPlaylistInfo : public FTableRowBase
-{
-	GENERATED_BODY()
-
-public:
-
-	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
-		FString PlaylistName;
-
-	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
-		TArray<E_GameTypes> PlaylistGameTypes;
-
-	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
-		TArray<FString> PlaylistMaps;
 };
 
 USTRUCT(BlueprintType)
@@ -541,7 +565,7 @@ public:
 		FString StatText;
 
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
-		float StatPercent = NULL;
+		float StatPercent;
 };
 
 /*
@@ -549,7 +573,7 @@ public:
 *	(used in the "BuyMenu")
 */
 USTRUCT(BlueprintType)
-struct FItemInfo : public FTableRowBase
+struct FBuyItemInfo : public FTableRowBase
 {
 	GENERATED_BODY()
 
@@ -565,7 +589,7 @@ public:
 		int ItemCost;
 
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
-		UTexture2D* ItemThumbnail = NULL;
+		UTexture2D* ItemThumbnail;
 
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly)
 		E_ItemType ItemType;
@@ -582,7 +606,7 @@ public:
 *	(used in the "BuyMenu")
 */
 USTRUCT(BlueprintType)
-struct FWeaponScopeInfo : public FItemInfo
+struct FWeaponScopeInfo : public FBuyItemInfo
 {
 	GENERATED_BODY()
 
@@ -607,7 +631,7 @@ public:
 *	(used in the "BuyMenu")
 */
 USTRUCT(BlueprintType)
-struct FWeaponBarrelInfo : public FItemInfo
+struct FWeaponBarrelInfo : public FBuyItemInfo
 {
 	GENERATED_BODY()
 
@@ -632,7 +656,7 @@ public:
 *	(used in the "BuyMenu")
 */
 USTRUCT(BlueprintType)
-struct FWeaponAccessoryInfo : public FItemInfo
+struct FWeaponAccessoryInfo : public FBuyItemInfo
 {
 	GENERATED_BODY()
 
@@ -657,7 +681,7 @@ public:
 *	(used in the "BuyMenu")
 */
 USTRUCT(BlueprintType)
-struct FWeaponItemInfo : public FItemInfo
+struct FWeaponItemInfo : public FBuyItemInfo
 {
 	GENERATED_BODY()
 
@@ -691,7 +715,7 @@ public:
 *	(used in the "BuyMenu")
 */
 USTRUCT(BlueprintType)
-struct FGrenadeItemInfo : public FItemInfo
+struct FGrenadeItemInfo : public FBuyItemInfo
 {
 	GENERATED_BODY()
 
@@ -713,7 +737,7 @@ public:
 *	(used in the "BuyMenu")
 */
 USTRUCT(BlueprintType)
-struct FEquipmentItemInfo : public FItemInfo
+struct FEquipmentItemInfo : public FBuyItemInfo
 {
 	GENERATED_BODY()
 

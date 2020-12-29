@@ -17,8 +17,6 @@ void ABaseGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ABaseGameState, _Teams);
 }
 
-///////////////////////////////////////////////
-
 void ABaseGameState::UpdatePlayerList()
 {
 	// Clients only update their list locally, server replicates new player info
@@ -89,8 +87,6 @@ void ABaseGameState::UpdateTeamList()
 	else { return; }
 }
 
-///////////////////////////////////////////////
-
 void ABaseGameState::SetMaxLobbySize(int Size)
 {
 	// Can only be called from the server
@@ -99,28 +95,18 @@ void ABaseGameState::SetMaxLobbySize(int Size)
 	_iMaxLobbySize = Size;
 }
 
-///////////////////////////////////////////////
-
 void ABaseGameState::DisconnectClientFromLobby()
 {
 
 }
 
-///////////////////////////////////////////////
-
-bool ABaseGameState::Server_Reliable_CheckForGameOver_Validate()
-{ return true; }
-
+bool ABaseGameState::Server_Reliable_CheckForGameOver_Validate() { return true; }
 void ABaseGameState::Server_Reliable_CheckForGameOver_Implementation()
 {
 
 }
 
-///////////////////////////////////////////////
-
-bool ABaseGameState::Multicast_Reliable_SetGameMode_Validate(FGameTypeInfo GameTypeInfo)
-{ return true; }
-
+bool ABaseGameState::Multicast_Reliable_SetGameMode_Validate(FGameTypeInfo GameTypeInfo) { return true; }
 void ABaseGameState::Multicast_Reliable_SetGameMode_Implementation(FGameTypeInfo GameTypeInfo)
 {
 	// Get reference to game instance
@@ -132,11 +118,7 @@ void ABaseGameState::Multicast_Reliable_SetGameMode_Implementation(FGameTypeInfo
 	baseGameInstance->SetGameTypeInfo(GameTypeInfo);
 }
 
-///////////////////////////////////////////////
-
-bool ABaseGameState::Multicast_Reliable_SetMap_Validate(FMapInfo MapInfo)
-{ return true; }
-
+bool ABaseGameState::Multicast_Reliable_SetMap_Validate(FMapInfo MapInfo) { return true; }
 void ABaseGameState::Multicast_Reliable_SetMap_Implementation(FMapInfo MapInfo)
 {
 	// Get reference to game instance
@@ -148,49 +130,31 @@ void ABaseGameState::Multicast_Reliable_SetMap_Implementation(FMapInfo MapInfo)
 	baseGameInstance->SetMapInfo(MapInfo);
 }
 
-///////////////////////////////////////////////
-
-bool ABaseGameState::Server_Reliable_HostHasStartedMatchCountdown_Validate()
-{ return true; }
-
+bool ABaseGameState::Server_Reliable_HostHasStartedMatchCountdown_Validate() { return true; }
 void ABaseGameState::Server_Reliable_HostHasStartedMatchCountdown_Implementation()
 {
 	Multicast_Reliable_HostHasStartedMatchCountdown();
 }
 
-bool ABaseGameState::Multicast_Reliable_HostHasStartedMatchCountdown_Validate()
-{ return true; }
-
+bool ABaseGameState::Multicast_Reliable_HostHasStartedMatchCountdown_Validate() { return true; }
 void ABaseGameState::Multicast_Reliable_HostHasStartedMatchCountdown_Implementation()
 {
 	_OnMatchCountdown.Broadcast();
 }
 
-///////////////////////////////////////////////
-
-bool ABaseGameState::Server_Reliable_HostHasCancelledMatchCountdown_Validate()
-{ return true; }
-
+bool ABaseGameState::Server_Reliable_HostHasCancelledMatchCountdown_Validate() { return true; }
 void ABaseGameState::Server_Reliable_HostHasCancelledMatchCountdown_Implementation()
 {
 	Multicast_Reliable_HostHasCancelledMatchCountdown();
 }
 
-///////////////////////////////////////////////
-
-bool ABaseGameState::Multicast_Reliable_HostHasCancelledMatchCountdown_Validate()
-{ return true; }
-
+bool ABaseGameState::Multicast_Reliable_HostHasCancelledMatchCountdown_Validate() { return true; }
 void ABaseGameState::Multicast_Reliable_HostHasCancelledMatchCountdown_Implementation()
 {
 	_OnMatchCountdownCancel.Broadcast();
 }
 
-///////////////////////////////////////////////
-
-bool ABaseGameState::Server_Reliable_PromoteToLeader_Validate(FPlayerInfo NewHostPlayerInfo)
-{ return true; }
-
+bool ABaseGameState::Server_Reliable_PromoteToLeader_Validate(FPlayerInfo NewHostPlayerInfo) { return true; }
 void ABaseGameState::Server_Reliable_PromoteToLeader_Implementation(FPlayerInfo NewHostPlayerInfo)
 {
 	// Clear current host
@@ -232,14 +196,8 @@ void ABaseGameState::Server_Reliable_PromoteToLeader_Implementation(FPlayerInfo 
 /*
 *
 */
-bool ABaseGameState::Server_Reliable_GenerateRandomGamemodeToPlay_Validate()
-{ return true; }
-
-void ABaseGameState::Server_Reliable_GenerateRandomGamemodeToPlay_Implementation()
-{
-	GenerateRandomGamemodeToPlay();
-}
-
+bool ABaseGameState::Server_Reliable_GenerateRandomGamemodeToPlay_Validate() { return true; }
+void ABaseGameState::Server_Reliable_GenerateRandomGamemodeToPlay_Implementation() { GenerateRandomGamemodeToPlay(); }
 void ABaseGameState::GenerateRandomGamemodeToPlay()
 {
 	if (GetLocalRole() == ROLE_Authority)
@@ -248,7 +206,7 @@ void ABaseGameState::GenerateRandomGamemodeToPlay()
 		UGameInstance* gi = GetWorld()->GetGameInstance();
 		UBaseGameInstance* baseGameInstance = Cast<UBaseGameInstance>(gi);
 		if (baseGameInstance == NULL) { return; }
-
+ 
 		// Get playlist
 		UDataTable* playlistTable = baseGameInstance->GetPlaylistDataTable();
 		FPlaylistInfo* playlist = playlistTable->FindRow<FPlaylistInfo>(TEXT("Debug"), "", true);
@@ -256,12 +214,14 @@ void ABaseGameState::GenerateRandomGamemodeToPlay()
 		if (playlist != NULL)
 		{
 			// Get randomized base gamemode from playlist information
-			int gameModeCount = playlist->PlaylistGameTypes.Num();
+			///int gameModeCount = playlist->PlaylistGameTypes.Num();
+			int gameModeCount = playlist->_GameTypes.Num();
 			int randG = FMath::RandRange(0, gameModeCount - 1);
-			E_GameTypes gameMode = playlist->PlaylistGameTypes[randG];
+			E_GameTypes gameMode = playlist->_GameTypes[randG];
 
 			UDataTable* gametypeTable = baseGameInstance->GetGameTypeDataTable();
-			if (gametypeTable == NULL) { return; }
+			if (gametypeTable == NULL) 
+				return;
 
 			// Cross reference variant from base gamemode, from playlist
 			TArray<TSubclassOf<ABaseGameMode>> variants;
@@ -278,7 +238,8 @@ void ABaseGameState::GenerateRandomGamemodeToPlay()
 					{
 						// Add variant to the temporary string array
 						variants.Add(gameModeInfo->GameMode);
-					} else { continue; }
+					} else 
+						continue;
 				}
 			}
 
@@ -303,26 +264,21 @@ void ABaseGameState::GenerateRandomGamemodeToPlay()
 			}
 		}
 	}
-	else
-	{
-		Server_Reliable_GenerateRandomGamemodeToPlay();
-	}
+	else	
+		Server_Reliable_GenerateRandomGamemodeToPlay();	
 }
-
-///////////////////////////////////////////////
 
 /*
 *
 */
-bool ABaseGameState::Server_Reliable_GenerateRandomMapToPlay_Validate(FPlaylistInfo Playlist)
-{ return true; }
-
+bool ABaseGameState::Server_Reliable_GenerateRandomMapToPlay_Validate(FPlaylistInfo Playlist) { return true; }
 void ABaseGameState::Server_Reliable_GenerateRandomMapToPlay_Implementation(FPlaylistInfo Playlist)
 {
 	// Get reference to game instance
 	UGameInstance* gi = GetWorld()->GetGameInstance();
 	UBaseGameInstance* baseGameInstance = Cast<UBaseGameInstance>(gi);
-	if (baseGameInstance == NULL) { return; }
+	if (baseGameInstance == NULL) 
+		return;
 
 	// Get randomized map from playlist information
 	int mapCount = Playlist.PlaylistMaps.Num();
@@ -336,7 +292,8 @@ void ABaseGameState::Server_Reliable_GenerateRandomMapToPlay_Implementation(FPla
 	{
 		// Inform all players of new map
 		Multicast_Reliable_SetMap(*item);
-	} else { return; }
+	} else 
+		return;
 }
 
 void ABaseGameState::sendmessage_Implementation()

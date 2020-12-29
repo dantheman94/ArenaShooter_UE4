@@ -126,10 +126,6 @@ class ARENASHOOTER_API UBaseGameInstance : public UGameInstance
 
 protected:
 
-	// ****************************************************************************************************************************************
-	// ************************************ VARIABLES *****************************************************************************************
-	// ****************************************************************************************************************************************
-
 	// Main Menu ******************************************************************************************************************************
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
@@ -377,10 +373,6 @@ private:
 
 public:
 
-	// ****************************************************************************************************************************************
-	// ************************************ FUNCTIONS *****************************************************************************************
-	// ****************************************************************************************************************************************
-
 	// Startup ********************************************************************************************************************************
 
 	virtual void Init() override;
@@ -393,8 +385,6 @@ public:
 	UFUNCTION()
 		TArray<FString> GetRandPlayerNameList() { return _RandPlayerNameList; }
 
-	///////////////////////////////////////////////
-
 	/*
 	*
 	*/
@@ -406,8 +396,6 @@ public:
 	// LAN player name to not use the Computer Name
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Lan")
 		FString _LanPlayerName;
-
-	///////////////////////////////////////////////
 
 	/**
 	 *	Called from blueprints to host a session and start game
@@ -422,8 +410,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Network | Sessions")
 		void StartOnlineGame(FString ServerName, int32 MaxNumPlayers, bool bIsLAN, bool bIsPresence = true, bool bIsPasswordProtected = false, FString SessionPassword = "");
 
-	///////////////////////////////////////////////
-
 	/**
 	 *	Called from blueprints to find sessions then call and event to return the session results
 	 *	
@@ -433,8 +419,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Network | Sessions")
 		void FindOnlineGames(bool bIsLAN, bool bIsPresence);
 
-	///////////////////////////////////////////////
-
 	/**
 	 *	Called from blueprints to join a session based on it's index in the returned session array
 	 *	
@@ -443,28 +427,20 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Network | Sessions")
 		void JoinOnlineGame(int32 SessionIndex);
 
-	///////////////////////////////////////////////
-
 	/**
 	 *	Called from blueprints to destroy the session and leave game to main menu
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Network | Sessions")
 		void DestroySessionAndLeaveGame();
 
-	///////////////////////////////////////////////
-
 	UFUNCTION(BlueprintCallable, Category = "Network | Friends")
 		void SendSessionInviteToFriend(APlayerController* InvitingPlayer, const FBPUniqueNetId & Friend);
-
-	///////////////////////////////////////////////
 
 	/**
 	 *	Called when the session search is complete to show the results in UMG
 	 */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Network | Sessions")
 		void OnFoundSessionsCompleteUMG(const TArray<FCustomBlueprintSessionResult>& CustomSessionResults);
-
-	///////////////////////////////////////////////
 
 	/**
 	*	Called to show an error message in UMG
@@ -473,16 +449,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Network | Errors")
 		void ShowErrorMessage(const FText & ErrorMessage);
 
-	///////////////////////////////////////////////
-
 	/**
 	*	called to show an error message in UMG
 	*	@Param	ErrorMessage The Error message you want to show
 	*/
 	UFUNCTION(BlueprintImplementableEvent, Category = "Network | Errors")
 		void ShowErrorMessageUMG(const FText & ErrorMessage);
-
-	///////////////////////////////////////////////
 
 	/**
 	*	Check if steam is running
@@ -491,8 +463,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Network | Friends")
 		bool IsOnlineSubsystemSteam() const;
 
-	///////////////////////////////////////////////
-
 	/**
 	 *	Called from the player state to get the player name
 	 * 
@@ -500,14 +470,10 @@ public:
 	 */
 	FString GetPlayerName() const;
 
-	///////////////////////////////////////////////
-
 	/**
 	 *	Gets the current session
 	 */
 	IOnlineSessionPtr GetSession() const;
-
-	///////////////////////////////////////////////
 
 	/**
 	 *	Gets the max number of players in the session
@@ -517,16 +483,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Network | Sessions")
 		FORCEINLINE int32 GetSessionMaxPlayers() const { return _iMaxSessionPlayers; }
 
-	///////////////////////////////////////////////
-
 	/**
 	 *	Gets the steam avatar of a player based on his UniqueNetId
 	 * 
 	 *	@Param		UniqueNetId		The UniqueNetId of the player you want to get his avatar
 	 */
 	UTexture2D* GetSteamAvatar(const FBPUniqueNetId UniqueNetId);
-
-	///////////////////////////////////////////////
 
 	/**
 	 *	Called to get the list of steam friends a player has
@@ -537,15 +499,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Network | Friends")
 		void GetSteamFriendsList(APlayerController *PlayerController);
 
-	///////////////////////////////////////////////
-
 	/**
 	 *	Called from the delegate when getting the friend list request in completed
 	 */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Network | Friends")
 		void OnGetSteamFriendRequestCompleteUMG(const TArray<FSteamFriendInfo>& BPFriendsLists);
-
-	///////////////////////////////////////////////
 
 	/*
 	*	Main function to call in order to get your public IP.
@@ -565,8 +523,6 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Network | Session")
 		FIPDelegate OnIPAddressReceived;
 
-	///////////////////////////////////////////////
-
 	UFUNCTION(BlueprintCallable, Category = "Network | Travelling")
 		void ServerTravel();
 
@@ -578,8 +534,6 @@ public:
 	UFUNCTION()
 		void SetMenuState(E_MainMenuPage State) { _MenuState = State; }
 
-	///////////////////////////////////////////////
-
 	UFUNCTION(BlueprintPure)
 		E_MainMenuPage GetMenuState() { return _MenuState; }
 
@@ -588,54 +542,34 @@ public:
 	UFUNCTION()
 		void SetCurrentGameState(E_GameStates State) { _CurrentGameState = State; }
 
-	///////////////////////////////////////////////
-
 	UFUNCTION(BlueprintPure)
 		E_GameStates GetCurrentGameState() { return _CurrentGameState; }
 
 	// Matchmaking *****************************************************************************************************************************
 
-	///////////////////////////////////////////////
-
 	UFUNCTION()
 		UDataTable* GetPlaylistDataTable() { return _PlaylistDataTable; }
-
-	///////////////////////////////////////////////
 
 	UFUNCTION()
 		UDataTable* GetGameTypeDataTable() { return _GametypeDataTable; }
 
-	///////////////////////////////////////////////
-
 	UFUNCTION()
 		UDataTable* GetMapDataTable() { return _MapDataTable; }
-
-	///////////////////////////////////////////////
 
 	UFUNCTION()
 		void SetGameTypeInfo(FGameTypeInfo GameTypeInfo) { _GametypeInfo = GameTypeInfo; }
 
-	///////////////////////////////////////////////
-
 	UFUNCTION()
 		void SetMapInfo(FMapInfo MapInfo) { _MapInfo = MapInfo; }
-
-	///////////////////////////////////////////////
 
 	UFUNCTION(BlueprintPure)
 		bool GetTeamBased() { return _bTeamBasedLobby; }
 
-	///////////////////////////////////////////////
-
 	UFUNCTION(BlueprintCallable)
 		void SetTeamBased(bool TeamBased);
 
-	///////////////////////////////////////////////
-
 	UFUNCTION(BlueprintCallable)
 		void GenerateRandomGamemode();
-
-	///////////////////////////////////////////////
 
 	UFUNCTION(BlueprintCallable)
 		void GenerateRandomMap();
