@@ -1,38 +1,49 @@
-# UE4 Project directories to ignore
-ArenaShooter UE4/.vs/
-ArenaShooter UE4/Binaries/
-ArenaShooter UE4/Builds/
-ArenaShooter UE4/DerivedDataCache/
-ArenaShooter UE4/Intermediate/
-ArenaShooter UE4/Saved/
-ArenaShooter UE4/Build/
-ArenaShooter UE4/Plugins/GameModeEditor/Binaries/
-ArenaShooter UE4/Plugins/GameModeEditor/Intermediate/
- 
-# Visual Studio solutions
-*.sln
-*.sdf
-*.opensdf
-*.suo
+# Ignore all files by default, but scan all directories.
+*
+!*/
 
-# Content assets to ignore
-ArenaShooter UE4/Content/ArenaShooter/Animations
-ArenaShooter UE4/Content/ArenaShooter/Effects
-ArenaShooter UE4/Content/ArenaShooter/Levels
-ArenaShooter UE4/Content/ArenaShooter/Materials
-ArenaShooter UE4/Content/ArenaShooter/Meshes/
-ArenaShooter UE4/Content/ArenaShooter/Textures
-ArenaShooter UE4/Content/ArenaShooter/UMG
-ArenaShooter UE4/Content/External
+# Do not ignore git files in the root of the repo.
+!/.git*
 
-ArenaShooter/ArenaShooter.png
-*.rar
-*.uproject
-*.db
-# *.ini
+# Do not ignore current project's `.uproject`.
+!*.uproject
 
-Data/
-Builds/
-ArenaShooter UE4/Plugins/CustomPlaceCategory/Binaries/
-ArenaShooter UE4/Plugins/CustomPlaceCategory/Intermediate/
-ArenaShooter UE4/Plugins/CustomPlaceCategory/
+# Do not ignore source, config and plugins dirs.
+!/ArenaShooter UE4/Source/**
+!/ArenaShooter UE4/Config/**
+#!/ArenaShooter UE4/Plugins/**
+
+# Only allow .uasset and .umap files from /Content dir.
+# They're tracked by git-lfs, don't forget to track other
+# files if adding them here.
+!/ArenaShooter UE4/Content/**/*.uasset
+!/ArenaShooter UE4/Content/**/*.umap
+
+########################################
+# OS/platform generated files.
+
+# Windows
+ehthumbs.db
+Thumbs.db
+
+# Mac OS X
+.DS_Store
+.DS_Store?
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.directory
+
+# vim
+[._]*.s[a-w][a-z]
+[._]s[a-w][a-z]
+*.un~
+Session.vim
+.netrwhist
+
+########################################
+# Visual Studio
+.vs
